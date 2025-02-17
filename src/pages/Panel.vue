@@ -2,7 +2,6 @@
 import { webviewWindow } from '@tauri-apps/api';
 import { window as appWindow } from '@tauri-apps/api';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import SolarTextLinear from '~icons/solar/text-linear';
 import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
 import SolarTextFieldFocusLineDuotone from '~icons/solar/text-field-focus-line-duotone';
 import SolarTextBoldDuotone from '~icons/solar/text-bold-duotone';
@@ -12,6 +11,52 @@ import SolarPen2LineDuotone from '~icons/solar/pen-2-line-duotone';
 import SolarCalculatorLineDuotone from '~icons/solar/calculator-line-duotone';
 import SolarAltArrowLeftLineDuotone from '~icons/solar/alt-arrow-left-line-duotone';
 import SolarCheckSquareLineDuotone from '~icons/solar/check-square-line-duotone';
+import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
+import { Store } from '@tauri-apps/plugin-store';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'; // Ensure OPENAI_API_KEY environment variable is set
+import { streamText } from 'ai';
+
+const form = ref({
+    globalShortcut: 'CommandOrControl+Shift+C',
+    ai: {
+        enabled: false,
+        apiKey: '',
+        endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4o',
+    },
+});
+
+const loadConfig = async () => {
+    const store = await Store.load('store.bin');
+    if (await store.has('globalShortcut')) {
+        form.value.globalShortcut =
+            (await store.get('globalShortcut')) || 'CommandOrControl+Shift+C';
+    } else {
+        form.value.globalShortcut = 'CommandOrControl+Shift+C';
+    }
+    if (await store.has('ai.enabled')) {
+        form.value.ai.enabled = !!(await store.get('ai.enabled'));
+    } else {
+        form.value.ai.enabled = true;
+    }
+    if (await store.has('ai.apiKey')) {
+        form.value.ai.apiKey = (await store.get('ai.apiKey')) || '';
+    } else {
+        form.value.ai.apiKey = '';
+    }
+    if (await store.has('ai.endpoint')) {
+        form.value.ai.endpoint =
+            (await store.get('ai.endpoint')) || 'https://api.openai.com/v1';
+    } else {
+        form.value.ai.endpoint = 'https://api.openai.com/v1';
+    }
+    if (await store.has('ai.model')) {
+        form.value.ai.model = (await store.get('ai.model')) || 'gpt-4o';
+    } else {
+        form.value.ai.model = 'gpt-4o';
+    }
+    await store.close();
+};
 
 const webview = new webviewWindow.WebviewWindow('context', {
     url: '/panel',
@@ -26,6 +71,9 @@ const copiedContentPreview = computed(() => {
         ? copiedContent.value.slice(0, 2000) + '...(超过2000字符已截断)'
         : copiedContent.value;
 });
+const aigeneratedContent = ref<string>('');
+const aigenerating = ref(false);
+const aiuserprompt = ref<string>('');
 
 const mouseInRange = ref(false);
 
@@ -43,7 +91,7 @@ const menus = computed<
         icon?: any;
     }[]
 >(() => {
-    return [
+    const list = [
         {
             key: 'calc',
             label: '统计',
@@ -80,34 +128,39 @@ const menus = computed<
             autoClose: true,
             icon: SolarTextBoldDuotone,
         },
-        {
-            key: 'json',
-            label: '转为JSON',
-            description: '使用AI将内容转为JSON',
-            action: () => {
-                console.log('json');
-            },
-            icon: SolarCodeLineDuotone,
-        },
-        {
-            key: 'aimodify',
-            label: '询问AI...',
-            description: '让AI帮忙处理',
-            action: () => {
-                console.log('ai');
-            },
-            icon: SolarLightbulbBoltLineDuotone,
-        },
-        {
-            key: 'aicreate',
-            label: '使用AI创作...',
-            description: '让AI帮忙创作',
-            action: () => {
-                console.log('ai');
-            },
-            icon: SolarPen2LineDuotone,
-        },
     ];
+    if (form.value?.ai.enabled) {
+        list.push(
+            {
+                key: 'json',
+                label: '转为JSON',
+                description: '使用AI将内容转为JSON',
+                action: () => {
+                    gotoJson();
+                },
+                icon: SolarCodeLineDuotone,
+            },
+            {
+                key: 'aimodify',
+                label: '询问AI...',
+                description: '让AI帮忙处理',
+                action: () => {
+                    gotoAskAI();
+                },
+                icon: SolarLightbulbBoltLineDuotone,
+            },
+            {
+                key: 'aicreate',
+                label: '使用AI创作...',
+                description: '让AI帮忙创作',
+                action: () => {
+                    gotoAICreate();
+                },
+                icon: SolarPen2LineDuotone,
+            }
+        );
+    }
+    return list;
 });
 
 function executeMenu(key: string) {
@@ -123,6 +176,31 @@ function executeMenu(key: string) {
         }
     } else {
         hideWindow();
+    }
+}
+
+function getAIInstance() {
+    return createOpenAICompatible({
+        name: 'OpenAICompatiable',
+        apiKey: form.value.ai.apiKey,
+        baseURL: form.value.ai.endpoint,
+    });
+}
+
+async function tryGenerateText(system: string, prompt: string) {
+    aigenerating.value = true;
+    try {
+        const ai = getAIInstance();
+        const result = await streamText({
+            model: ai.chatModel(form.value.ai.model),
+            system,
+            prompt,
+        });
+        for await (const textPart of result.textStream) {
+            aigeneratedContent.value += textPart;
+        }
+    } finally {
+        aigenerating.value = false;
     }
 }
 
@@ -193,9 +271,93 @@ function gotoEdit() {
     page.value = 'edit';
 }
 
+function gotoJson() {
+    showPreview.value = true;
+    aiuserprompt.value = '转换为JSON';
+    page.value = 'tojson';
+}
+
+function gotoAskAI() {
+    showPreview.value = true;
+    aiuserprompt.value = '';
+    page.value = 'askai';
+}
+
+function gotoAICreate() {
+    showPreview.value = true;
+    aiuserprompt.value = '';
+    page.value = 'aicreate';
+}
+
+function startConvertToJson() {
+    aigeneratedContent.value = '';
+    tryGenerateText(
+        `You are tasked with reformatting user's clipboard data. Use the user's instructions, and the content of their clipboard below to edit their clipboard content as they have requested it.
+Do not output anything else besides the reformatted clipboard content. Use raw prettify format without markdown.`,
+        `User instructions:
+${aiuserprompt.value}
+
+Clipboard Content:
+${copiedContent.value}
+
+Output:
+`
+    );
+}
+
+function startAskAI() {
+    aigeneratedContent.value = '';
+    tryGenerateText(
+        `You are tasked with analysing user's clipboard data. Use the user's instructions, and the content of their clipboard below to edit their clipboard content as they have requested it. Answer any questions the user has asked.`,
+        `User instructions:
+${aiuserprompt.value}
+
+Clipboard Content:
+${copiedContent.value}
+
+Output:
+`
+    );
+}
+
+function startAICreate() {
+    aigeneratedContent.value = '';
+    tryGenerateText(
+        `You are tasked with continue creating content based on user's instructions. Use the user's instructions, and the content of their clipboard below to edit their clipboard content as they have requested it. Create content based on the user's instructions.`,
+        `User instructions:
+${aiuserprompt.value}
+
+Clipboard Content:
+${copiedContent.value}
+
+Output:
+`
+    );
+}
+
 function saveEdit() {
     writeText(copiedContent.value);
     gotoIndex();
+}
+
+function saveJson() {
+    writeText(aigeneratedContent.value);
+    gotoIndex();
+}
+
+const savable = computed(() => {
+    return page.value !== 'index' && page.value !== 'calc';
+});
+
+function doSaveAction() {
+    switch (page.value) {
+        case 'edit':
+            saveEdit();
+            break;
+        case 'tojson':
+            saveJson();
+            break;
+    }
 }
 
 const focusOn = ref(-1);
@@ -211,7 +373,8 @@ onMounted(async () => {
         //         hideWindow();
         //     }
         // }),
-        await appWindow.getCurrentWindow().listen('tauri://focus', () => {
+        await appWindow.getCurrentWindow().listen('tauri://focus', async () => {
+            await loadConfig();
             copiedContent.value = '正在读取剪贴板...';
             showPreview.value = true;
             page.value = 'index';
@@ -240,10 +403,14 @@ onBeforeUnmount(() => {
                     v-if="page !== 'index'"
                 />
                 <span>剪贴板</span>
-                <SolarCheckSquareLineDuotone  
+                <LineMdLoadingTwotoneLoop
                     class="inline hover:bg-gray-500/90 float-end"
-                    @click="saveEdit"
-                    v-if="page === 'edit'"
+                    v-if="aigenerating"
+                />
+                <SolarCheckSquareLineDuotone
+                    class="inline hover:bg-gray-500/90 float-end"
+                    @click="doSaveAction"
+                    v-if="savable && !aigenerating"
                 />
             </div>
             <div
@@ -358,13 +525,94 @@ onBeforeUnmount(() => {
                 </div>
             </div>
         </div>
-        <div
-            v-else-if="page === 'edit'"
-            class="h-[calc(100%-30px)]"
-        >
+        <div v-else-if="page === 'edit'" class="h-[calc(100%-30px)]">
             <textarea
                 v-model="copiedContent"
                 class="size-full bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
+            ></textarea>
+        </div>
+        <div
+            v-else-if="page === 'tojson'"
+            class="h-[calc(100%-30px)] flex flex-col"
+        >
+            <div>
+                <n-input
+                    :disabled="aigenerating"
+                    v-model:value="aiuserprompt"
+                    type="text"
+                    placeholder="想要做什么？"
+                    class="h-10 block"
+                />
+            </div>
+            <n-button
+                :disabled="aigenerating"
+                strong
+                secondary
+                type="info"
+                @click="startConvertToJson"
+            >
+                生成
+            </n-button>
+            <textarea
+                :disabled="aigenerating"
+                v-model="aigeneratedContent"
+                class="flex-1 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
+            ></textarea>
+        </div>
+        <div
+            v-else-if="page === 'askai'"
+            class="h-[calc(100%-30px)] flex flex-col"
+        >
+            <div>
+                <n-input
+                    :disabled="aigenerating"
+                    v-model:value="aiuserprompt"
+                    type="text"
+                    placeholder="想要问什么？"
+                    class="h-10 block"
+                />
+            </div>
+            <n-button
+                :disabled="aigenerating"
+                strong
+                secondary
+                type="info"
+                @click="startAskAI"
+            >
+                生成
+            </n-button>
+            <textarea
+                :disabled="aigenerating"
+                v-model="aigeneratedContent"
+                class="flex-1 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
+            ></textarea>
+        </div>
+        <div
+            v-else-if="page === 'aicreate'"
+            class="h-[calc(100%-30px)] flex flex-col"
+        >
+            <div>
+                <n-input
+                    :disabled="aigenerating"
+                    v-model:value="aiuserprompt"
+                    type="text"
+                    placeholder="要继续写什么？"
+                    class="h-10 block"
+                />
+            </div>
+            <n-button
+                :disabled="aigenerating"
+                strong
+                secondary
+                type="info"
+                @click="startAICreate"
+            >
+                生成
+            </n-button>
+            <textarea
+                :disabled="aigenerating"
+                v-model="aigeneratedContent"
+                class="flex-1 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
             ></textarea>
         </div>
     </div>

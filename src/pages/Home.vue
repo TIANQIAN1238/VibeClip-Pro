@@ -62,6 +62,7 @@ const form = ref({
         enabled: false,
         apiKey: '',
         endpoint: 'https://api.openai.com/v1',
+        model: 'gpt-4o',
     },
 });
 
@@ -92,6 +93,11 @@ const loadConfig = async () => {
         } else {
             form.value.ai.endpoint = 'https://api.openai.com/v1';
         }
+        if(await store.has('ai.model')) {
+            form.value.ai.model = (await store.get('ai.model')) || 'gpt-4o';
+        } else {
+            form.value.ai.model = 'gpt-4o';
+        }
         await store.close();
     } finally {
         noSave.value = false;
@@ -108,6 +114,7 @@ const saveConfig = async () => {
     await store.set('ai.enabled', form.value.ai.enabled);
     await store.set('ai.apiKey', form.value.ai.apiKey);
     await store.set('ai.endpoint', form.value.ai.endpoint);
+    await store.set('ai.model', form.value.ai.model);
     await store.save();
     await store.close();
 };
@@ -239,6 +246,20 @@ onBeforeUnmount(() => {
                         <n-thing
                             title="OpenAI 服务端点"
                             description="使用的代理 AI 服务端点"
+                        />
+                    </n-list-item>
+                    <n-list-item>
+                        <template #suffix>
+                            <div class="w-72">
+                                <n-input
+                                    v-model:value="form.ai.model"
+                                    placeholder="gpt-4o"
+                                />
+                            </div>
+                        </template>
+                        <n-thing
+                            title="AI 模型"
+                            description="使用的 AI 模型"
                         />
                     </n-list-item>
                 </n-list>
