@@ -14,12 +14,20 @@ import SolarCalculatorLineDuotone from '~icons/solar/calculator-line-duotone';
 import SolarAltArrowLeftLineDuotone from '~icons/solar/alt-arrow-left-line-duotone';
 import SolarCheckSquareLineDuotone from '~icons/solar/check-square-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
+import SolarSettingsLineDuotone from '~icons/solar/settings-line-duotone';
 
 const { config, loadConfig } = useConfig();
 const { generating, generatedContent, userPrompt, generateText } = useAI(config);
 const clipboard = useClipboard();
 const { content, contentPreview, stats, refresh, update } = clipboard;
 const { page, showPreview, mouseInRange, gotoPage, setupWindowListeners } = usePanelWindow(clipboard);
+
+
+
+
+const mainView = new webviewWindow.WebviewWindow('main', {
+    url: '/',
+});
 
 // 菜单焦点
 const focusOn = ref(-1);
@@ -198,6 +206,12 @@ function doSaveAction() {
     }
 }
 
+const openMainSettings = () => {
+    mainView.show();
+    mainView.setFocus();
+
+};
+
 let unlistenFocus: () => void;
 
 // 生命周期钩子
@@ -228,6 +242,10 @@ onBeforeUnmount(() => {
                     v-if="page !== 'index'"
                 />
                 <span>剪贴板</span>
+                <SolarSettingsLineDuotone
+                    class="inline hover:bg-gray-500/30 float-end"
+                    @click="openMainSettings"
+                />
                 <LineMdLoadingTwotoneLoop
                     class="inline hover:bg-gray-500/90 float-end"
                     v-if="generating"

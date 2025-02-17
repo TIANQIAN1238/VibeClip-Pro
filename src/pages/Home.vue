@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { webviewWindow } from '@tauri-apps/api';
+import { window as appWindow } from '@tauri-apps/api';
 import { getMousePosition } from '../libs/bridges';
 import { onBeforeUnmount, onMounted, ref, unref, watch } from 'vue';
 import KeySelector from '@/components/KeySelector.vue';
@@ -14,8 +15,6 @@ const { mountShortcut, unregisterAll } = useShortcut();
 const modalShortcutSetter = ref(false);
 const webview = new webviewWindow.WebviewWindow('context', {
     url: '/panel',
-    width: 400,
-    height: 456,
 });
 
 const open = async () => {
@@ -49,7 +48,19 @@ watch(
     { deep: true }
 );
 
+// 收集所有需要清理的事件监听器
+const cleanupFns: Array<() => Promise<void> | void> = [];
+
 onMounted(async () => {
+    const mainWindow = appWindow.getCurrentWindow();
+    cleanupFns.push(
+        await mainWindow.listen('tauri://resize', async () => {
+            if (await mainWindow.isMinimized()) {
+                await mainWindow.hide();
+            }
+        })
+    );
+
     await loadConfig();
     await refreshAutoStart();
 });
@@ -57,6 +68,8 @@ onMounted(async () => {
 onBeforeUnmount(async () => {
     await saveConfig();
     await unregisterAll();
+    // 清理所有事件监听器
+    await Promise.all(cleanupFns.map(fn => fn()));
 });
 
 // UI 相关的处理函数

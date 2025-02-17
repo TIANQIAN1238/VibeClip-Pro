@@ -1,5 +1,7 @@
+mod tray;
+
 use mouse_position::mouse_position::Mouse;
-use tauri::{AppHandle, Manager};
+use tauri::{tray::TrayIconBuilder, AppHandle, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 use window_vibrancy::apply_mica;
 
@@ -29,6 +31,12 @@ fn show_window(app: &AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            let tray = TrayIconBuilder::new()
+            .icon(app.default_window_icon().unwrap().clone())
+            .build(app)?;
+            Ok(())
+        })
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_window(app);
