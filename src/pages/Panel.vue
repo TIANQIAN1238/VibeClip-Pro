@@ -204,7 +204,7 @@ let unlistenFocus: () => void;
 onMounted(async () => {
     window.addEventListener('keydown', listenKeydown);
     await loadConfig(); // 首次加载配置
-    unlistenFocus = await setupWindowListeners(); // 设置焦点监听，包含配置重载
+    unlistenFocus = await setupWindowListeners(hideWindow); // 传入 hideWindow 函数
     await refresh(); // 初始化时读取剪贴板内容
 });
 

@@ -17,16 +17,28 @@ export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
         onPageChange?.(targetPage);
     };
 
-    const setupWindowListeners = async () => {
+    const setupWindowListeners = async (onHide: () => void) => {
         const { loadConfig } = useConfig();
-        return await appWindow.getCurrentWindow().listen('tauri://focus', async () => {
-            showPreview.value = true;
-            page.value = 'index';
-            await Promise.all([
-                loadConfig(),
-                clipboard.refresh()
-            ]);
-        });
+        const listeners = await Promise.all([
+            appWindow.getCurrentWindow().listen('tauri://blur', event => {
+                if (!mouseInRange.value) {
+                    console.log('blur', event);
+                    onHide();
+                }
+            }),
+            appWindow.getCurrentWindow().listen('tauri://focus', async () => {
+                showPreview.value = true;
+                page.value = 'index';
+                await Promise.all([
+                    loadConfig(),
+                    clipboard.refresh()
+                ]);
+            })
+        ]);
+
+        return () => {
+            listeners.forEach(unlisten => unlisten());
+        };
     };
 
     return {
