@@ -1,138 +1,68 @@
 <script setup lang="ts">
 import { webviewWindow } from '@tauri-apps/api';
 import { getMousePosition } from '../libs/bridges';
-import { enable, isEnabled, disable } from '@tauri-apps/plugin-autostart';
 import { onBeforeUnmount, onMounted, ref, unref, watch } from 'vue';
 import KeySelector from '@/components/KeySelector.vue';
-import { Store } from '@tauri-apps/plugin-store';
-import { register, unregisterAll } from '@tauri-apps/plugin-global-shortcut';
+import { useConfig } from '@/composables/useConfig';
+import { useAutoStart } from '@/composables/useAutoStart';
+import { useShortcut } from '@/composables/useShortcut';
+
+const { config, loadConfig, saveConfig } = useConfig();
+const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
+const { mountShortcut, unregisterAll } = useShortcut();
 
 const modalShortcutSetter = ref(false);
-
 const webview = new webviewWindow.WebviewWindow('context', {
     url: '/panel',
     width: 400,
     height: 456,
 });
 
-const open = () => {
-    console.log('open');
-    getMousePosition()
-        .then(position => {
-            console.log('position', position);
-            if (position.length === 2) {
-                webview.setPosition({
-                    x: position[0],
-                    y: position[1],
-                    type: 'Physical',
-                    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-                } as any);
-            } else {
-                webview.center();
-            }
-        })
-        .catch(() => {
-            webview.center();
-        })
-        .finally(() => {
-            webview.show();
-            webview.setAlwaysOnTop(true);
-            webview.setFocus();
-        });
-};
-
-const toggleAutoStart = (checked: boolean) => {
-    console.log('autostart ', checked);
-    if (checked) {
-        enable().then(() => {
-            refreshAutoStart();
-        });
-    } else {
-        disable().then(() => {
-            refreshAutoStart();
-        });
-    }
-};
-
-const autoStart = ref(false);
-
-const form = ref({
-    globalShortcut: 'CommandOrControl+Shift+C',
-    ai: {
-        enabled: false,
-        apiKey: '',
-        endpoint: 'https://api.openai.com/v1',
-        model: 'gpt-4o',
-    },
-});
-
-const loadConfig = async () => {
-    noSave.value = true;
+const open = async () => {
     try {
-        const store = await Store.load('store.bin');
-        if (await store.has('globalShortcut')) {
-            form.value.globalShortcut =
-                (await store.get('globalShortcut')) ||
-                'CommandOrControl+Shift+C';
+        const position = await getMousePosition();
+        if (position.length === 2) {
+            await webview.setPosition({
+                x: position[0],
+                y: position[1],
+                type: 'Physical',
+            } as any);
         } else {
-            form.value.globalShortcut = 'CommandOrControl+Shift+C';
+            await webview.center();
         }
-        if (await store.has('ai.enabled')) {
-            form.value.ai.enabled = !!(await store.get('ai.enabled'));
-        } else {
-            form.value.ai.enabled = true;
-        }
-        if (await store.has('ai.apiKey')) {
-            form.value.ai.apiKey = (await store.get('ai.apiKey')) || '';
-        } else {
-            form.value.ai.apiKey = '';
-        }
-        if (await store.has('ai.endpoint')) {
-            form.value.ai.endpoint =
-                (await store.get('ai.endpoint')) || 'https://api.openai.com/v1';
-        } else {
-            form.value.ai.endpoint = 'https://api.openai.com/v1';
-        }
-        if(await store.has('ai.model')) {
-            form.value.ai.model = (await store.get('ai.model')) || 'gpt-4o';
-        } else {
-            form.value.ai.model = 'gpt-4o';
-        }
-        await store.close();
-    } finally {
-        noSave.value = false;
+    } catch {
+        await webview.center();
     }
+    
+    await webview.show();
+    await webview.setAlwaysOnTop(true);
+    await webview.setFocus();
 };
-
-const noSave = ref(false);
-
-const saveConfig = async () => {
-    if (noSave.value) return;
-    await new Promise(resolve => setTimeout(resolve, 0));
-    const store = await Store.load('store.bin');
-    await store.set('globalShortcut', form.value.globalShortcut);
-    await store.set('ai.enabled', form.value.ai.enabled);
-    await store.set('ai.apiKey', form.value.ai.apiKey);
-    await store.set('ai.endpoint', form.value.ai.endpoint);
-    await store.set('ai.model', form.value.ai.model);
-    await store.save();
-    await store.close();
-};
-
-function handleShortcutChange(shortcut: string) {
-    form.value.globalShortcut = shortcut;
-}
 
 watch(
-    form,
+    () => config.value,
     () => {
-        if (noSave.value) return;
-        // console.log('triggered', unref(form.value));
+        console.log('save',unref(config));
         saveConfig();
-        mountKeys();
+        mountShortcut(config.value.globalShortcut, open);
     },
     { deep: true }
 );
+
+onMounted(async () => {
+    await loadConfig();
+    await refreshAutoStart();
+});
+
+onBeforeUnmount(async () => {
+    await saveConfig();
+    await unregisterAll();
+});
+
+// UI 相关的处理函数
+function handleShortcutChange(shortcut: string) {
+    config.value.globalShortcut = shortcut;
+}
 
 function openShortcutSetter() {
     modalShortcutSetter.value = true;
@@ -141,35 +71,6 @@ function openShortcutSetter() {
 function closeShortcutSetter() {
     modalShortcutSetter.value = false;
 }
-
-const refreshAutoStart = () => {
-    isEnabled().then(enabled => {
-        autoStart.value = enabled;
-    });
-};
-
-async function mountKeys() {
-    console.log('unregister');
-    await unregisterAll();
-    console.log('load');
-
-    if (form.value.globalShortcut) {
-        console.log('register', form.value.globalShortcut);
-        return register(form.value.globalShortcut, open);
-    } else {
-        console.log('no register');
-    }
-}
-
-onMounted(() => {
-    loadConfig();
-    refreshAutoStart();
-});
-
-onBeforeUnmount(() => {
-    saveConfig();
-    unregisterAll();
-});
 </script>
 
 <template>
@@ -196,7 +97,7 @@ onBeforeUnmount(() => {
                     <n-list-item>
                         <template #suffix>
                             <n-button @click="openShortcutSetter">{{
-                                form.globalShortcut || '未设置'
+                                config.globalShortcut || '未设置'
                             }}</n-button>
                         </template>
                         <n-thing
@@ -211,7 +112,7 @@ onBeforeUnmount(() => {
                     <n-list-item>
                         <template #suffix>
                             <n-checkbox
-                                v-model:checked="form.ai.enabled"
+                                v-model:checked="config.ai.enabled"
                             ></n-checkbox>
                         </template>
                         <n-thing
@@ -223,7 +124,7 @@ onBeforeUnmount(() => {
                         <template #suffix>
                             <div class="w-72">
                                 <n-input
-                                    v-model:value="form.ai.apiKey"
+                                    v-model:value="config.ai.apiKey"
                                     type="password"
                                     placeholder="API Key"
                                 />
@@ -238,7 +139,7 @@ onBeforeUnmount(() => {
                         <template #suffix>
                             <div class="w-72">
                                 <n-input
-                                    v-model:value="form.ai.endpoint"
+                                    v-model:value="config.ai.endpoint"
                                     placeholder="https://api.openai.com/v1"
                                 />
                             </div>
@@ -252,7 +153,7 @@ onBeforeUnmount(() => {
                         <template #suffix>
                             <div class="w-72">
                                 <n-input
-                                    v-model:value="form.ai.model"
+                                    v-model:value="config.ai.model"
                                     placeholder="gpt-4o"
                                 />
                             </div>
@@ -290,7 +191,7 @@ onBeforeUnmount(() => {
             >
                 <KeySelector
                     @set="handleShortcutChange"
-                    v-model:shortcut="form.globalShortcut"
+                    v-model:shortcut="config.globalShortcut"
                 />
                 <template #footer>
                     <n-button @click="closeShortcutSetter">确定</n-button>
