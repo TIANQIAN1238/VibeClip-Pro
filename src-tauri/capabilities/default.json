@@ -2,7 +2,10 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main","context"],
+  "windows": [
+    "main",
+    "context"
+  ],
   "permissions": [
     "core:default",
     "opener:default",
@@ -22,9 +25,22 @@
     "core:window:allow-set-skip-taskbar",
     "core:window:allow-set-focus",
     "global-shortcut:default",
+    "global-shortcut:allow-unregister-all",
+    "global-shortcut:allow-register",
     "autostart:default",
     "autostart:allow-enable",
     "autostart:allow-disable",
-    "autostart:allow-is-enabled"
+    "autostart:allow-is-enabled",
+    "store:default",
+    "store:allow-get",
+    "store:allow-has",
+    "store:allow-set",
+    "store:allow-save",
+    "store:allow-load",
+    "core:path:default",
+    "clipboard-manager:allow-read-image",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-image",
+    "clipboard-manager:allow-write-text"
   ]
 }

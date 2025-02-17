@@ -22,7 +22,7 @@
         "label": "context",
         "title": "PasteMe Context",
         "width": 400,
-        "height": 400,
+        "height": 476,
         "url": "/panel",
         "visible": false,
         "decorations": false,

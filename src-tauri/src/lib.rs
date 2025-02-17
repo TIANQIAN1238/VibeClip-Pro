@@ -1,7 +1,7 @@
 use mouse_position::mouse_position::Mouse;
 use tauri::{AppHandle, Manager};
-use window_vibrancy::apply_mica;
 use tauri_plugin_autostart::MacosLauncher;
+use window_vibrancy::apply_mica;
 
 #[tauri::command]
 fn get_mouse_position() -> Vec<i32> {
@@ -29,10 +29,14 @@ fn show_window(app: &AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_window(app);
         }))
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]),
+        ))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
