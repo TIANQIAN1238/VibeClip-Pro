@@ -2,6 +2,31 @@
 # yarn lockfile v1
 
 
+"@ai-sdk/openai@^1.1.12":
+  version "1.1.12"
+  resolved "https://registry.npmmirror.com/@ai-sdk/openai/-/openai-1.1.12.tgz#5f313e674849ab41df99a63fa18d64fd12e13505"
+  integrity sha512-lh3zN4J/XEqkjpZAOBajSttF1Nl2qV/7WxRbORn+4jZmQkmzWQbsEUpgQ6ME+heyRvnsRCNq3fkMGehWWxWuXg==
+  dependencies:
+    "@ai-sdk/provider" "1.0.7"
+    "@ai-sdk/provider-utils" "2.1.8"
+
+"@ai-sdk/provider-utils@2.1.8":
+  version "2.1.8"
+  resolved "https://registry.npmmirror.com/@ai-sdk/provider-utils/-/provider-utils-2.1.8.tgz#370ccd30121684ce1bfbba20dd906481fad4b272"
+  integrity sha512-1j9niMUAFlCBdYRYJr1yoB5kwZcRFBVuBiL1hhrf0ONFNrDiJYA6F+gROOuP16NHhezMfTo60+GeeV1xprHFjg==
+  dependencies:
+    "@ai-sdk/provider" "1.0.7"
+    eventsource-parser "^3.0.0"
+    nanoid "^3.3.8"
+    secure-json-parse "^2.7.0"
+
+"@ai-sdk/provider@1.0.7":
+  version "1.0.7"
+  resolved "https://registry.npmmirror.com/@ai-sdk/provider/-/provider-1.0.7.tgz#66e07407678153b514aebf3f1c3c035e5e833380"
+  integrity sha512-q1PJEZ0qD9rVR+8JFEd01/QM++csMT5UVwYXSN2u54BrVw/D8TZLTeg2FEfKK00DgAx0UtWd8XOhhwITP9BT5g==
+  dependencies:
+    json-schema "^0.4.0"
+
 "@antfu/install-pkg@^0.5.0":
   version "0.5.0"
   resolved "https://registry.npmmirror.com/@antfu/install-pkg/-/install-pkg-0.5.0.tgz#37357c16a962266c0a8811ee29b3ea1354d952d9"
@@ -415,7 +440,7 @@
     lightningcss "^1.29.1"
     tailwindcss "4.0.6"
 
-"@tauri-apps/api@^2", "@tauri-apps/api@^2.0.0":
+"@tauri-apps/api@^2.0.0", "@tauri-apps/api@^2.2.0":
   version "2.2.0"
   resolved "https://registry.npmmirror.com/@tauri-apps/api/-/api-2.2.0.tgz#daaff2515b1a4ff1e763cf84a414548b02b566c5"
   integrity sha512-R8epOeZl1eJEl603aUMIGb4RXlhPjpgxbGVEaqY+0G5JG9vzV/clNlzTeqc+NLYXVqXcn8mb4c5b9pJIUDEyAg==
@@ -470,7 +495,7 @@
   resolved "https://registry.npmmirror.com/@tauri-apps/cli-win32-x64-msvc/-/cli-win32-x64-msvc-2.2.7.tgz#c561efac129b386be35a936b0080a4cd2cd01b6d"
   integrity sha512-ZB8Kw90j8Ld+9tCWyD2fWCYfIrzbQohJ4DJSidNwbnehlZzP7wAz6Z3xjsvUdKtQ3ibtfoeTqVInzCCEpI+pWg==
 
-"@tauri-apps/cli@^2":
+"@tauri-apps/cli@^2.2.7":
   version "2.2.7"
   resolved "https://registry.npmmirror.com/@tauri-apps/cli/-/cli-2.2.7.tgz#4aedaf941f58bf2839fec38aa8191c5aefc7bb45"
   integrity sha512-ZnsS2B4BplwXP37celanNANiIy8TCYhvg5RT09n72uR/o+navFZtGpFSqljV8fy1Y4ixIPds8FrGSXJCN2BerA==
@@ -486,7 +511,28 @@
     "@tauri-apps/cli-win32-ia32-msvc" "2.2.7"
     "@tauri-apps/cli-win32-x64-msvc" "2.2.7"
 
-"@tauri-apps/plugin-opener@^2":
+"@tauri-apps/plugin-autostart@~2":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-autostart/-/plugin-autostart-2.2.0.tgz#b5ea584cb52b0a5423f636d69d3e7519124342fe"
+  integrity sha512-TzVcDZdOvdot0avkpstUWJKKEl4cyxLpFB9DZZRW5zH8k+Bv8IVJmO0zyYuw+7oKlGdHOINbD/7Je7GHMViw5w==
+  dependencies:
+    "@tauri-apps/api" "^2.0.0"
+
+"@tauri-apps/plugin-clipboard-manager@~2":
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-clipboard-manager/-/plugin-clipboard-manager-2.2.1.tgz#a5d35b197748d900a4281b38a380fb57dd076983"
+  integrity sha512-+7YDULB9Bk4fejxYrVNBQcxs3KsjPA3A3r53wwn7K8zOQvxjNBSYBRx/FW1OUBPGzm8BrreJFBkPVzQZSF2R4A==
+  dependencies:
+    "@tauri-apps/api" "^2.0.0"
+
+"@tauri-apps/plugin-global-shortcut@~2":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-global-shortcut/-/plugin-global-shortcut-2.2.0.tgz#5ab12218ab2d1863ff1aa823aed72daed7cded85"
+  integrity sha512-clI9Bg/BcxWXNDK+ij601o1qC2WxMEy8ovhGgEW5Ai17oPy0KK8uwzmc59KiVnOYKpBWHCUPqBxG+KBNUFXgzw==
+  dependencies:
+    "@tauri-apps/api" "^2.0.0"
+
+"@tauri-apps/plugin-opener@^2.2.5":
   version "2.2.5"
   resolved "https://registry.npmmirror.com/@tauri-apps/plugin-opener/-/plugin-opener-2.2.5.tgz#928b917d28d3e8b5bafb90f5f91fb0ed20c27fd4"
   integrity sha512-hHsJ9RPWpZvZEPVFaL+d25gABMUMOf/A6ESXnvf/ii9guTukj58WXsAE/SOysXRIhej7kseRCxnOnIMpSCdUsQ==
@@ -846,6 +892,11 @@ estree-walker@^2.0.2:
   resolved "https://registry.npmmirror.com/estree-walker/-/estree-walker-2.0.2.tgz#52f010178c2a4c117a7757cfe942adb7d2da4cac"
   integrity sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==
 
+eventsource-parser@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.npmmirror.com/eventsource-parser/-/eventsource-parser-3.0.0.tgz#9303e303ef807d279ee210a17ce80f16300d9f57"
+  integrity sha512-T1C0XCUimhxVQzW4zFipdx0SficT651NnkR0ZSH3yQwh+mFMdLfgjABVi4YtMTtaL4s168593DaoaRLMqryavA==
+
 evtd@^0.2.2, evtd@^0.2.4:
   version "0.2.4"
   resolved "https://registry.npmmirror.com/evtd/-/evtd-0.2.4.tgz#0aac39ba44d6926e6668948ac27618e0795b9d07"
@@ -928,6 +979,11 @@ jiti@^2.4.2:
   version "2.4.2"
   resolved "https://registry.npmmirror.com/jiti/-/jiti-2.4.2.tgz#d19b7732ebb6116b06e2038da74a55366faef560"
   integrity sha512-rg9zJN+G4n2nfJl5MW3BMygZX56zKPNVEYYqq7adpmMh4Jn2QNEwhvQlFy6jPVdcod7txZtKHWnyZiA3a0zP7A==
+
+json-schema@^0.4.0:
+  version "0.4.0"
+  resolved "https://registry.npmmirror.com/json-schema/-/json-schema-0.4.0.tgz#f7de4cf6efab838ebaeb3236474cbba5a1930ab5"
+  integrity sha512-es94M3nTIfsEPisRafak+HDLfHXnKBhV3vU5eqPcS3flIWqcxJWgXHXiey3YrpaNsanY5ei1VoYEbOzijuq9BA==
 
 kolorist@^1.8.0:
   version "1.8.0"
@@ -1195,6 +1251,11 @@ rollup@^4.30.1:
     "@rollup/rollup-win32-x64-msvc" "4.34.8"
     fsevents "~2.3.2"
 
+secure-json-parse@^2.7.0:
+  version "2.7.0"
+  resolved "https://registry.npmmirror.com/secure-json-parse/-/secure-json-parse-2.7.0.tgz#5a5f9cd6ae47df23dba3151edd06855d47e09862"
+  integrity sha512-6aU+Rwsezw7VR8/nyvKTx8QpWH9FrcYiXXlqC4z5d5XQBDRqtbfsRjnwGyqbi3gddNtWHuEk9OANUotL26qKUw==
+
 seemly@^0.3.6, seemly@^0.3.8:
   version "0.3.10"
   resolved "https://registry.npmmirror.com/seemly/-/seemly-0.3.10.tgz#acf5d22c85ce855bf3715bbb740d18f544e59746"
@@ -1240,10 +1301,10 @@ treemate@^0.3.11:
   resolved "https://registry.npmmirror.com/treemate/-/treemate-0.3.11.tgz#7d52f8f69ab9ce326f8d139e0a3d1ffb25e48222"
   integrity sha512-M8RGFoKtZ8dF+iwJfAJTOH/SM4KluKOKRJpjCMhI8bG3qB74zrFoArKZ62ll0Fr3mqkMJiQOmWYkdYgDeITYQg==
 
-typescript@~5.6.2:
-  version "5.6.3"
-  resolved "https://registry.npmmirror.com/typescript/-/typescript-5.6.3.tgz#5f3449e31c9d94febb17de03cc081dd56d81db5b"
-  integrity sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==
+typescript@~5.7.3:
+  version "5.7.3"
+  resolved "https://registry.npmmirror.com/typescript/-/typescript-5.7.3.tgz#919b44a7dbb8583a9b856d162be24a54bf80073e"
+  integrity sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==
 
 ufo@^1.5.4:
   version "1.5.4"
@@ -1308,12 +1369,12 @@ vdirs@^0.1.4, vdirs@^0.1.8:
   dependencies:
     evtd "^0.2.2"
 
-vfonts@^0.0.3:
-  version "0.0.3"
-  resolved "https://registry.npmmirror.com/vfonts/-/vfonts-0.0.3.tgz#999d66fecea18efee3f2b966c81101ae8ce01a29"
-  integrity sha512-nguyw8L6Un8eelg1vQ31vIU2ESxqid7EYmy8V+MDeMaHBqaRSkg3dTBToC1PR00D89UzS/SLkfYPnx0Wf23IQQ==
+vfonts@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.npmmirror.com/vfonts/-/vfonts-0.1.0.tgz#c16af37ca044b2725ae55553049280efbe6222a9"
+  integrity sha512-vQBcvntBlnAPonAkGNM8iJ9NxE3PucA+V2W95xiN75YJKxirLJvOws2kEyOEO45T4N+YTbQOCR2m77Y05pfVhQ==
 
-vite@^6.0.3:
+vite@^6.1.0:
   version "6.1.0"
   resolved "https://registry.npmmirror.com/vite/-/vite-6.1.0.tgz#00a4e99a23751af98a2e4701c65ba89ce23858a6"
   integrity sha512-RjjMipCKVoR4hVfPY6GQTgveinjNuyLw+qruksLDvA5ktI1150VmcMBKmQaEWJhg/j6Uaf6dNCNA0AfdzUb/hQ==
@@ -1336,14 +1397,14 @@ vscode-uri@^3.0.8:
   resolved "https://registry.npmmirror.com/vscode-uri/-/vscode-uri-3.1.0.tgz#dd09ec5a66a38b5c3fffc774015713496d14e09c"
   integrity sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==
 
-vue-router@4:
+vue-router@4.5.0:
   version "4.5.0"
   resolved "https://registry.npmmirror.com/vue-router/-/vue-router-4.5.0.tgz#58fc5fe374e10b6018f910328f756c3dae081f14"
   integrity sha512-HDuk+PuH5monfNuY+ct49mNmkCRK4xJAV9Ts4z9UFc4rzdDnxQLyCMGGc8pKhZhHTVzfanpNwB/lwqevcBwI4w==
   dependencies:
     "@vue/devtools-api" "^6.6.4"
 
-vue-tsc@^2.1.10:
+vue-tsc@^2.2.2:
   version "2.2.2"
   resolved "https://registry.npmmirror.com/vue-tsc/-/vue-tsc-2.2.2.tgz#7e3c43dbd3ca3a38e0f04a864bd114ba31098b90"
   integrity sha512-1icPKkxAA5KTAaSwg0wVWdE48EdsH8fgvcbAiqojP4jXKl6LEM3soiW1aG/zrWrFt8Mw1ncG2vG1PvpZpVfehA==

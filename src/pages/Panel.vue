@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// @ts-ignore
 import SolarTextLinear from '~icons/solar/text-linear';
 </script>
 

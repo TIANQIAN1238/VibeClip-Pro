@@ -10,14 +10,17 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-  plugins: [vue(),
-  tailwindcss(), Components({
-    resolvers: [
-      IconsResolver(),
-      NaiveUiResolver(),
-    ]
-  }),
-  Icons({ compiler: 'vue3', autoInstall: true }),
+  plugins: [
+    vue(),
+    tailwindcss(),
+    Components({
+      dts: true,
+      resolvers: [
+        IconsResolver(),
+        NaiveUiResolver(),
+      ]
+    }),
+    Icons({ compiler: 'vue3', autoInstall: true }),
   ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

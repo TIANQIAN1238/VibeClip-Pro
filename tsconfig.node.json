@@ -5,7 +5,11 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "types": ["unplugin-icons/types/vue3"]
+    "types": ["unplugin-icons/types/vue3"],
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"]
+    }
   },
-  "include": ["vite.config.ts", "*.d.ts"],
+  "include": ["vite.config.ts", "components.d.ts"],
 }
