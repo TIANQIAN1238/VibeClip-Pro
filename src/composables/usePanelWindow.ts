@@ -1,9 +1,8 @@
 import { ref } from 'vue';
 import { window as appWindow } from '@tauri-apps/api';
-import { useConfig } from './useConfig';
 import type { useClipboard } from './useClipboard';
 
-export type PanelPage = 'index' | 'calc' | 'edit' | 'tojson' | 'askai' | 'aicreate';
+export type PanelPage = 'index' | 'calc' | 'edit' | 'tojson' | 'askai' | 'aicreate' | 'snippets' | 'snippets-ai' | 'snippets-edit';
 
 export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
     const page = ref<PanelPage>('index');
@@ -12,27 +11,31 @@ export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
 
     const gotoPage = (targetPage: PanelPage, onPageChange?: (page: PanelPage) => void) => {
         page.value = targetPage;
-        showPreview.value = targetPage === 'index' || 
-            ['tojson', 'askai', 'aicreate'].includes(targetPage);
+        showPreview.value = targetPage === 'index' ||
+            ['tojson', 'askai', 'aicreate', 'snippets-ai'].includes(targetPage);
         onPageChange?.(targetPage);
     };
 
-    const setupWindowListeners = async (onHide: () => void) => {
-        const { loadConfig } = useConfig();
+    const setupWindowListeners = async (onHide: () => void, loadConfig?: ()=>Promise<void>) => {
+        const isBlured = ref(true);
         const listeners = await Promise.all([
             appWindow.getCurrentWindow().listen('tauri://blur', event => {
                 if (!mouseInRange.value) {
                     console.log('blur', event);
+                    isBlured.value = true;
                     onHide();
                 }
             }),
             appWindow.getCurrentWindow().listen('tauri://focus', async () => {
-                showPreview.value = true;
-                page.value = 'index';
-                await Promise.all([
-                    loadConfig(),
-                    clipboard.refresh()
-                ]);
+                if (isBlured.value) {
+                    showPreview.value = true;
+                    page.value = 'index';
+                    await Promise.all([
+                        loadConfig?.(),
+                        clipboard.refresh()
+                    ]);
+                    isBlured.value = false;
+                }
             })
         ]);
 

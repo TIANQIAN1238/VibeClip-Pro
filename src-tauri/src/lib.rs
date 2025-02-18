@@ -1,5 +1,9 @@
 mod tray;
 
+use enigo::{
+    Direction,
+    Enigo, Key, Keyboard, Settings,
+};
 use mouse_position::mouse_position::Mouse;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_autostart::MacosLauncher;
@@ -15,6 +19,22 @@ fn get_mouse_position() -> Vec<i32> {
             vec![]
         }
     }
+}
+
+#[tauri::command]
+async fn input_text(text: &str) -> Result<(), String> {
+    let mut enigo = Enigo::new(&Settings::default()).unwrap();
+    enigo.text(text).unwrap();
+    Ok(())
+}
+
+#[tauri::command]
+async fn simulate_paste() -> Result<(), String> {
+    let mut enigo = Enigo::new(&Settings::default()).unwrap();
+    let _ = enigo.key(Key::Control, Direction::Press);
+    let _ = enigo.key(Key::V, Direction::Click);
+    let _ = enigo.key(Key::Control, Direction::Release);
+    Ok(())
 }
 
 fn show_window(app: &AppHandle) {
@@ -50,7 +70,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_mouse_position])
+        .invoke_handler(tauri::generate_handler![get_mouse_position, input_text, simulate_paste])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
