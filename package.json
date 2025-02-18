@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "bump": "tsx .scripts/bump.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.1.12",
@@ -32,7 +33,9 @@
     "autoprefixer": "^10.4.20",
     "naive-ui": "^2.41.0",
     "postcss": "^8.5.2",
+    "semver": "^7.7.1",
     "tailwindcss": "^4.0.6",
+    "tsx": "^4.19.2",
     "typescript": "~5.7.3",
     "unplugin-icons": "^22.0.0",
     "unplugin-vue-components": "^28.1.0",
