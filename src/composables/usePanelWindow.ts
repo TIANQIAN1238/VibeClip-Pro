@@ -1,6 +1,5 @@
 import { ref } from 'vue';
 import { window as appWindow } from '@tauri-apps/api';
-import { useConfig } from './useConfig';
 import type { useClipboard } from './useClipboard';
 
 export type PanelPage = 'index' | 'calc' | 'edit' | 'tojson' | 'askai' | 'aicreate' | 'snippets' | 'snippets-ai' | 'snippets-edit';
