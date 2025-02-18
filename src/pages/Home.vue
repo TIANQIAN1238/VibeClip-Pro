@@ -7,6 +7,7 @@ import KeySelector from '@/components/KeySelector.vue';
 import { useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
 import { useShortcut } from '@/composables/useShortcut';
+import { PhysicalPosition } from '@tauri-apps/api/dpi';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -21,18 +22,16 @@ const open = async () => {
     try {
         const position = await getMousePosition();
         if (position.length === 2) {
-            await webview.setPosition({
-                x: position[0],
-                y: position[1],
-                type: 'Physical',
-            } as any);
+            await webview.setPosition(
+                new PhysicalPosition(position[0], position[1])
+            );
         } else {
             await webview.center();
         }
     } catch {
         await webview.center();
     }
-    
+
     await webview.show();
     await webview.setAlwaysOnTop(true);
     await webview.setFocus();
@@ -41,7 +40,7 @@ const open = async () => {
 watch(
     () => config.value,
     () => {
-        console.log('save',unref(config));
+        console.log('save', unref(config));
         saveConfig();
         mountShortcut(config.value.globalShortcut, open);
     },
@@ -171,10 +170,7 @@ function closeShortcutSetter() {
                                 />
                             </div>
                         </template>
-                        <n-thing
-                            title="AI 模型"
-                            description="使用的 AI 模型"
-                        />
+                        <n-thing title="AI 模型" description="使用的 AI 模型" />
                     </n-list-item>
                 </n-list>
             </n-card>

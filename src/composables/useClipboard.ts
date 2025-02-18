@@ -6,7 +6,7 @@ export function useClipboard() {
     
     const contentPreview = computed(() => 
         content.value.length > 2000
-            ? content.value.slice(0, 2000) + '...(超过2000字符已截断)'
+            ? `${content.value.slice(0, 2000)}...(超过2000字符已截断)`
             : content.value
     );
 
@@ -26,6 +26,7 @@ export function useClipboard() {
         nonEmptyLines: content.value.split('\n').filter(line => line.trim() !== '').length,
         totalLetters: (content.value.match(/[a-zA-Z]/g) || []).length,
         totalWords: (content.value.match(/\b\w+\b/g) || []).length,
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: <explanation>
         nonAsciiChars: (content.value.match(/[^\x00-\x7F]/g) || []).length,
         totalDigits: (content.value.match(/\d/g) || []).length,
         totalPunctuation: (content.value.match(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g) || []).length,

@@ -87,12 +87,12 @@ const currentKey = ref<string>('');
 
 function handleKeyDown(e: KeyboardEvent) {
     if (editMode.value) {
-        if (e.key == 'Escape') {
+        if (e.key === 'Escape') {
             editMode.value = false;
             e.preventDefault();
             return;
         }
-        if (e.key == 'Backspace') {
+        if (e.key === 'Backspace') {
             currentKey.value = '';
             editMode.value = false;
             shortcut.value = '';
@@ -123,10 +123,10 @@ function handleKeyDown(e: KeyboardEvent) {
                     : ''
             }` +
             `${
-                e.key != 'Control' &&
-                e.key != 'Shift' &&
-                e.key != 'Alt' &&
-                e.key != 'Meta'
+                e.key !== 'Control' &&
+                e.key !== 'Shift' &&
+                e.key !== 'Alt' &&
+                e.key !== 'Meta'
                     ? props.upper
                         ? e.key.toUpperCase()
                         : e.key

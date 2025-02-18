@@ -37,7 +37,9 @@ export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
         ]);
 
         return () => {
-            listeners.forEach(unlisten => unlisten());
+            for (const unlisten of listeners) {
+                unlisten();
+            }
         };
     };
 
