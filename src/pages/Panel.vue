@@ -24,7 +24,10 @@ import SolarNotificationUnreadLinesLineDuotone from '~icons/solar/notification-u
 import SolarCheckSquareLineDuotone from '~icons/solar/check-square-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import SolarSettingsLineDuotone from '~icons/solar/settings-line-duotone';
+import SolarChatLineLineDuotone from '~icons/solar/chat-line-line-duotone'
+import SolarClipboardListLineDuotone from '~icons/solar/clipboard-list-line-duotone'
 import { simulatePaste } from '@/libs/bridges';
+import AIChat from '@/components/AIChat.vue';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { generating, generatedContent, userPrompt, generateText } =
@@ -79,7 +82,7 @@ const menus = computed(() => {
             action: () => {
                 hideWindow().then(simulatePaste);
             },
-            icon: SolarCalculatorLineDuotone,
+            icon: SolarClipboardListLineDuotone,
         },
         {
             key: 'calc',
@@ -137,6 +140,14 @@ const menus = computed(() => {
                 action: () => gotoPage('aicreate', handlePageChange),
                 isSub: true,
                 icon: SolarPen2LineDuotone,
+            },
+            {
+                key: 'chat',
+                label: '与AI对话',
+                description: '基于剪贴板内容与AI进行可持续的对话',
+                isSub: true,
+                icon: SolarChatLineLineDuotone,
+                action: () => gotoPage('chat', handlePageChange),
             },
             {
                 key: 'snippets',
@@ -720,6 +731,12 @@ onBeforeUnmount(() => {
                 ></n-input>
             </div>
         </div>
+        <div
+            v-else-if="page === 'chat'"
+            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3"
+        >   
+        <AIChat :config="config" :content="content" />
+    </div>
     </div>
 </template>
 

@@ -54,6 +54,15 @@
     "@ai-sdk/provider-utils" "2.1.8"
     zod-to-json-schema "^3.24.1"
 
+"@ai-sdk/vue@^1.1.17":
+  version "1.1.17"
+  resolved "https://registry.npmmirror.com/@ai-sdk/vue/-/vue-1.1.17.tgz#9d5932507465c103b3e7410fd1e670c91483b695"
+  integrity sha512-epspw+Y0QkrD4V5sNJ4Ju3mWhXSfiO9G+3ioL70usKiaXyhSY+xJBYBbL2nXyUaUwSBrIl2n8dvdnX1ecN21bQ==
+  dependencies:
+    "@ai-sdk/provider-utils" "2.1.8"
+    "@ai-sdk/ui-utils" "1.1.14"
+    swrv "^1.0.4"
+
 "@antfu/install-pkg@^0.5.0":
   version "0.5.0"
   resolved "https://registry.npmmirror.com/@antfu/install-pkg/-/install-pkg-0.5.0.tgz#37357c16a962266c0a8811ee29b3ea1354d952d9"
@@ -1342,6 +1351,11 @@ magic-string@^0.30.11, magic-string@^0.30.17:
   dependencies:
     "@jridgewell/sourcemap-codec" "^1.5.0"
 
+marked@^15.0.7:
+  version "15.0.7"
+  resolved "https://registry.npmmirror.com/marked/-/marked-15.0.7.tgz#f67d7e34d202ce087e6b879107b5efb04e743314"
+  integrity sha512-dgLIeKGLx5FwziAnsk4ONoGwHwGPJzselimvlVskE9XLN4Orv9u2VA3GWw/lYUqjfA0rUT/6fqKwfZJapP9BEg==
+
 minimatch@^9.0.3:
   version "9.0.5"
   resolved "https://registry.npmmirror.com/minimatch/-/minimatch-9.0.5.tgz#d74f9dd6b57d83d8e98cfb82133b03978bc929e5"
@@ -1534,6 +1548,11 @@ swr@^2.2.5:
   dependencies:
     dequal "^2.0.3"
     use-sync-external-store "^1.4.0"
+
+swrv@^1.0.4:
+  version "1.1.0"
+  resolved "https://registry.npmmirror.com/swrv/-/swrv-1.1.0.tgz#e3825e1e825893391e34fd5b924ba8e6122c14ce"
+  integrity sha512-pjllRDr2s0iTwiE5Isvip51dZGR7GjLH1gCSVyE8bQnbAx6xackXsFdojau+1O5u98yHF5V73HQGOFxKUXO9gQ==
 
 tailwindcss@4.0.6, tailwindcss@^4.0.6:
   version "4.0.6"

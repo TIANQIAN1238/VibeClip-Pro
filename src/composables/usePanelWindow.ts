@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { window as appWindow } from '@tauri-apps/api';
 import type { useClipboard } from './useClipboard';
 
-export type PanelPage = 'index' | 'calc' | 'edit' | 'tojson' | 'askai' | 'aicreate' | 'snippets' | 'snippets-ai' | 'snippets-edit';
+export type PanelPage = 'index' | 'calc' | 'edit' | 'tojson' | 'askai' | 'aicreate' | 'snippets' | 'snippets-ai' | 'snippets-edit' | 'chat';
 
 export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
     const page = ref<PanelPage>('index');
@@ -23,7 +23,7 @@ export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
                 if (!mouseInRange.value) {
                     console.log('blur', event);
                     isBlured.value = true;
-                    onHide();
+                    // onHide(); // !TODO: dev only
                 }
             }),
             appWindow.getCurrentWindow().listen('tauri://focus', async () => {

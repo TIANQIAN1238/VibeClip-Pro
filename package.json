@@ -13,6 +13,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^1.1.12",
     "@ai-sdk/openai-compatible": "^0.1.10",
+    "@ai-sdk/vue": "^1.1.17",
     "@tailwindcss/vite": "^4.0.6",
     "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-autostart": "~2",
@@ -22,6 +23,7 @@
     "@tauri-apps/plugin-store": "~2",
     "@tauri-apps/plugin-stronghold": "~2",
     "ai": "^4.1.41",
+    "marked": "^15.0.7",
     "vue": "^3.5.13",
     "vue-router": "4.5.0"
   },
