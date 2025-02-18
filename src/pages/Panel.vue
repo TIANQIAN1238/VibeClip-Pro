@@ -24,8 +24,11 @@ import SolarNotificationUnreadLinesLineDuotone from '~icons/solar/notification-u
 import SolarCheckSquareLineDuotone from '~icons/solar/check-square-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import SolarSettingsLineDuotone from '~icons/solar/settings-line-duotone';
-import SolarChatLineLineDuotone from '~icons/solar/chat-line-line-duotone'
-import SolarClipboardListLineDuotone from '~icons/solar/clipboard-list-line-duotone'
+import SolarChatLineLineDuotone from '~icons/solar/chat-line-line-duotone';
+import SolarClipboardListLineDuotone from '~icons/solar/clipboard-list-line-duotone';
+// import MdiKeyboardEsc from '~icons/mdi/keyboard-esc';
+// import MdiArrowUpDown from '~icons/mdi/arrow-up-down';
+// import MdiArrowLeftBottom from '~icons/mdi/arrow-left-bottom';
 import { simulatePaste } from '@/libs/bridges';
 import AIChat from '@/components/AIChat.vue';
 
@@ -220,7 +223,11 @@ watch(page, newPage => {
 // 扩展原有的listenKeydown函数
 function listenKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
-        hideWindow();
+        if (page.value === 'index') {
+            hideWindow();
+        } else {
+            handleBackAction();
+        }
     }
 
     if (
@@ -289,14 +296,6 @@ function listenKeydown(e: KeyboardEvent) {
                     behavior: 'smooth',
                     block: 'nearest',
                 });
-        }
-    }
-
-    if (e.key === 'Backspace') {
-        if (page.value === 'index') {
-            hideWindow();
-        } else {
-            handleBackAction();
         }
     }
 
@@ -478,10 +477,10 @@ onBeforeUnmount(() => {
         @mouseover="mouseInRange = true"
         @mouseleave="mouseInRange = false"
     >
-        <div class="bg-black/90 p-2">
+        <div class="bg-black/90 p-2 " :class="[showPreview?'h-[120px]':'h-[32px]']">
             <div data-tauri-drag-region class="text-gray-400 h-6">
                 <SolarAltArrowLeftLineDuotone
-                    class="inline hover:bg-gray-500/30"
+                    class="inline hover:bg-gray-500/30 animate-fade-right animate-once animate-duration-300 animate-ease-out"
                     @click="handleBackAction"
                     v-if="page !== 'index'"
                 />
@@ -491,11 +490,11 @@ onBeforeUnmount(() => {
                     @click="openMainSettings"
                 />
                 <LineMdLoadingTwotoneLoop
-                    class="inline hover:bg-gray-500/90 float-end"
+                    class="inline hover:bg-gray-500/90 float-end animate-fade-left animate-once animate-duration-300 animate-ease-out"
                     v-if="generating"
                 />
                 <SolarCheckSquareLineDuotone
-                    class="inline hover:bg-gray-500/90 float-end"
+                    class="inline hover:bg-gray-500/90 float-end animate-fade-left animate-once animate-duration-300 animate-ease-out"
                     @click="doSaveAction"
                     v-if="savable && !generating"
                 />
@@ -510,7 +509,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-if="page === 'index'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar"
+            class="flex-1 overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div
                 v-for="(menu, index) in menus"
@@ -541,7 +540,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'calc'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar p-3"
+            class="flex-1 overflow-y-auto thin-scrollbar p-3 animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div class="text-gray-200 text-lg font-bold mb-2">统计</div>
             <div class="text-gray-400 space-y-1 grid grid-cols-2 gap-x-2">
@@ -575,7 +574,10 @@ onBeforeUnmount(() => {
                 <div class="text-gray-300">{{ stats.longestLine }}</div>
             </div>
         </div>
-        <div v-else-if="page === 'edit'" class="h-[calc(100%-30px)]">
+        <div
+            v-else-if="page === 'edit'"
+            class="flex-1 animate-fade-up animate-once animate-duration-500 animate-ease-out"
+        >
             <textarea
                 v-model="content"
                 class="size-full bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar edit-textarea"
@@ -588,7 +590,7 @@ onBeforeUnmount(() => {
                 page === 'aicreate' ||
                 page === 'snippets-ai'
             "
-            class="h-[calc(100%-30px)] flex flex-col"
+            class="flex-1 flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div>
                 <n-input
@@ -643,7 +645,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'snippets'"
-            class="h-[calc(100%-30px)] flex flex-col"
+            class="flex-1 flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div class="p-3">
                 保存的AI查询片段
@@ -687,7 +689,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'snippets-edit'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3"
+            class="flex-1 overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3 animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div>
                 编辑AI查询片段
@@ -733,10 +735,15 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'chat'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3"
-        >   
-        <AIChat :config="config" :content="content" />
-    </div>
+            class="flex-1 overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3 animate-fade-up animate-once animate-duration-500 animate-ease-out"
+        >
+            <AIChat :config="config" :content="content" />
+        </div>
+        <!-- <div class="h-8 bg-black/20 flex flex-row text-gray-400 text-xs items-center px-2 gap-1">
+            <div><MdiKeyboardEsc class="inline" />: {{ page==='index'?'隐藏窗口':'返回' }}</div>
+            <div v-if="['index', 'snippets'].includes(page)"><MdiArrowUpDown class="inline" />: 选择菜单</div>
+            <div v-if="['index', 'snippets'].includes(page)"><MdiArrowLeftBottom class='inline' />: 确认</div>
+        </div> -->
     </div>
 </template>
 

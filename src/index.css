@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+@import "tailwindcss-animated";
 
 #app {
     width: 100%;

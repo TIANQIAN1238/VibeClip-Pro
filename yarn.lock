@@ -381,6 +381,13 @@
   dependencies:
     "@iconify/types" "*"
 
+"@iconify-json/mdi@^1.2.3":
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/@iconify-json/mdi/-/mdi-1.2.3.tgz#5e4ee9d8c8aaad04381c8cc6c6edbe3327f031b5"
+  integrity sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg==
+  dependencies:
+    "@iconify/types" "*"
+
 "@iconify-json/solar@^1.2.2":
   version "1.2.2"
   resolved "https://registry.npmmirror.com/@iconify-json/solar/-/solar-1.2.2.tgz#510651545d75c4fe2c43e531da743016df5a188c"
@@ -1553,6 +1560,11 @@ swrv@^1.0.4:
   version "1.1.0"
   resolved "https://registry.npmmirror.com/swrv/-/swrv-1.1.0.tgz#e3825e1e825893391e34fd5b924ba8e6122c14ce"
   integrity sha512-pjllRDr2s0iTwiE5Isvip51dZGR7GjLH1gCSVyE8bQnbAx6xackXsFdojau+1O5u98yHF5V73HQGOFxKUXO9gQ==
+
+tailwindcss-animated@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.npmmirror.com/tailwindcss-animated/-/tailwindcss-animated-2.0.0.tgz#c0b04e9f7fd37b67ecdf046a350673570da41348"
+  integrity sha512-anNNGpxNgjydD8p1lcJjxxH+XbjW6KR8Xs29owTrbcf3tOJ6IRblpyFob43HBkfxFJJTAfFQqugoEG2b1EsR0A==
 
 tailwindcss@4.0.6, tailwindcss@^4.0.6:
   version "4.0.6"
