@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, computed, ref, unref } from 'vue';
+import {
+    onBeforeUnmount,
+    onMounted,
+    computed,
+    ref,
+    watch,
+    nextTick,
+} from 'vue';
 import { useConfig } from '@/composables/useConfig';
 import { StopToken, useAI } from '@/composables/useAI';
 import { useClipboard } from '@/composables/useClipboard';
@@ -12,9 +19,12 @@ import SolarLightbulbBoltLineDuotone from '~icons/solar/lightbulb-bolt-line-duot
 import SolarPen2LineDuotone from '~icons/solar/pen-2-line-duotone';
 import SolarCalculatorLineDuotone from '~icons/solar/calculator-line-duotone';
 import SolarAltArrowLeftLineDuotone from '~icons/solar/alt-arrow-left-line-duotone';
+import SolarAltArrowRightLineDuotone from '~icons/solar/alt-arrow-right-line-duotone';
+import SolarNotificationUnreadLinesLineDuotone from '~icons/solar/notification-unread-lines-line-duotone';
 import SolarCheckSquareLineDuotone from '~icons/solar/check-square-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import SolarSettingsLineDuotone from '~icons/solar/settings-line-duotone';
+import { simulatePaste } from '@/libs/bridges';
 
 const { config, loadConfig } = useConfig();
 const { generating, generatedContent, userPrompt, generateText } =
@@ -31,7 +41,7 @@ const mainView = new webviewWindow.WebviewWindow('main', {
 const stopToken = ref<StopToken | null>(null);
 
 // 菜单焦点
-const focusOn = ref(-1);
+const focusOn = ref(0);
 
 // 可保存状态
 const savable = computed(() => {
@@ -39,6 +49,9 @@ const savable = computed(() => {
 });
 
 const handlePageChange = (page: PanelPage) => {
+    if (page === 'index') {
+        focusOn.value = 0;
+    }
     if (page === 'tojson') {
         userPrompt.value = '转换为JSON';
     } else {
@@ -50,12 +63,22 @@ const handlePageChange = (page: PanelPage) => {
 const menus = computed(() => {
     const list = [
         {
+            key: 'paste',
+            label: '粘贴',
+            description: '直接粘贴文本',
+            action: () => {
+                hideWindow().then(simulatePaste);
+            },
+            icon: SolarCalculatorLineDuotone,
+        },
+        {
             key: 'calc',
             label: '统计',
             description: `共计 ${content.value.length} 字符，${
                 content.value.split('\n').length
             } 行，非空字符 ${content.value.replace(/\s/g, '').length} 字符`,
             action: () => gotoPage('calc', handlePageChange),
+            isSub: true,
             icon: SolarCalculatorLineDuotone,
         },
         {
@@ -63,6 +86,7 @@ const menus = computed(() => {
             label: '编辑',
             description: '直接修改内容',
             action: () => gotoPage('edit', handlePageChange),
+            isSub: true,
             icon: SolarTextFieldFocusLineDuotone,
         },
         {
@@ -78,8 +102,6 @@ const menus = computed(() => {
         },
     ];
 
-    console.log(unref(config.value));
-
     if (config.value?.ai.enabled) {
         list.push(
             {
@@ -87,6 +109,7 @@ const menus = computed(() => {
                 label: '转为JSON',
                 description: '使用AI将内容转为JSON',
                 action: () => gotoPage('tojson', handlePageChange),
+                isSub: true,
                 icon: SolarCodeLineDuotone,
             },
             {
@@ -94,6 +117,7 @@ const menus = computed(() => {
                 label: '询问AI...',
                 description: '让AI帮忙处理',
                 action: () => gotoPage('askai', handlePageChange),
+                isSub: true,
                 icon: SolarLightbulbBoltLineDuotone,
             },
             {
@@ -101,7 +125,16 @@ const menus = computed(() => {
                 label: '使用AI创作...',
                 description: '让AI帮忙创作',
                 action: () => gotoPage('aicreate', handlePageChange),
+                isSub: true,
                 icon: SolarPen2LineDuotone,
+            },
+            {
+                key: 'snippets',
+                label: '快速AI片段',
+                description: '保存的AI请求片段',
+                action: () => gotoPage('snippets', handlePageChange),
+                isSub: true,
+                icon: SolarNotificationUnreadLinesLineDuotone,
             }
         );
     }
@@ -119,6 +152,38 @@ function executeMenu(key: string) {
     }
 }
 
+// AI 相关页面Enter键处理
+function handleAIPageEnter() {
+    if (generating.value) {
+        abortTask();
+    } else if (userPrompt.value?.trim().length > 0) {
+        if (page.value === 'tojson') {
+            startConvertToJson();
+        } else if (page.value === 'askai') {
+            startAskAI();
+        } else if (page.value === 'aicreate') {
+            startAICreate();
+        }
+    }
+}
+
+// 监听页面变化，自动聚焦到输入框
+watch(page, newPage => {
+    nextTick(() => {
+        const selector =
+            newPage === 'edit'
+                ? '.edit-textarea'
+                : ['tojson', 'askai', 'aicreate'].includes(newPage)
+                ? '.prompt-input'
+                : null;
+        const focusInput = selector
+            ? (document.querySelector(selector) as HTMLElement)
+            : null;
+        focusInput?.focus();
+    });
+});
+
+// 扩展原有的listenKeydown函数
 function listenKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
         hideWindow();
@@ -132,23 +197,35 @@ function listenKeydown(e: KeyboardEvent) {
     }
 
     // 上下键导航
-    if (e.key === 'ArrowUp') {
-        if (focusOn.value < 0) {
-            focusOn.value = menus.value.length - 1;
-        } else {
-            focusOn.value =
-                (focusOn.value - 1 + menus.value.length) % menus.value.length;
+    if (page.value === 'index') {
+        if (e.key === 'ArrowUp') {
+            if (focusOn.value < 0) {
+                focusOn.value = menus.value.length - 1;
+            } else {
+                focusOn.value =
+                    (focusOn.value - 1 + menus.value.length) %
+                    menus.value.length;
+            }
+            document
+                .querySelector(`#${menus.value[focusOn.value].key}`)
+                ?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                });
         }
-    }
-    if (e.key === 'ArrowDown') {
-        if (focusOn.value < 0) {
-            focusOn.value = 0;
-        } else {
-            focusOn.value = (focusOn.value + 1) % menus.value.length;
+        if (e.key === 'ArrowDown') {
+            if (focusOn.value < 0) {
+                focusOn.value = 0;
+            } else {
+                focusOn.value = (focusOn.value + 1) % menus.value.length;
+            }
+            document
+                .querySelector(`#${menus.value[focusOn.value].key}`)
+                ?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                });
         }
-    }
-    if (e.key === 'Enter' && focusOn.value >= 0) {
-        executeMenu(menus.value[focusOn.value].key);
     }
 
     if (e.key === 'Backspace') {
@@ -157,6 +234,16 @@ function listenKeydown(e: KeyboardEvent) {
         } else {
             gotoPage('index', handlePageChange);
         }
+    }
+
+    if (e.key === 'Enter' && focusOn.value >= 0) {
+        executeMenu(menus.value[focusOn.value].key);
+    } else if (
+        e.key === 'Enter' &&
+        ['tojson', 'askai', 'aicreate'].includes(page.value)
+    ) {
+        handleAIPageEnter();
+        e.preventDefault();
     }
 }
 
@@ -168,8 +255,9 @@ const webview = new webviewWindow.WebviewWindow('context', {
 
 function hideWindow() {
     gotoPage('index');
+    focusOn.value = 0;
     content.value = '';
-    webview.hide();
+    return webview.hide();
 }
 
 function abortTask() {
@@ -284,9 +372,10 @@ onBeforeUnmount(() => {
         >
             <div
                 v-for="(menu, index) in menus"
+                :id="menu.key"
                 key="menu.key"
                 :class="[
-                    'flex flex-col gap-1 justify-center p-2 hover:cursor-pointer hover:bg-gray-500/10',
+                    'flex flex-col gap-1 justify-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
                     { 'bg-gray-500/10': focusOn === index },
                 ]"
                 @click="executeMenu(menu.key)"
@@ -302,6 +391,9 @@ onBeforeUnmount(() => {
                     class="text-gray-500 text-xs line-clamp-1 overflow-ellipsis"
                 >
                     {{ menu.description }}
+                </div>
+                <div v-if="menu.isSub" class="absolute top-half right-2">
+                    <SolarAltArrowRightLineDuotone class="w-4 h-4" />
                 </div>
             </div>
         </div>
@@ -344,7 +436,7 @@ onBeforeUnmount(() => {
         <div v-else-if="page === 'edit'" class="h-[calc(100%-30px)]">
             <textarea
                 v-model="content"
-                class="size-full bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
+                class="size-full bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar edit-textarea"
             ></textarea>
         </div>
         <div
@@ -365,7 +457,7 @@ onBeforeUnmount(() => {
                             ? '想要问什么？'
                             : '想要创作什么？'
                     "
-                    class="h-10 block"
+                    class="h-10 block prompt-input"
                 />
             </div>
             <n-button
@@ -378,7 +470,7 @@ onBeforeUnmount(() => {
                 停止
             </n-button>
             <n-button
-                v-else-if="userPrompt?.trim().length>0"
+                v-else-if="userPrompt?.trim().length > 0"
                 strong
                 secondary
                 type="info"
