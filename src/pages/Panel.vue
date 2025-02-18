@@ -489,12 +489,13 @@ onBeforeUnmount(() => {
                     v-if="savable && !generating"
                 />
             </div>
-            <div
-                v-if="showPreview"
-                class="bg-gray-800/60 h-20 rounded flex-1 p-2 overflow-scroll thin-scrollbar"
-            >
-                <pre>{{ contentPreview }}</pre>
-            </div>
+            <n-collapse-transition :show="showPreview">
+                <div
+                    class="bg-gray-800/60 h-20 rounded flex-1 p-2 overflow-scroll thin-scrollbar"
+                >
+                    <pre>{{ contentPreview }}</pre>
+                </div>
+            </n-collapse-transition>
         </div>
         <div
             v-if="page === 'index'"
