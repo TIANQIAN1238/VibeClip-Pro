@@ -8,6 +8,7 @@ import { useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
 import { useShortcut } from '@/composables/useShortcut';
 import { PhysicalPosition } from '@tauri-apps/api/dpi';
+import { AppInfo } from '@/AppInfo';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -177,7 +178,7 @@ function closeShortcutSetter() {
             <n-card title="关于">
                 <n-list>
                     <n-list-item>
-                        <n-thing title="版本" description="0.2.0" />
+                        <n-thing title="版本" :description="AppInfo.version" />
                     </n-list-item>
                     <n-list-item>
                         <n-thing title="作者" description="CKylinMC" />

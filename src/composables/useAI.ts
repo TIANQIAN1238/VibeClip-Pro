@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { streamText } from 'ai';
+import { CoreMessage, streamText } from 'ai';
 import type { Config } from './useConfig';
 
 export class StopToken{
@@ -63,5 +63,71 @@ export function useAI(config: Ref<Config>) {
         generatedContent,
         userPrompt,
         generateText,
+    };
+}
+
+export function useAIChat(config: Ref<Config>) {
+    const generating = ref(false);
+    const messages = ref<CoreMessage[]>([]);
+    const stopToken = new StopToken;
+
+    const stop = () => {
+        stopToken.stop();
+    }
+
+    const getAIInstance = () => {
+        return createOpenAICompatible({
+            name: 'OpenAICompatiable',
+            apiKey: config.value.ai.apiKey,
+            baseURL: config.value.ai.endpoint,
+        });
+    };
+
+    const appendToMessages = (message: string, role:'user'|'assistant'|'system'='user') => {
+        messages.value.push({
+            role: role,
+            content: message,
+        });
+    }
+
+    const fetchAIResponse = async (onChunk?: (textPart:string) => void,stopToken?:StopToken) => {
+        generating.value = true;
+        if (stopToken) {
+            stopToken._stop = false;
+            stopToken._fns = [];
+        }
+        try {
+            const ai = getAIInstance();
+            const result = await streamText({
+                model: ai.chatModel(config.value.ai.model),
+                messages: messages.value,
+            });
+            let stop = false;
+            stopToken?.onStop(()=>{
+                stop = true;
+                result.consumeStream();
+            });
+            messages.value.push({
+                role: 'assistant',
+                content: '',
+            })
+            for await (const textPart of result.textStream) {
+                messages.value[messages.value.length - 1].content += textPart;
+                onChunk?.(textPart);
+                if(stopToken?.isStopped() || stop){
+                    break;
+                }
+            }
+        } finally {
+            generating.value = false;
+        }
+    }
+
+    return {
+        generating,
+        messages,
+        appendToMessages,
+        fetchAIResponse,
+        stop,
     };
 }
