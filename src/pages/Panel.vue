@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, computed, ref, unref } from 'vue';
 import { useConfig } from '@/composables/useConfig';
-import { useAI } from '@/composables/useAI';
+import { StopToken, useAI } from '@/composables/useAI';
 import { useClipboard } from '@/composables/useClipboard';
-import { PanelPage, usePanelWindow } from '@/composables/usePanelWindow';
+import { type PanelPage, usePanelWindow } from '@/composables/usePanelWindow';
 import { webviewWindow } from '@tauri-apps/api';
 import SolarTextFieldFocusLineDuotone from '~icons/solar/text-field-focus-line-duotone';
 import SolarTextBoldDuotone from '~icons/solar/text-bold-duotone';
@@ -17,17 +17,18 @@ import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import SolarSettingsLineDuotone from '~icons/solar/settings-line-duotone';
 
 const { config, loadConfig } = useConfig();
-const { generating, generatedContent, userPrompt, generateText } = useAI(config);
+const { generating, generatedContent, userPrompt, generateText } =
+    useAI(config);
 const clipboard = useClipboard();
 const { content, contentPreview, stats, refresh, update } = clipboard;
-const { page, showPreview, mouseInRange, gotoPage, setupWindowListeners } = usePanelWindow(clipboard);
-
-
-
+const { page, showPreview, mouseInRange, gotoPage, setupWindowListeners } =
+    usePanelWindow(clipboard);
 
 const mainView = new webviewWindow.WebviewWindow('main', {
     url: '/',
 });
+
+const stopToken = ref<StopToken | null>(null);
 
 // 菜单焦点
 const focusOn = ref(-1);
@@ -171,21 +172,36 @@ function hideWindow() {
     webview.hide();
 }
 
+function abortTask() {
+    stopToken.value?.stop();
+}
+
+function clearTask() {
+    stopToken.value?.stop();
+    generatedContent.value = '';
+}
+
+function createTask(system: string, prompt: string) {
+    clearTask();
+    stopToken.value = new StopToken();
+    return generateText(system, prompt, stopToken.value);
+}
+
 // AI 相关操作函数
 const startConvertToJson = () =>
-    generateText(
+    createTask(
         '你的任务是重新格式化用户的剪贴板数据。使用用户的指令和剪贴板内容进行编辑。只输出重新格式化的内容，使用原始格式，不要使用markdown。',
         `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
     );
 
 const startAskAI = () =>
-    generateText(
+    createTask(
         '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。',
         `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
     );
 
 const startAICreate = () =>
-    generateText(
+    createTask(
         '你的任务是基于用户的指令继续创作内容。使用用户的指令和剪贴板内容进行创作。',
         `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
     );
@@ -209,7 +225,6 @@ function doSaveAction() {
 const openMainSettings = () => {
     mainView.show();
     mainView.setFocus();
-
 };
 
 let unlistenFocus: () => void;
@@ -333,7 +348,9 @@ onBeforeUnmount(() => {
             ></textarea>
         </div>
         <div
-            v-else-if="page === 'tojson'"
+            v-else-if="
+                page === 'tojson' || page === 'askai' || page === 'aicreate'
+            "
             class="h-[calc(100%-30px)] flex flex-col"
         >
             <div>
@@ -341,72 +358,37 @@ onBeforeUnmount(() => {
                     :disabled="generating"
                     v-model:value="userPrompt"
                     type="text"
-                    placeholder="想要做什么？"
+                    :placeholder="
+                        page === 'tojson'
+                            ? '想要怎么做？'
+                            : page === 'askai'
+                            ? '想要问什么？'
+                            : '想要创作什么？'
+                    "
                     class="h-10 block"
                 />
             </div>
             <n-button
-                :disabled="generating"
+                v-if="generating"
                 strong
                 secondary
-                type="info"
-                @click="startConvertToJson"
+                type="error"
+                @click="abortTask"
             >
-                生成
+                停止
             </n-button>
-            <textarea
-                :disabled="generating"
-                v-model="generatedContent"
-                class="flex-1 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
-            ></textarea>
-        </div>
-        <div
-            v-else-if="page === 'askai'"
-            class="h-[calc(100%-30px)] flex flex-col"
-        >
-            <div>
-                <n-input
-                    :disabled="generating"
-                    v-model:value="userPrompt"
-                    type="text"
-                    placeholder="想要问什么？"
-                    class="h-10 block"
-                />
-            </div>
             <n-button
-                :disabled="generating"
+                v-else-if="userPrompt?.trim().length>0"
                 strong
                 secondary
                 type="info"
-                @click="startAskAI"
-            >
-                生成
-            </n-button>
-            <textarea
-                :disabled="generating"
-                v-model="generatedContent"
-                class="flex-1 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
-            ></textarea>
-        </div>
-        <div
-            v-else-if="page === 'aicreate'"
-            class="h-[calc(100%-30px)] flex flex-col"
-        >
-            <div>
-                <n-input
-                    :disabled="generating"
-                    v-model:value="userPrompt"
-                    type="text"
-                    placeholder="要继续写什么？"
-                    class="h-10 block"
-                />
-            </div>
-            <n-button
-                :disabled="generating"
-                strong
-                secondary
-                type="info"
-                @click="startAICreate"
+                @click="
+                    page === 'tojson'
+                        ? startConvertToJson()
+                        : page === 'askai'
+                        ? startAskAI()
+                        : startAICreate()
+                "
             >
                 生成
             </n-button>

@@ -1,7 +1,25 @@
-import { ref, Ref } from 'vue';
+import { ref, type Ref } from 'vue';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { streamText } from 'ai';
 import type { Config } from './useConfig';
+
+export class StopToken{
+    _stop = false;
+    _fns: (()=>void)[] = [];
+    stop(){
+        if(this._stop) return;
+        this._stop = true;
+        for (const fn of this._fns) {
+            fn();
+        }
+    }
+    isStopped(){
+        return this._stop;
+    }
+    onStop(fn: ()=>void){
+        this._fns.push(fn);
+    }
+}
 
 export function useAI(config: Ref<Config>) {
     const generating = ref(false);
@@ -16,7 +34,7 @@ export function useAI(config: Ref<Config>) {
         });
     };
 
-    const generateText = async (system: string, prompt: string) => {
+    const generateText = async (system: string, prompt: string, stopToken?: StopToken) => {
         generating.value = true;
         generatedContent.value = '';
         try {
@@ -26,8 +44,14 @@ export function useAI(config: Ref<Config>) {
                 system,
                 prompt,
             });
+            stopToken?.onStop(()=>{
+                result.consumeStream();
+            });
             for await (const textPart of result.textStream) {
                 generatedContent.value += textPart;
+                if(stopToken?.isStopped()){
+                    break;
+                }
             }
         } finally {
             generating.value = false;
