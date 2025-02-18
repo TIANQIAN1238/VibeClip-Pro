@@ -177,13 +177,13 @@ function closeShortcutSetter() {
             <n-card title="关于">
                 <n-list>
                     <n-list-item>
-                        <n-thing title="版本" description="0.1.0" />
+                        <n-thing title="版本" description="0.1.1" />
                     </n-list-item>
                     <n-list-item>
                         <n-thing title="作者" description="CKylinMC" />
                     </n-list-item>
                     <n-list-item>
-                        <n-thing title="源代码" description="GitHub" />
+                        <n-thing title="源代码" description="https://github.com/CKylinMC/PasteMe" />
                     </n-list-item>
                 </n-list>
             </n-card>
