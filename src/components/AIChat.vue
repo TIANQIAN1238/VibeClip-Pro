@@ -13,14 +13,19 @@ import SolarStopLineDuotone from '~icons/solar/stop-line-duotone';
 import SolarUserCircleLineDuotone from '~icons/solar/user-circle-line-duotone';
 import SolarBoltCircleLineDuotone from '~icons/solar/bolt-circle-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
+import SolarCopyLineDuotone from '~icons/solar/copy-line-duotone';
+import SolarTrashBin2LineDuotone from '~icons/solar/trash-bin-2-line-duotone';
 import { marked } from 'marked';
 import { asString } from '@/libs/utils';
 import type { Tool } from 'ai';
+import { useClipboard } from '@/composables/useClipboard';
 
 const props = defineProps<{
     content: string;
     config: Config;
 }>();
+
+const { update } = useClipboard();
 
 const mutableConfig = computed(() => props.config);
 
@@ -50,7 +55,7 @@ function handleSubmit() {
     if (props.config.ai.enableWebsearch) {
         tools.webSearch = webSearchTool();
     }
-    if(props.config.ai.enableWebCrawl) {
+    if (props.config.ai.enableWebCrawl) {
         tools.webCrawl = webCrawlTool();
     }
     fetchAIResponse(() => {
@@ -59,6 +64,14 @@ function handleSubmit() {
             behavior: 'smooth',
         });
     }, tools);
+}
+
+function copy(str: string) {
+    return update(str);
+}
+
+function removeMessageByIndex(idx: number) {
+    messages.value.splice(idx, 1);
 }
 
 onMounted(() => {
@@ -79,27 +92,90 @@ onMounted(() => {
         >
             <template v-for="(message, index) in messages" :key="index">
                 <template v-if="message.role === 'assistant'">
-                    <div class="flex flex-row gap-1">
+                    <div class="flex flex-row gap-1 group">
                         <div>
                             <SolarBoltCircleLineDuotone class="size-8" />
                         </div>
-                        <div class="bg-blue-600 text-white p-2 rounded-lg">
-                            <span
-                                v-html="marked.parse(asString(message.content))"
-                            ></span>
-                            <LineMdLoadingTwotoneLoop
+                        <div class="flex flex-col gap-1">
+                            <div class="bg-blue-600 text-white p-2 rounded-lg">
+                                <span
+                                    v-html="
+                                        marked.parse(asString(message.content))
+                                    "
+                                ></span>
+                                <LineMdLoadingTwotoneLoop
+                                    v-if="
+                                        index === messages.length - 1 &&
+                                        generating
+                                    "
+                                    class="size-3 inline"
+                                />
+                            </div>
+                            <div
+                                class="flex flex-row gap-1 opacity-0 group-hover:opacity-100"
                                 v-if="
-                                    index === messages.length - 1 && generating
+                                    !(
+                                        index === messages.length - 1 &&
+                                        generating
+                                    )
                                 "
-                                class="size-3 inline"
-                            />
+                            >
+                                <div
+                                    class="cursor-pointer"
+                                    @click="
+                                        () => copy(asString(message.content))
+                                    "
+                                >
+                                    <SolarCopyLineDuotone
+                                        class="inline size-4 text-gray-400 hover:text-gray-50 active:text-cyan-300"
+                                    />
+                                </div>
+                                <div
+                                    class="cursor-pointer"
+                                    @click="() => removeMessageByIndex(index)"
+                                >
+                                    <SolarTrashBin2LineDuotone
+                                        class="inline size-4 text-gray-400 hover:text-gray-50"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </template>
                 <template v-else-if="message.role === 'user'">
-                    <div class="flex flex-row justify-end gap-1">
-                        <div class="bg-blue-200 text-black p-2 rounded-lg">
-                            {{ message.content }}
+                    <div class="flex flex-row justify-end gap-1 group">
+                        <div class="flex flex-col gap-1">
+                            <div class="bg-blue-200 text-black p-2 rounded-lg">
+                                {{ message.content }}
+                            </div>
+                            <div
+                                class="flex flex-row gap-1 opacity-0 group-hover:opacity-100"
+                                v-if="
+                                    !(
+                                        index === messages.length - 1 &&
+                                        generating
+                                    )
+                                "
+                            >
+                                <div
+                                    class="cursor-pointer"
+                                    @click="
+                                        () => copy(asString(message.content))
+                                    "
+                                >
+                                    <SolarCopyLineDuotone
+                                        class="inline size-4 text-gray-400 hover:text-gray-50 active:text-cyan-300"
+                                    />
+                                </div>
+                                <div
+                                    class="cursor-pointer"
+                                    @click="() => removeMessageByIndex(index)"
+                                >
+                                    <SolarTrashBin2LineDuotone
+                                        class="inline size-4 text-gray-400 hover:text-gray-50"
+                                    />
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <SolarUserCircleLineDuotone class="size-8" />
