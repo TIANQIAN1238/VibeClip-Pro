@@ -193,9 +193,9 @@ onBeforeUnmount(() => {
     >
         <template v-if="editMode">
             <template v-if="currentKey === ''">{{ keytip }}</template>
-            <template v-else>{{ currentKey || keytip }}</template>
+            <template v-else>{{ currentKey?.replace('CommandOrControl','Ctrl') || keytip }}</template>
         </template>
-        <template v-else>{{ shortcut || clicktip }}</template>
+        <template v-else>{{ shortcut?.replace('CommandOrControl','Ctrl') || clicktip }}</template>
     </div>
 </template>
 

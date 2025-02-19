@@ -6,3 +6,8 @@ export function tryParse(str: string, fallback: any = null) {
         return fallback;
     }
 }
+
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+export function asString(obj: any): string {
+    return obj as unknown as string;
+}

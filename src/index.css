@@ -1,8 +1,13 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+@import "tailwindcss-animated";
 
 #app {
     width: 100%;
     height: 100%;
+}
+
+html, body, #app {
+    background-color: transparent !important;
 }
 
 @layer utilities {

@@ -4,7 +4,7 @@ import { darkTheme } from 'naive-ui';
 </script>
 
 <template>
-    <n-config-provider :theme="darkTheme" class="size-full">
+    <n-config-provider :theme="darkTheme" class="size-full !bg-transparent">
         <RouterView />
     </n-config-provider>
 </template>

@@ -24,8 +24,11 @@ import SolarNotificationUnreadLinesLineDuotone from '~icons/solar/notification-u
 import SolarCheckSquareLineDuotone from '~icons/solar/check-square-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import SolarSettingsLineDuotone from '~icons/solar/settings-line-duotone';
-import SolarChatLineLineDuotone from '~icons/solar/chat-line-line-duotone'
-import SolarClipboardListLineDuotone from '~icons/solar/clipboard-list-line-duotone'
+import SolarChatLineLineDuotone from '~icons/solar/chat-line-line-duotone';
+import SolarClipboardListLineDuotone from '~icons/solar/clipboard-list-line-duotone';
+// import MdiKeyboardEsc from '~icons/mdi/keyboard-esc';
+// import MdiArrowUpDown from '~icons/mdi/arrow-up-down';
+// import MdiArrowLeftBottom from '~icons/mdi/arrow-left-bottom';
 import { simulatePaste } from '@/libs/bridges';
 import AIChat from '@/components/AIChat.vue';
 
@@ -72,28 +75,46 @@ const handlePageChange = (page: PanelPage) => {
     }
 };
 
+export type Menu = {
+        key: string;
+        label: string;
+        description: string;
+        action: () => void;
+        isSub?: boolean;
+        autoClose?: boolean;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        icon: any;
+    };
+
+const hasContent = computed(() => content.value.trim().length > 0);
 // 菜单配置
-const menus = computed(() => {
+const menus = computed<Menu[]>(():Menu[] => {
     const list = [
-        {
-            key: 'paste',
-            label: '粘贴',
-            description: '直接粘贴文本',
-            action: () => {
-                hideWindow().then(simulatePaste);
-            },
-            icon: SolarClipboardListLineDuotone,
-        },
-        {
-            key: 'calc',
-            label: '统计',
-            description: `共计 ${content.value.length} 字符，${
-                content.value.split('\n').length
-            } 行，非空字符 ${content.value.replace(/\s/g, '').length} 字符`,
-            action: () => gotoPage('calc', handlePageChange),
-            isSub: true,
-            icon: SolarCalculatorLineDuotone,
-        },
+        hasContent.value
+            ? {
+                  key: 'paste',
+                  label: '粘贴',
+                  description: '直接粘贴文本',
+                  action: () => {
+                      hideWindow().then(simulatePaste);
+                  },
+                  icon: SolarClipboardListLineDuotone,
+              }
+            : null,
+        hasContent.value
+            ? {
+                  key: 'calc',
+                  label: '统计',
+                  description: `共计 ${content.value.length} 字符，${
+                      content.value.split('\n').length
+                  } 行，非空字符 ${
+                      content.value.replace(/\s/g, '').length
+                  } 字符`,
+                  action: () => gotoPage('calc', handlePageChange),
+                  isSub: true,
+                  icon: SolarCalculatorLineDuotone,
+              }
+            : null,
         {
             key: 'edit',
             label: '编辑',
@@ -102,37 +123,42 @@ const menus = computed(() => {
             isSub: true,
             icon: SolarTextFieldFocusLineDuotone,
         },
-        {
-            key: 'text',
-            label: '转为纯文本',
-            description: '重新复制为纯文本',
-            action: () => {
-                update(content.value);
-                hideWindow();
-            },
-            autoClose: true,
-            icon: SolarTextBoldDuotone,
-        },
+        hasContent.value
+            ? {
+                  key: 'text',
+                  label: '转为纯文本',
+                  description: '重新复制为纯文本',
+                  action: () => {
+                      update(content.value);
+                      hideWindow();
+                  },
+                  autoClose: true,
+                  icon: SolarTextBoldDuotone,
+              }
+            : null,
     ];
-    console.log('is ai enabled?', config.value?.ai.enabled);
     if (config.value?.ai.enabled) {
         list.push(
-            {
-                key: 'json',
-                label: '转为JSON',
-                description: '使用AI将内容转为JSON',
-                action: () => gotoPage('tojson', handlePageChange),
-                isSub: true,
-                icon: SolarCodeLineDuotone,
-            },
-            {
-                key: 'askai',
-                label: '询问AI...',
-                description: '让AI帮忙处理',
-                action: () => gotoPage('askai', handlePageChange),
-                isSub: true,
-                icon: SolarLightbulbBoltLineDuotone,
-            },
+            hasContent.value
+                ? {
+                      key: 'json',
+                      label: '转为JSON',
+                      description: '使用AI将内容转为JSON',
+                      action: () => gotoPage('tojson', handlePageChange),
+                      isSub: true,
+                      icon: SolarCodeLineDuotone,
+                  }
+                : null,
+            hasContent.value
+                ? {
+                      key: 'askai',
+                      label: '询问AI...',
+                      description: '让AI帮忙处理',
+                      action: () => gotoPage('askai', handlePageChange),
+                      isSub: true,
+                      icon: SolarLightbulbBoltLineDuotone,
+                  }
+                : null,
             {
                 key: 'aicreate',
                 label: '使用AI创作...',
@@ -159,7 +185,7 @@ const menus = computed(() => {
             }
         );
     }
-    return list;
+    return list.filter(it => !!it);
 });
 
 function runSnippet(snippet: Snippet) {
@@ -220,7 +246,15 @@ watch(page, newPage => {
 // 扩展原有的listenKeydown函数
 function listenKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
-        hideWindow();
+        if (page.value === 'index') {
+            hideWindow();
+        } else {
+            handleBackAction();
+        }
+    }
+    if (e.key === 'Enter' && e.ctrlKey && savable.value) {
+        doSaveAction();
+        return;
     }
 
     if (
@@ -292,14 +326,6 @@ function listenKeydown(e: KeyboardEvent) {
         }
     }
 
-    if (e.key === 'Backspace') {
-        if (page.value === 'index') {
-            hideWindow();
-        } else {
-            handleBackAction();
-        }
-    }
-
     if (e.key === 'Enter' && focusOn.value >= 0) {
         if (page.value === 'index') executeMenu(menus.value[focusOn.value].key);
         else if (page.value === 'snippets') {
@@ -357,15 +383,29 @@ function saveSnippet() {
     if (!snippetFormOK.value) {
         return;
     }
-    currentSnippet.value.id = `n-${Math.random()}`;
-    config.value.snippets.push({
-        id: currentSnippet.value.id,
-        name: currentSnippet.value.name,
-        prompt: currentSnippet.value.prompt,
-        system: currentSnippet.value.system,
-    });
+    if (currentSnippet.value.isNew) {
+        currentSnippet.value.id = `n-${Math.random()}`;
+        config.value.snippets.push({
+            id: currentSnippet.value.id,
+            name: currentSnippet.value.name,
+            prompt: currentSnippet.value.prompt,
+            system: currentSnippet.value.system,
+        });
+        currentSnippet.value.isNew = false;
+    } else {
+        const index = config.value.snippets.findIndex(
+            s => s.id === currentSnippet.value.id
+        );
+        if (index >= 0) {
+            config.value.snippets[index] = {
+                id: currentSnippet.value.id,
+                name: currentSnippet.value.name,
+                prompt: currentSnippet.value.prompt,
+                system: currentSnippet.value.system,
+            };
+        }
+    }
     saveConfig();
-    currentSnippet.value.isNew = false;
 }
 
 function deleteSnippet() {
@@ -478,10 +518,17 @@ onBeforeUnmount(() => {
         @mouseover="mouseInRange = true"
         @mouseleave="mouseInRange = false"
     >
-        <div class="bg-black/90 p-2">
-            <div data-tauri-drag-region class="text-gray-400 h-6">
+        <div
+            class="bg-black/90 p-2"
+            :class="[showPreview && hasContent ? 'h-[120px]' : 'h-[32px]']"
+        >
+            <div data-tauri-drag-region class="text-gray-400 h-6 relative">
+                <div
+                    data-tauri-drag-region
+                    class="cursor-move absolute top-1 left-1/2 -translate-x-1/2 w-10 h-2 rounded-lg bg-white/40"
+                ></div>
                 <SolarAltArrowLeftLineDuotone
-                    class="inline hover:bg-gray-500/30"
+                    class="inline hover:bg-gray-500/30 animate-fade-right animate-once animate-duration-300 animate-ease-out"
                     @click="handleBackAction"
                     v-if="page !== 'index'"
                 />
@@ -491,16 +538,16 @@ onBeforeUnmount(() => {
                     @click="openMainSettings"
                 />
                 <LineMdLoadingTwotoneLoop
-                    class="inline hover:bg-gray-500/90 float-end"
+                    class="inline hover:bg-gray-500/90 float-end animate-fade-left animate-once animate-duration-300 animate-ease-out"
                     v-if="generating"
                 />
                 <SolarCheckSquareLineDuotone
-                    class="inline hover:bg-gray-500/90 float-end"
+                    class="inline hover:bg-gray-500/90 float-end animate-fade-left animate-once animate-duration-300 animate-ease-out"
                     @click="doSaveAction"
                     v-if="savable && !generating"
                 />
             </div>
-            <n-collapse-transition :show="showPreview">
+            <n-collapse-transition :show="showPreview && hasContent">
                 <div
                     class="bg-gray-800/60 h-20 rounded flex-1 p-2 overflow-scroll thin-scrollbar"
                 >
@@ -510,29 +557,33 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-if="page === 'index'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar"
+            class="flex-1 overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div
                 v-for="(menu, index) in menus"
                 :id="menu.key"
                 :key="menu.key"
                 :class="[
-                    'flex flex-col gap-1 justify-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
+                    'flex flex-row gap-1 justify-start items-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
                     { 'bg-gray-500/10': focusOn === index },
                 ]"
                 @click="executeMenu(menu.key)"
             >
-                <div class="text-gray-200">
+                <div class="text-gray-200 mx-3">
                     <component
                         :is="menu.icon"
-                        class="w-5 h-5 inline align-sub"
+                        class="size-6 inline align-sub"
                     />
-                    {{ menu.label }}
                 </div>
-                <div
-                    class="text-gray-500 text-xs line-clamp-1 overflow-ellipsis"
-                >
-                    {{ menu.description }}
+                <div class="flex flex-col">
+                    <div class="text-gray-200">
+                        {{ menu.label }}
+                    </div>
+                    <div
+                        class="text-gray-500 text-xs line-clamp-1 overflow-ellipsis"
+                    >
+                        {{ menu.description }}
+                    </div>
                 </div>
                 <div v-if="menu.isSub" class="absolute top-half right-2">
                     <SolarAltArrowRightLineDuotone class="w-4 h-4" />
@@ -541,7 +592,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'calc'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar p-3"
+            class="flex-1 overflow-y-auto thin-scrollbar p-3 animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div class="text-gray-200 text-lg font-bold mb-2">统计</div>
             <div class="text-gray-400 space-y-1 grid grid-cols-2 gap-x-2">
@@ -575,7 +626,10 @@ onBeforeUnmount(() => {
                 <div class="text-gray-300">{{ stats.longestLine }}</div>
             </div>
         </div>
-        <div v-else-if="page === 'edit'" class="h-[calc(100%-30px)]">
+        <div
+            v-else-if="page === 'edit'"
+            class="flex-1 animate-fade-up animate-once animate-duration-500 animate-ease-out"
+        >
             <textarea
                 v-model="content"
                 class="size-full bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar edit-textarea"
@@ -588,7 +642,7 @@ onBeforeUnmount(() => {
                 page === 'aicreate' ||
                 page === 'snippets-ai'
             "
-            class="h-[calc(100%-30px)] flex flex-col"
+            class="flex-1 flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div>
                 <n-input
@@ -643,7 +697,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'snippets'"
-            class="h-[calc(100%-30px)] flex flex-col"
+            class="flex-1 flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div class="p-3">
                 保存的AI查询片段
@@ -687,23 +741,20 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'snippets-edit'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3"
+            class="flex-1 overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3 animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div>
                 编辑AI查询片段
-                <div class="float-end">
-                    <n-button
-                        :disabled="!snippetFormOK"
-                        v-if="currentSnippet.isNew"
-                        @click="saveSnippet"
-                        >保存</n-button
-                    >
+                <div class="float-end flex flex-row gap-1">
                     <n-button
                         :disabled="!snippetFormOK"
                         type="error"
-                        v-else
+                        v-if="!currentSnippet.isNew"
                         @click="deleteSnippet"
                         >删除</n-button
+                    >
+                    <n-button :disabled="!snippetFormOK" @click="saveSnippet"
+                        >保存</n-button
                     >
                 </div>
             </div>
@@ -733,10 +784,15 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="page === 'chat'"
-            class="h-[calc(100%-30px)] overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3"
-        >   
-        <AIChat :config="config" :content="content" />
-    </div>
+            class="flex-1 overflow-y-auto thin-scrollbar flex flex-col gap-3 p-3 animate-fade-up animate-once animate-duration-500 animate-ease-out"
+        >
+            <AIChat :config="config" :content="content" />
+        </div>
+        <!-- <div class="h-8 bg-black/20 flex flex-row text-gray-400 text-xs items-center px-2 gap-1">
+            <div><MdiKeyboardEsc class="inline" />: {{ page==='index'?'隐藏窗口':'返回' }}</div>
+            <div v-if="['index', 'snippets'].includes(page)"><MdiArrowUpDown class="inline" />: 选择菜单</div>
+            <div v-if="['index', 'snippets'].includes(page)"><MdiArrowLeftBottom class='inline' />: 确认</div>
+        </div> -->
     </div>
 </template>
 
