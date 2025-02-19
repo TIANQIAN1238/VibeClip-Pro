@@ -21,6 +21,7 @@
         "@tauri-apps/plugin-global-shortcut": "~2",
         "@tauri-apps/plugin-http": "~2",
         "@tauri-apps/plugin-opener": "^2.2.5",
+        "@tauri-apps/plugin-process": "^2.2.0",
         "@tauri-apps/plugin-store": "~2",
         "@tauri-apps/plugin-stronghold": "~2",
         "@tavily/core": "^0.3.1",
@@ -33,6 +34,7 @@
     "devDependencies": {
         "@iconify-json/line-md": "^1.2.5",
         "@iconify-json/mdi": "^1.2.3",
+        "@iconify-json/qlementine-icons": "^1.2.2",
         "@iconify-json/solar": "^1.2.2",
         "@tauri-apps/cli": "^2.2.7",
         "@vitejs/plugin-vue": "^5.2.1",

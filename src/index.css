@@ -6,6 +6,10 @@
     height: 100%;
 }
 
+html, body, #app {
+    background-color: transparent !important;
+}
+
 @layer utilities {
     /* Hide scrollbar for Chrome, Safari and Opera */
     .no-scrollbar::-webkit-scrollbar {

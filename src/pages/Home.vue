@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { webviewWindow } from '@tauri-apps/api';
 import { window as appWindow } from '@tauri-apps/api';
+import { exit } from '@tauri-apps/plugin-process';
 import { getMousePosition } from '../libs/bridges';
 import { onBeforeUnmount, onMounted, ref, unref, watch } from 'vue';
 import KeySelector from '@/components/KeySelector.vue';
@@ -8,6 +9,8 @@ import { useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
 import { useShortcut } from '@/composables/useShortcut';
 import { PhysicalPosition } from '@tauri-apps/api/dpi';
+import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-minimize-16';
+import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
 import { AppInfo } from '@/AppInfo';
 
 const { config, loadConfig, saveConfig } = useConfig();
@@ -15,27 +18,30 @@ const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
 const { mountShortcut, unregisterAll } = useShortcut();
 
 const modalShortcutSetter = ref(false);
-const webview = new webviewWindow.WebviewWindow('context', {
+const panelview = new webviewWindow.WebviewWindow('context', {
     url: '/panel',
+});
+const mainview = new webviewWindow.WebviewWindow('main', {
+    url: '/',
 });
 
 const open = async () => {
     try {
         const position = await getMousePosition();
         if (position.length === 2) {
-            await webview.setPosition(
+            await panelview.setPosition(
                 new PhysicalPosition(position[0], position[1])
             );
         } else {
-            await webview.center();
+            await panelview.center();
         }
     } catch {
-        await webview.center();
+        await panelview.center();
     }
 
-    await webview.show();
-    await webview.setAlwaysOnTop(true);
-    await webview.setFocus();
+    await panelview.show();
+    await panelview.setAlwaysOnTop(true);
+    await panelview.setFocus();
 };
 
 watch(
@@ -84,10 +90,23 @@ function openShortcutSetter() {
 function closeShortcutSetter() {
     modalShortcutSetter.value = false;
 }
+
+function closeApp() {
+    exit(0);
+}
+
+function minimizeApp() {
+    mainview.hide();
+}
+
 </script>
 
 <template>
-    <div class="text-white p-5 align-left">
+    <div class="text-white p-5 align-left relative select-none bg-transparent">
+        <div data-tauri-drag-region class="absolute top-0 right-0 h-10 w-full flex flex-row justify-end items-start">
+            <div class="w-12 h-8 py-2 px-3.5 hover:bg-black/50" @click="minimizeApp"><QlementineIconsWindowsMinimize16 /></div>
+            <div class="w-12 h-8 py-2 px-3.5 hover:bg-red-500/50" @click="closeApp"><QlementineIconsWindowsClose16 /></div>
+        </div>
         <div class="text-3xl">Paste Me!</div>
         <div class="text-gray-400">一个简易的剪贴板增强工具</div>
         <div

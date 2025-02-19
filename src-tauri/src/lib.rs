@@ -4,7 +4,7 @@ use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use mouse_position::mouse_position::Mouse;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_autostart::MacosLauncher;
-use window_vibrancy::apply_mica;
+use window_vibrancy::{apply_acrylic, apply_mica};
 
 #[tauri::command]
 fn get_mouse_position() -> Vec<i32> {
@@ -49,6 +49,7 @@ fn show_window(app: &AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_window(app);
@@ -60,8 +61,14 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
-            let window = app.get_webview_window("context").unwrap();
-            apply_mica(window, Some(true)).expect("unsupported");
+            let mainwindow = app.get_webview_window("main").unwrap();
+            let panelwindow = app.get_webview_window("context").unwrap();
+            apply_mica(mainwindow.clone(), Some(true))
+                .or_else(|_| apply_acrylic(mainwindow, Some((18, 18, 18, 125))))
+                .expect("unsupported");
+            apply_mica(panelwindow.clone(), Some(true))
+                .or_else(|_| apply_acrylic(panelwindow, Some((18, 18, 18, 125))))
+                .expect("unsupported");
 
             let handle = app.handle();
             let _ = tray::create_tray(handle);
