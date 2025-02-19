@@ -1,9 +1,6 @@
 mod tray;
 
-use enigo::{
-    Direction,
-    Enigo, Key, Keyboard, Settings,
-};
+use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use mouse_position::mouse_position::Mouse;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_autostart::MacosLauncher;
@@ -51,6 +48,7 @@ fn show_window(app: &AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_window(app);
@@ -70,7 +68,11 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_mouse_position, input_text, simulate_paste])
+        .invoke_handler(tauri::generate_handler![
+            get_mouse_position,
+            input_text,
+            simulate_paste
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

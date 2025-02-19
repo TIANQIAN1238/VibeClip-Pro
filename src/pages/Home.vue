@@ -173,6 +173,142 @@ function closeShortcutSetter() {
                         </template>
                         <n-thing title="AI 模型" description="使用的 AI 模型" />
                     </n-list-item>
+                    <n-list-item>
+                        <n-thing
+                            title="附加 AI 服务"
+                            description="便于在 AI Chat 模式下使用的 AI 服务"
+                        />
+                        <div class="h-4"></div>
+                        <n-collapse>
+                            <n-collapse-item
+                                title="Tavily 网络搜索"
+                                name="websearch"
+                            >
+                                <n-list>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <n-checkbox
+                                                v-model:checked="config.ai.enableWebsearch"
+                                            ></n-checkbox>
+                                        </template>
+                                        <n-thing
+                                            title="启用 Tavily 网络搜索集成"
+                                            description="为支持 Tool Calling 的 AI 提供网络搜索集成"
+                                        />
+                                    </n-list-item>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <div class="w-72">
+                                                <n-input
+                                                    v-model:value="config.ai.tavilyApiKey"
+                                                    type="password"
+                                                    placeholder="Tavily API Key"
+                                                />
+                                            </div>
+                                        </template>
+                                        <n-thing
+                                            title="Tavily 服务密钥"
+                                            description="Tavily 服务密钥 (明文记录在配置文件中)"
+                                        />
+                                    </n-list-item>
+                                </n-list>
+                            </n-collapse-item>
+                            <n-collapse-item
+                                title="Jina 页面爬虫"
+                                name="webcrawl"
+                            >
+                                <n-list>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <n-checkbox
+                                                v-model:checked="config.ai.enableWebCrawl"
+                                            ></n-checkbox>
+                                        </template>
+                                        <n-thing
+                                            title="启用 Jina 页面抓取集成"
+                                            description="为支持 Tool Calling 的 AI 提供网页内容抓取集成"
+                                        />
+                                    </n-list-item>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <div class="w-72">
+                                                <n-input
+                                                    v-model:value="config.ai.jinaApiKey"
+                                                    type="password"
+                                                    placeholder="Jina API Key"
+                                                />
+                                            </div>
+                                        </template>
+                                        <n-thing
+                                            title="Jina 服务密钥"
+                                            description="Jina 服务密钥 (明文记录在配置文件中)"
+                                        />
+                                    </n-list-item>
+                                </n-list>
+                            </n-collapse-item>
+                            <n-collapse-item
+                                title="图片生成"
+                                name="createimage"
+                            >
+                                <n-list>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <n-checkbox
+                                                v-model:checked="config.ai.enableImage"
+                                            ></n-checkbox>
+                                        </template>
+                                        <n-thing
+                                            title="启用图片生成集成"
+                                            description="为支持 Tool Calling 的 AI 提供图片生成集成 (仅对话模式)"
+                                        />
+                                    </n-list-item>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <div class="w-72">
+                                                <n-input
+                                                    v-model:value="config.ai.imageApiKey"
+                                                    type="password"
+                                                    placeholder="API Key"
+                                                />
+                                            </div>
+                                        </template>
+                                        <n-thing
+                                            title="AI 图像生成 服务密钥"
+                                            description="AI 图像生成 服务密钥 (明文记录在配置文件中)"
+                                        />
+                                    </n-list-item>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <div class="w-72">
+                                                <n-input
+                                                    v-model:value="config.ai.imageAIEndpoint"
+                                                    placeholder="https://api.openai.com/v1"
+                                                />
+                                            </div>
+                                        </template>
+                                        <n-thing
+                                            title="AI 图像生成 服务端点"
+                                            description="使用的代理 AI 图像生成 服务端点"
+                                        />
+                                    </n-list-item>
+                                    <n-list-item>
+                                        <template #suffix>
+                                            <div class="w-72">
+                                                <n-input
+                                                    v-model:value="config.ai.imageModel"
+                                                    placeholder="dall-e-3"
+                                                />
+                                            </div>
+                                        </template>
+                                        <n-thing
+                                            title="图片创建模型"
+                                            description="使用哪个模型创建图像(请确认提供商支持)"
+                                        />
+                                    </n-list-item>
+                                </n-list>
+                            </n-collapse-item>
+                        </n-collapse>
+                    </n-list-item>
                 </n-list>
             </n-card>
             <n-card title="关于">
@@ -184,7 +320,10 @@ function closeShortcutSetter() {
                         <n-thing title="作者" description="CKylinMC" />
                     </n-list-item>
                     <n-list-item>
-                        <n-thing title="源代码" description="https://github.com/CKylinMC/PasteMe" />
+                        <n-thing
+                            title="源代码"
+                            description="https://github.com/CKylinMC/PasteMe"
+                        />
                     </n-list-item>
                 </n-list>
             </n-card>

@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { useAIChat } from '@/composables/useAI';
+import {
+    useAIChat,
+    useAIImage,
+    useAITools,
+    useAIWebCrawler,
+    useAIWebSearch,
+} from '@/composables/useAI';
 import type { Config } from '@/composables/useConfig';
 import { computed, onMounted, ref } from 'vue';
 import SolarPlainLineDuotone from '~icons/solar/plain-line-duotone';
@@ -9,6 +15,7 @@ import SolarBoltCircleLineDuotone from '~icons/solar/bolt-circle-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import { marked } from 'marked';
 import { asString } from '@/libs/utils';
+import type { Tool } from 'ai';
 
 const props = defineProps<{
     content: string;
@@ -23,15 +30,35 @@ const input = ref('');
 const { messages, stop, generating, fetchAIResponse, appendToMessages } =
     useAIChat(mutableConfig);
 
+const { createImageTool } = useAIImage(mutableConfig);
+
+const { getCurrentDateTime } = useAITools();
+
+const { webSearchTool } = useAIWebSearch(mutableConfig);
+
+const { webCrawlTool } = useAIWebCrawler(mutableConfig);
+
 function handleSubmit() {
     appendToMessages(input.value, 'user');
     input.value = '';
+    const tools: { [key: string]: Tool } = {
+        dateTime: getCurrentDateTime(),
+    };
+    if (props.config.ai.enableImage) {
+        tools.createImage = createImageTool();
+    }
+    if (props.config.ai.enableWebsearch) {
+        tools.webSearch = webSearchTool();
+    }
+    if(props.config.ai.enableWebCrawl) {
+        tools.webCrawl = webCrawlTool();
+    }
     fetchAIResponse(() => {
         container.value?.scrollTo({
             top: container.value.scrollHeight,
             behavior: 'smooth',
         });
-    });
+    }, tools);
 }
 
 onMounted(() => {
