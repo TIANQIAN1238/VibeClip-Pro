@@ -33,7 +33,7 @@ export interface Config {
 export function useConfig() {
     const noSave = ref(false);
     const config = ref<Config>({
-        globalShortcut: 'CommandOrControl+Shift+C',
+        globalShortcut: 'CommandOrControl+Shift+V',
         ai: {
             enabled: false,
             apiKey: '',
@@ -56,7 +56,7 @@ export function useConfig() {
         try {
             const store = await Store.load('store.bin');
             config.value.globalShortcut =
-                (await store.get('globalShortcut')) || 'CommandOrControl+Shift+C';
+                (await store.get('globalShortcut')) || 'CommandOrControl+Shift+V';
             config.value.ai = {
                 enabled: !!(await store.get('ai.enabled')),
                 apiKey: (await store.get('ai.apiKey')) || '',
