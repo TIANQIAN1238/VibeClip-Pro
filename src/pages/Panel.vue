@@ -503,7 +503,8 @@ onBeforeUnmount(() => {
             class="bg-black/90 p-2"
             :class="[showPreview ? 'h-[120px]' : 'h-[32px]']"
         >
-            <div data-tauri-drag-region class="text-gray-400 h-6">
+            <div data-tauri-drag-region class="text-gray-400 h-6 relative">
+                <div class="cursor-move absolute top-1 left-1/2 -translate-x-1/2 w-10 h-2 rounded-lg bg-white/40"></div>
                 <SolarAltArrowLeftLineDuotone
                     class="inline hover:bg-gray-500/30 animate-fade-right animate-once animate-duration-300 animate-ease-out"
                     @click="handleBackAction"
