@@ -27,6 +27,8 @@ const mainview = new webviewWindow.WebviewWindow('main', {
     url: '/',
 });
 
+const closeConfirm = ref(false);
+
 const open = async () => {
     try {
         const position = await getMousePosition();
@@ -145,6 +147,9 @@ function openProjectPage() {
 function openFeedbackPage() {
     return openUrl('https://github.com/CKylinMC/PasteMe/issues/new');
 }
+function openCloseConfirm() {
+    closeConfirm.value = true;
+}
 </script>
 
 <template>
@@ -161,7 +166,7 @@ function openFeedbackPage() {
             </div>
             <div
                 class="w-12 h-8 py-2 px-3.5 hover:bg-red-500/50"
-                @click="closeApp"
+                @click="openCloseConfirm"
             >
                 <QlementineIconsWindowsClose16 />
             </div>
@@ -511,10 +516,16 @@ function openFeedbackPage() {
                                 项目基于 MIT 协议开源
                                 <template #action>
                                     <div class="flex flex-row gap-1">
-                                        <n-button size="small" @click="openProjectPage">
+                                        <n-button
+                                            size="small"
+                                            @click="openProjectPage"
+                                        >
                                             项目页面 (Github)
                                         </n-button>
-                                        <n-button size="small" @click="openFeedbackPage">
+                                        <n-button
+                                            size="small"
+                                            @click="openFeedbackPage"
+                                        >
                                             反馈页面 (Github)
                                         </n-button>
                                     </div>
@@ -544,6 +555,15 @@ function openFeedbackPage() {
                 </template>
             </n-card>
         </n-modal>
+        <n-modal
+            v-model:show="closeConfirm"
+            preset="dialog"
+            title="确认退出应用吗？"
+            content="若只是想要隐藏窗口，请使用最小化按钮"
+            positive-text="退出"
+            negative-text="返回"
+            @positive-click="closeApp"
+        />
     </div>
 </template>
 
