@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { CoreMessage, streamText } from 'ai';
+import { type CoreMessage, streamText } from 'ai';
 import type { Config } from './useConfig';
 
 export class StopToken{

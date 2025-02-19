@@ -8,6 +8,7 @@ import SolarUserCircleLineDuotone from '~icons/solar/user-circle-line-duotone';
 import SolarBoltCircleLineDuotone from '~icons/solar/bolt-circle-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import { marked } from 'marked';
+import { asString } from '@/libs/utils';
 
 const props = defineProps<{
     content: string;
@@ -33,16 +34,12 @@ function handleSubmit() {
     });
 }
 
-function asString(obj: any): string {
-    return obj as unknown as string;
-}
-
 onMounted(() => {
     appendToMessages(
         `你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。你可以利用Markdown格式进行回复，这样结果可以带有格式地展现在用户面前。\n剪贴板内容:\n${props.content}`,
         'system'
     );
-    appendToMessages(`你好，针对复制的内容，你有什么想要问的吗？`, 'assistant');
+    appendToMessages('你好，针对复制的内容，你有什么想要问的吗？', 'assistant');
 });
 </script>
 
