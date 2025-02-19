@@ -75,28 +75,46 @@ const handlePageChange = (page: PanelPage) => {
     }
 };
 
+export type Menu = {
+        key: string;
+        label: string;
+        description: string;
+        action: () => void;
+        isSub?: boolean;
+        autoClose?: boolean;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        icon: any;
+    };
+
+const hasContent = computed(() => content.value.trim().length > 0);
 // 菜单配置
-const menus = computed(() => {
+const menus = computed<Menu[]>(():Menu[] => {
     const list = [
-        {
-            key: 'paste',
-            label: '粘贴',
-            description: '直接粘贴文本',
-            action: () => {
-                hideWindow().then(simulatePaste);
-            },
-            icon: SolarClipboardListLineDuotone,
-        },
-        {
-            key: 'calc',
-            label: '统计',
-            description: `共计 ${content.value.length} 字符，${
-                content.value.split('\n').length
-            } 行，非空字符 ${content.value.replace(/\s/g, '').length} 字符`,
-            action: () => gotoPage('calc', handlePageChange),
-            isSub: true,
-            icon: SolarCalculatorLineDuotone,
-        },
+        hasContent.value
+            ? {
+                  key: 'paste',
+                  label: '粘贴',
+                  description: '直接粘贴文本',
+                  action: () => {
+                      hideWindow().then(simulatePaste);
+                  },
+                  icon: SolarClipboardListLineDuotone,
+              }
+            : null,
+        hasContent.value
+            ? {
+                  key: 'calc',
+                  label: '统计',
+                  description: `共计 ${content.value.length} 字符，${
+                      content.value.split('\n').length
+                  } 行，非空字符 ${
+                      content.value.replace(/\s/g, '').length
+                  } 字符`,
+                  action: () => gotoPage('calc', handlePageChange),
+                  isSub: true,
+                  icon: SolarCalculatorLineDuotone,
+              }
+            : null,
         {
             key: 'edit',
             label: '编辑',
@@ -105,37 +123,42 @@ const menus = computed(() => {
             isSub: true,
             icon: SolarTextFieldFocusLineDuotone,
         },
-        {
-            key: 'text',
-            label: '转为纯文本',
-            description: '重新复制为纯文本',
-            action: () => {
-                update(content.value);
-                hideWindow();
-            },
-            autoClose: true,
-            icon: SolarTextBoldDuotone,
-        },
+        hasContent.value
+            ? {
+                  key: 'text',
+                  label: '转为纯文本',
+                  description: '重新复制为纯文本',
+                  action: () => {
+                      update(content.value);
+                      hideWindow();
+                  },
+                  autoClose: true,
+                  icon: SolarTextBoldDuotone,
+              }
+            : null,
     ];
-    console.log('is ai enabled?', config.value?.ai.enabled);
     if (config.value?.ai.enabled) {
         list.push(
-            {
-                key: 'json',
-                label: '转为JSON',
-                description: '使用AI将内容转为JSON',
-                action: () => gotoPage('tojson', handlePageChange),
-                isSub: true,
-                icon: SolarCodeLineDuotone,
-            },
-            {
-                key: 'askai',
-                label: '询问AI...',
-                description: '让AI帮忙处理',
-                action: () => gotoPage('askai', handlePageChange),
-                isSub: true,
-                icon: SolarLightbulbBoltLineDuotone,
-            },
+            hasContent.value
+                ? {
+                      key: 'json',
+                      label: '转为JSON',
+                      description: '使用AI将内容转为JSON',
+                      action: () => gotoPage('tojson', handlePageChange),
+                      isSub: true,
+                      icon: SolarCodeLineDuotone,
+                  }
+                : null,
+            hasContent.value
+                ? {
+                      key: 'askai',
+                      label: '询问AI...',
+                      description: '让AI帮忙处理',
+                      action: () => gotoPage('askai', handlePageChange),
+                      isSub: true,
+                      icon: SolarLightbulbBoltLineDuotone,
+                  }
+                : null,
             {
                 key: 'aicreate',
                 label: '使用AI创作...',
@@ -162,7 +185,7 @@ const menus = computed(() => {
             }
         );
     }
-    return list;
+    return list.filter(it => !!it);
 });
 
 function runSnippet(snippet: Snippet) {
@@ -229,11 +252,7 @@ function listenKeydown(e: KeyboardEvent) {
             handleBackAction();
         }
     }
-    if (
-        e.key === 'Enter' &&
-        e.ctrlKey &&
-        savable.value
-    ) {
+    if (e.key === 'Enter' && e.ctrlKey && savable.value) {
         doSaveAction();
         return;
     }
@@ -501,10 +520,13 @@ onBeforeUnmount(() => {
     >
         <div
             class="bg-black/90 p-2"
-            :class="[showPreview ? 'h-[120px]' : 'h-[32px]']"
+            :class="[showPreview && hasContent ? 'h-[120px]' : 'h-[32px]']"
         >
             <div data-tauri-drag-region class="text-gray-400 h-6 relative">
-                <div data-tauri-drag-region class="cursor-move absolute top-1 left-1/2 -translate-x-1/2 w-10 h-2 rounded-lg bg-white/40"></div>
+                <div
+                    data-tauri-drag-region
+                    class="cursor-move absolute top-1 left-1/2 -translate-x-1/2 w-10 h-2 rounded-lg bg-white/40"
+                ></div>
                 <SolarAltArrowLeftLineDuotone
                     class="inline hover:bg-gray-500/30 animate-fade-right animate-once animate-duration-300 animate-ease-out"
                     @click="handleBackAction"
@@ -525,7 +547,7 @@ onBeforeUnmount(() => {
                     v-if="savable && !generating"
                 />
             </div>
-            <n-collapse-transition :show="showPreview">
+            <n-collapse-transition :show="showPreview && hasContent">
                 <div
                     class="bg-gray-800/60 h-20 rounded flex-1 p-2 overflow-scroll thin-scrollbar"
                 >
@@ -731,9 +753,7 @@ onBeforeUnmount(() => {
                         @click="deleteSnippet"
                         >删除</n-button
                     >
-                    <n-button
-                        :disabled="!snippetFormOK"
-                        @click="saveSnippet"
+                    <n-button :disabled="!snippetFormOK" @click="saveSnippet"
                         >保存</n-button
                     >
                 </div>
