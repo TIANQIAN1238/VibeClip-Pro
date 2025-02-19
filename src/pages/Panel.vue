@@ -477,7 +477,10 @@ onBeforeUnmount(() => {
         @mouseover="mouseInRange = true"
         @mouseleave="mouseInRange = false"
     >
-        <div class="bg-black/90 p-2 " :class="[showPreview?'h-[120px]':'h-[32px]']">
+        <div
+            class="bg-black/90 p-2"
+            :class="[showPreview ? 'h-[120px]' : 'h-[32px]']"
+        >
             <div data-tauri-drag-region class="text-gray-400 h-6">
                 <SolarAltArrowLeftLineDuotone
                     class="inline hover:bg-gray-500/30 animate-fade-right animate-once animate-duration-300 animate-ease-out"
@@ -516,22 +519,26 @@ onBeforeUnmount(() => {
                 :id="menu.key"
                 :key="menu.key"
                 :class="[
-                    'flex flex-col gap-1 justify-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
+                    'flex flex-row gap-1 justify-start items-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
                     { 'bg-gray-500/10': focusOn === index },
                 ]"
                 @click="executeMenu(menu.key)"
             >
-                <div class="text-gray-200">
+                <div class="text-gray-200 mx-3">
                     <component
                         :is="menu.icon"
-                        class="w-5 h-5 inline align-sub"
+                        class="size-6 inline align-sub"
                     />
-                    {{ menu.label }}
                 </div>
-                <div
-                    class="text-gray-500 text-xs line-clamp-1 overflow-ellipsis"
-                >
-                    {{ menu.description }}
+                <div class="flex flex-col">
+                    <div class="text-gray-200">
+                        {{ menu.label }}
+                    </div>
+                    <div
+                        class="text-gray-500 text-xs line-clamp-1 overflow-ellipsis"
+                    >
+                        {{ menu.description }}
+                    </div>
                 </div>
                 <div v-if="menu.isSub" class="absolute top-half right-2">
                     <SolarAltArrowRightLineDuotone class="w-4 h-4" />
