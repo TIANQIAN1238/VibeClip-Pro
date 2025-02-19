@@ -229,6 +229,14 @@ function listenKeydown(e: KeyboardEvent) {
             handleBackAction();
         }
     }
+    if (
+        e.key === 'Enter' &&
+        e.ctrlKey &&
+        savable.value
+    ) {
+        doSaveAction();
+        return;
+    }
 
     if (
         document.activeElement?.tagName === 'INPUT' ||
@@ -356,15 +364,29 @@ function saveSnippet() {
     if (!snippetFormOK.value) {
         return;
     }
-    currentSnippet.value.id = `n-${Math.random()}`;
-    config.value.snippets.push({
-        id: currentSnippet.value.id,
-        name: currentSnippet.value.name,
-        prompt: currentSnippet.value.prompt,
-        system: currentSnippet.value.system,
-    });
+    if (currentSnippet.value.isNew) {
+        currentSnippet.value.id = `n-${Math.random()}`;
+        config.value.snippets.push({
+            id: currentSnippet.value.id,
+            name: currentSnippet.value.name,
+            prompt: currentSnippet.value.prompt,
+            system: currentSnippet.value.system,
+        });
+        currentSnippet.value.isNew = false;
+    } else {
+        const index = config.value.snippets.findIndex(
+            s => s.id === currentSnippet.value.id
+        );
+        if (index >= 0) {
+            config.value.snippets[index] = {
+                id: currentSnippet.value.id,
+                name: currentSnippet.value.name,
+                prompt: currentSnippet.value.prompt,
+                system: currentSnippet.value.system,
+            };
+        }
+    }
     saveConfig();
-    currentSnippet.value.isNew = false;
 }
 
 function deleteSnippet() {
@@ -700,19 +722,18 @@ onBeforeUnmount(() => {
         >
             <div>
                 编辑AI查询片段
-                <div class="float-end">
-                    <n-button
-                        :disabled="!snippetFormOK"
-                        v-if="currentSnippet.isNew"
-                        @click="saveSnippet"
-                        >保存</n-button
-                    >
+                <div class="float-end flex flex-row gap-1">
                     <n-button
                         :disabled="!snippetFormOK"
                         type="error"
-                        v-else
+                        v-if="!currentSnippet.isNew"
                         @click="deleteSnippet"
                         >删除</n-button
+                    >
+                    <n-button
+                        :disabled="!snippetFormOK"
+                        @click="saveSnippet"
+                        >保存</n-button
                     >
                 </div>
             </div>
