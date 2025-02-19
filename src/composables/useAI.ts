@@ -236,12 +236,14 @@ export function useAI(config: Ref<Config>) {
                 tools: getTools(),
                 maxSteps: 5,
             });
+            let stop = false;
             stopToken?.onStop(() => {
+                stop = true;
                 result.consumeStream();
             });
             for await (const textPart of result.textStream) {
                 generatedContent.value += textPart;
-                if (stopToken?.isStopped()) {
+                if (stopToken?.isStopped() || stop) {
                     break;
                 }
             }
