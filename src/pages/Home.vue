@@ -324,6 +324,17 @@ function openCloseConfirm() {
                             />
                         </n-list-item>
                         <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.persistChatHistory"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="保留聊天历史"
+                                description="Chat模式下保留聊天历史。注意，若保留聊天历史，则仅能在开启新会话时读取剪贴板内容"
+                            />
+                        </n-list-item>
+                        <n-list-item>
                             <n-thing
                                 title="附加 AI 服务"
                                 description="便于在 AI Chat 模式下使用的 AI 服务"
