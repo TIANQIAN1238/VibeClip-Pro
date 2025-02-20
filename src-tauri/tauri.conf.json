@@ -40,6 +40,11 @@
     }
   },
   "bundle": {
+    "longDescription": "PasteMe",
+    "publisher": "CKylinMC",
+    "copyright": "MIT License",
+    "category": "DeveloperTool",
+    "shortDescription": "Clash Verge Rev",
     "active": true,
     "targets": "all",
     "icon": [

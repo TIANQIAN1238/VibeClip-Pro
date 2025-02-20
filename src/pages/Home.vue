@@ -14,6 +14,7 @@ import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-mi
 import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
 import { AppInfo } from '@/AppInfo';
 import { fetch } from '@tauri-apps/plugin-http';
+import ClipAIIcon from '@/assets/clipai_color.png';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -174,7 +175,7 @@ function openCloseConfirm() {
                 <QlementineIconsWindowsClose16 />
             </div>
         </div>
-        <div class="text-3xl">Paste Me!</div>
+        <div class="text-3xl"><img class="inline size-12" :src="ClipAIIcon" /> Paste Me!</div>
         <div class="text-gray-400">一个简易的剪贴板增强工具</div>
         <div class="w-full h-[490px] mt-3 flex flex-col">
             <n-tabs type="line" animated placement="left" class="size-full">
