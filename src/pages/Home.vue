@@ -116,6 +116,7 @@ function checkUpdate() {
         return openUrl(updateInfo.value.goto);
     }
     updateInfo.value.checking = true;
+    updateInfo.value.btn = '正在检查更新';
     return fetch('https://api.github.com/repos/ckylinmc/pasteme/releases')
         .then(async response => {
             const data = await response.json();
@@ -126,14 +127,16 @@ function checkUpdate() {
                     updateInfo.value.latestVersion = latest.tag_name;
                     updateInfo.value.btn = `下载更新 ${latest.tag_name} (Github)`;
                     updateInfo.value.goto = latest.html_url;
+                }else{
+                    updateInfo.value.btn = '已是最新版本';
                 }
             } else {
-                updateInfo.value.btn = '未找到更新';
+                updateInfo.value.btn = '检查更新失败 (-1)';
             }
         })
         .catch(e => {
             console.error(e);
-            updateInfo.value.btn = '检查更新失败，点击重试';
+            updateInfo.value.btn = '检查更新失败 (-2)';
         })
         .finally(() => {
             updateInfo.value.checking = false;
