@@ -121,7 +121,7 @@ function checkUpdate() {
             const data = await response.json();
             if (data.length > 0) {
                 const latest = data[0];
-                if (latest.tag_name !== 'v' + AppInfo.version) {
+                if (latest.tag_name !== `v${AppInfo.version}`) {
                     updateInfo.value.haveUpdate = true;
                     updateInfo.value.latestVersion = latest.tag_name;
                     updateInfo.value.btn = `下载更新 ${latest.tag_name} (Github)`;
