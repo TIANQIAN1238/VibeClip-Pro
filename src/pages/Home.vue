@@ -3,13 +3,12 @@ import { webviewWindow } from '@tauri-apps/api';
 import { window as appWindow } from '@tauri-apps/api';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { exit } from '@tauri-apps/plugin-process';
-import { getMousePosition } from '../libs/bridges';
 import { onBeforeUnmount, onMounted, ref, unref, watch, computed } from 'vue';
 import KeySelector from '@/components/KeySelector.vue';
 import { useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
 import { useShortcut } from '@/composables/useShortcut';
-import { PhysicalPosition } from '@tauri-apps/api/dpi';
+import { PhysicalPosition, currentMonitor } from '@tauri-apps/api/window';
 import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-minimize-16';
 import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
 import SolarRefreshLineDuotone from '~icons/solar/refresh-line-duotone';
@@ -35,16 +34,37 @@ const mainview = new webviewWindow.WebviewWindow('main', {
 
 const closeConfirm = ref(false);
 
+const PANEL_WIDTH = 400;
+const PANEL_HEIGHT = 476;
+
 const open = async () => {
     try {
-        const position = await getMousePosition();
-        if (position.length === 2) {
-            await panelview.setPosition(
-                new PhysicalPosition(position[0], position[1])
-            );
-        } else {
+        const position = await appWindow.cursorPosition();
+        const monitor = await currentMonitor();
+        
+        if (!monitor) {
             await panelview.center();
+            return;
         }
+
+        let x = position.x;
+        let y = position.y;
+
+        // 检查右边界
+        if (x + PANEL_WIDTH > monitor.size.width) {
+            x = x - PANEL_WIDTH; // 移动到光标左侧
+        }
+
+        // 检查下边界
+        if (y + PANEL_HEIGHT > monitor.size.height) {
+            y = y - PANEL_HEIGHT; // 移动到光标上方
+        }
+
+        // 确保不会超出左边界和上边界
+        x = Math.max(0, Math.min(x, monitor.size.width - PANEL_WIDTH));
+        y = Math.max(0, Math.min(y, monitor.size.height - PANEL_HEIGHT));
+
+        await panelview.setPosition(new PhysicalPosition(x, y));
     } catch {
         await panelview.center();
     }
@@ -114,8 +134,8 @@ const UpdateIcons = {
     latest: SolarCheckCircleLineDuotone,
     download: SolarDownloadMinimalisticBoldDuotone,
     install: SolarRestartCircleLineDuotone,
-    failed: SolarSadCircleLineDuotone
-}
+    failed: SolarSadCircleLineDuotone,
+};
 
 const { updateState, checkUpdate } = useUpdater();
 
@@ -628,17 +648,16 @@ function openCloseConfirm() {
                                         @click="checkUpdate"
                                         :loading="updateState.working"
                                         :disabled="updateState.working"
-                                        >
+                                    >
                                         <template #icon>
                                             <n-icon>
                                                 <component
                                                     :is="currentIcon"
                                                 ></component>
                                             </n-icon>
-                                          </template>
+                                        </template>
                                         {{ updateState.btn }}
-                                        </n-button
-                                    >
+                                    </n-button>
                                 </template>
                             </n-thing>
                         </n-list-item>
