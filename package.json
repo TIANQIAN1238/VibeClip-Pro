@@ -1,7 +1,7 @@
 {
     "name": "pasteme",
     "private": true,
-    "version": "0.4.0",
+    "version": "1.0.0",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -24,6 +24,7 @@
         "@tauri-apps/plugin-process": "^2.2.0",
         "@tauri-apps/plugin-store": "~2",
         "@tauri-apps/plugin-stronghold": "~2",
+        "@tauri-apps/plugin-updater": "~2",
         "@tavily/core": "^0.3.1",
         "ai": "^4.1.41",
         "marked": "^15.0.7",

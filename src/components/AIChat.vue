@@ -6,8 +6,8 @@ import {
     useAIWebCrawler,
     useAIWebSearch,
 } from '@/composables/useAI';
-import type { Config } from '@/composables/useConfig';
-import { computed, onMounted, ref } from 'vue';
+import { useConfig, type Config } from '@/composables/useConfig';
+import { computed, onMounted, ref, unref } from 'vue';
 import SolarPlainLineDuotone from '~icons/solar/plain-line-duotone';
 import SolarStopLineDuotone from '~icons/solar/stop-line-duotone';
 import SolarUserCircleLineDuotone from '~icons/solar/user-circle-line-duotone';
@@ -15,6 +15,7 @@ import SolarBoltCircleLineDuotone from '~icons/solar/bolt-circle-line-duotone';
 import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import SolarCopyLineDuotone from '~icons/solar/copy-line-duotone';
 import SolarTrashBin2LineDuotone from '~icons/solar/trash-bin-2-line-duotone';
+import SolarAddCircleLineDuotone from '~icons/solar/add-circle-line-duotone';
 import { marked } from 'marked';
 import { asString } from '@/libs/utils';
 import type { Tool } from 'ai';
@@ -24,6 +25,8 @@ const props = defineProps<{
     content: string;
     config: Config;
 }>();
+
+const { saveChatHistory, getChatHistory } = useConfig();
 
 const { update } = useClipboard();
 
@@ -35,13 +38,46 @@ const input = ref('');
 const { messages, stop, generating, fetchAIResponse, appendToMessages } =
     useAIChat(mutableConfig);
 
-const { createImageTool } = useAIImage(mutableConfig);
+const { createImageTool, status: imageGenerationStatus } =
+    useAIImage(mutableConfig);
+const usingImageGeneration = computed(
+    () => imageGenerationStatus.value === 'generating'
+);
 
 const { getCurrentDateTime } = useAITools();
 
-const { webSearchTool } = useAIWebSearch(mutableConfig);
+const { webSearchTool, searching: usingWebSearch } =
+    useAIWebSearch(mutableConfig);
 
-const { webCrawlTool } = useAIWebCrawler(mutableConfig);
+const { webCrawlTool, crawling: usingWebCrawler } =
+    useAIWebCrawler(mutableConfig);
+
+const usingTools = computed(
+    () =>
+        usingImageGeneration.value ||
+        usingWebSearch.value ||
+        usingWebCrawler.value
+);
+
+const inputPlaceholder = computed(() => {
+    if (generating.value) {
+        if (usingTools.value) {
+            if (usingImageGeneration) return '正在生成图片...';
+            if (usingWebCrawler) return '正在获取网页信息...';
+            if (usingWebSearch) return '正在联网搜索...';
+            return 'AI 正在使用工具...';
+        }
+        return 'AI 正在回答...';
+    }
+    return '输入你的问题';
+});
+
+function scrollToBottom() {
+    container.value?.scrollTo({
+        top: container.value.scrollHeight,
+        behavior: 'smooth',
+    });
+}
 
 function handleSubmit() {
     appendToMessages(input.value, 'user');
@@ -58,12 +94,9 @@ function handleSubmit() {
     if (props.config.ai.enableWebCrawl) {
         tools.webCrawl = webCrawlTool();
     }
-    fetchAIResponse(() => {
-        container.value?.scrollTo({
-            top: container.value.scrollHeight,
-            behavior: 'smooth',
-        });
-    }, tools);
+
+    scrollToBottom();
+    fetchAIResponse(scrollToBottom, tools).then(saveSession);
 }
 
 function copy(str: string) {
@@ -74,12 +107,36 @@ function removeMessageByIndex(idx: number) {
     messages.value.splice(idx, 1);
 }
 
-onMounted(() => {
+const showNewChatButton = computed(
+    () => !generating.value && input.value === ''
+);
+
+function newSession() {
+    messages.value = [];
     appendToMessages(
         `你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。你可以利用Markdown格式进行回复，这样结果可以带有格式地展现在用户面前。\n剪贴板内容:\n${props.content}`,
         'system'
     );
     appendToMessages('你好，针对复制的内容，你有什么想要问的吗？', 'assistant');
+}
+
+function saveSession() {
+    if (props.config.ai.persistChatHistory)
+        return saveChatHistory(unref(messages));
+}
+
+async function loadSession() {
+    if (!props.config.ai.persistChatHistory) return newSession();
+    const history = await getChatHistory();
+    if (history && history.length > 0) {
+        messages.value = history;
+    } else {
+        newSession();
+    }
+}
+
+onMounted(() => {
+    loadSession();
 });
 </script>
 
@@ -186,15 +243,22 @@ onMounted(() => {
         </div>
         <div class="h-10">
             <form class="flex flex-row gap-1" @submit="handleSubmit">
+                <n-button
+                    v-if="showNewChatButton"
+                    @click="newSession"
+                    type="success"
+                >
+                    <SolarAddCircleLineDuotone />
+                </n-button>
                 <n-input
                     v-model:value="input"
-                    placeholder="输入你的问题"
+                    :placeholder="inputPlaceholder"
                     class="w-full"
                     :disabled="generating"
                 />
                 <n-button
                     v-if="!generating"
-                    type="primary"
+                    type="info"
                     @click="handleSubmit"
                     :loading="generating"
                     attr-type="submit"

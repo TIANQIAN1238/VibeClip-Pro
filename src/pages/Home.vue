@@ -12,8 +12,15 @@ import { useShortcut } from '@/composables/useShortcut';
 import { PhysicalPosition } from '@tauri-apps/api/dpi';
 import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-minimize-16';
 import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
+import SolarRefreshLineDuotone from '~icons/solar/refresh-line-duotone';
+import SolarCheckCircleLineDuotone from '~icons/solar/check-circle-line-duotone';
+import SolarDownloadMinimalisticBoldDuotone from '~icons/solar/download-minimalistic-bold-duotone';
+import SolarRestartCircleLineDuotone from '~icons/solar/restart-circle-line-duotone';
+import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
-import { fetch } from '@tauri-apps/plugin-http';
+import ClipAIIcon from '@/assets/clipai_color.png';
+import { check, type Update } from '@tauri-apps/plugin-updater';
+import { bytesToSize } from '@/libs/utils';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -26,6 +33,8 @@ const panelview = new webviewWindow.WebviewWindow('context', {
 const mainview = new webviewWindow.WebviewWindow('main', {
     url: '/',
 });
+
+const closeConfirm = ref(false);
 
 const open = async () => {
     try {
@@ -101,41 +110,146 @@ function minimizeApp() {
     mainview.hide();
 }
 
-const updateInfo = ref({
-    btn: '检查更新 (Github)',
+const UpdateIcons = {
+    check: SolarRefreshLineDuotone,
+    latest: SolarCheckCircleLineDuotone,
+    download: SolarDownloadMinimalisticBoldDuotone,
+    install: SolarRestartCircleLineDuotone,
+    failed: SolarSadCircleLineDuotone
+}
+
+const updateInfo = ref<{
+    btn: string;
+    stage: 'check' | 'download' | 'install';
+    haveUpdate: boolean;
+    latestVersion: string;
+    latestNote: string;
+    latestDate: string;
+    working: boolean;
+    goto: string;
+    event: Update | null;
+    total: number;
+    downloaded: number;
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    icon: any;
+    type: 'default' | 'info' | 'success' | 'error';
+}>({
+    btn: '检查更新',
+    stage: 'check',
     haveUpdate: false,
     latestVersion: '',
-    checking: false,
+    latestNote: '',
+    latestDate: '',
+    working: false,
     goto: '',
+    event: null,
+    total: 0,
+    downloaded: 0,
+    icon: UpdateIcons.check,
+    type: 'default',
 });
+
 function checkUpdate() {
-    if (updateInfo.value.checking) return;
-    if (updateInfo.value.haveUpdate) {
-        return openUrl(updateInfo.value.goto);
-    }
-    updateInfo.value.checking = true;
-    return fetch('https://api.github.com/repos/ckylinmc/pasteme/releases')
-        .then(async response => {
-            const data = await response.json();
-            if (data.length > 0) {
-                const latest = data[0];
-                if (latest.tag_name !== 'v' + AppInfo.version) {
-                    updateInfo.value.haveUpdate = true;
-                    updateInfo.value.latestVersion = latest.tag_name;
-                    updateInfo.value.btn = `下载更新 ${latest.tag_name} (Github)`;
-                    updateInfo.value.goto = latest.html_url;
-                }
-            } else {
-                updateInfo.value.btn = '未找到更新';
+    if (updateInfo.value.working) return;
+    updateInfo.value.working = true;
+    updateInfo.value.type = 'default';
+    try {
+        switch (updateInfo.value.stage) {
+            case 'check': {
+                updateInfo.value.btn = '正在检查更新';
+                return check()
+                    .then(update => {
+                        if (update) {
+                            updateInfo.value.event = update;
+                            if (update.available) {
+                                updateInfo.value.haveUpdate = true;
+                                updateInfo.value.latestVersion = update.version;
+                                updateInfo.value.latestNote =
+                                    update.body || '无描述';
+                                updateInfo.value.latestDate =
+                                    update.date || '未知';
+                                updateInfo.value.btn = `更新到 ${update.version}`;
+                                updateInfo.value.stage = 'download';
+                                updateInfo.value.type = 'info';
+                                updateInfo.value.icon = UpdateIcons.download;
+                            } else {
+                                updateInfo.value.btn = '已是最新版本';
+                                updateInfo.value.type = 'success';
+                                updateInfo.value.icon = UpdateIcons.latest;
+                            }
+                        } else {
+                            updateInfo.value.btn = '已是最新版本';
+                            updateInfo.value.type = 'success';
+                            updateInfo.value.icon = UpdateIcons.latest;
+                        }
+                    })
+                    .catch(e => {
+                        console.error('Updater:', e);
+                        updateInfo.value.btn = '检查更新失败';
+                        updateInfo.value.type = 'error';
+                        updateInfo.value.icon = UpdateIcons.failed;
+                    })
+                    .finally(() => {
+                        updateInfo.value.working = false;
+                    });
             }
-        })
-        .catch(e => {
-            console.error(e);
-            updateInfo.value.btn = '检查更新失败，点击重试';
-        })
-        .finally(() => {
-            updateInfo.value.checking = false;
-        });
+            case 'download': {
+                updateInfo.value.btn = '正在下载更新';
+                return updateInfo.value.event
+                    ?.download(event => {
+                        switch (event.event) {
+                            case 'Started':
+                                updateInfo.value.total =
+                                    event.data.contentLength || 0;
+                                    updateInfo.value.type = 'info';
+                                break;
+                            case 'Progress':
+                                updateInfo.value.downloaded +=
+                                    event.data.chunkLength || 0;
+                                if (updateInfo.value.total > 0) {
+                                    updateInfo.value.btn = `正在下载更新 ${Math.floor(
+                                        (updateInfo.value.downloaded /
+                                            updateInfo.value.total) *
+                                            100
+                                    )}%`;
+                                } else {
+                                    updateInfo.value.btn = `正在下载更新 ${bytesToSize(
+                                        updateInfo.value.downloaded
+                                    )}`;
+                                }
+                                break;
+                            case 'Finished':
+                                updateInfo.value.stage = 'install';
+                                updateInfo.value.btn = '重启以安装更新';
+                                updateInfo.value.type = 'success';
+                                updateInfo.value.icon = UpdateIcons.install;
+                                break;
+                        }
+                    })
+                    .catch(e => {
+                        console.error('Updater:', e);
+                        updateInfo.value.btn = '下载更新失败';
+                        updateInfo.value.type = 'error';
+                        updateInfo.value.icon = UpdateIcons.failed;
+                    })
+                    .finally(() => {
+                        updateInfo.value.working = false;
+                    });
+            }
+            case 'install': {
+                updateInfo.value.btn = '正在安装更新';
+                updateInfo.value.type = 'info';
+                return updateInfo.value.event?.install();
+            }
+        }
+    } catch (e) {
+        console.error('Updater:', e);
+        updateInfo.value.btn = '重试检查更新';
+        updateInfo.value.stage = 'check';
+        updateInfo.value.type = 'error';
+        updateInfo.value.icon = UpdateIcons.failed;
+        updateInfo.value.working = false;
+    }
 }
 
 function openProjectPage() {
@@ -144,6 +258,9 @@ function openProjectPage() {
 
 function openFeedbackPage() {
     return openUrl('https://github.com/CKylinMC/PasteMe/issues/new');
+}
+function openCloseConfirm() {
+    closeConfirm.value = true;
 }
 </script>
 
@@ -161,12 +278,14 @@ function openFeedbackPage() {
             </div>
             <div
                 class="w-12 h-8 py-2 px-3.5 hover:bg-red-500/50"
-                @click="closeApp"
+                @click="openCloseConfirm"
             >
                 <QlementineIconsWindowsClose16 />
             </div>
         </div>
-        <div class="text-3xl">Paste Me!</div>
+        <div class="text-3xl">
+            <img class="inline size-12" :src="ClipAIIcon" /> Paste Me!
+        </div>
         <div class="text-gray-400">一个简易的剪贴板增强工具</div>
         <div class="w-full h-[490px] mt-3 flex flex-col">
             <n-tabs type="line" animated placement="left" class="size-full">
@@ -316,6 +435,19 @@ function openFeedbackPage() {
                             />
                         </n-list-item>
                         <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="
+                                        config.ai.persistChatHistory
+                                    "
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="保留聊天历史"
+                                description="Chat模式下保留聊天历史。注意，若保留聊天历史，则仅能在开启新会话时读取剪贴板内容"
+                            />
+                        </n-list-item>
+                        <n-list-item>
                             <n-thing
                                 title="附加 AI 服务"
                                 description="便于在 AI Chat 模式下使用的 AI 服务"
@@ -399,6 +531,7 @@ function openFeedbackPage() {
                                     </n-list>
                                 </n-collapse-item>
                                 <n-collapse-item
+                                    v-show="false"
                                     title="图片生成"
                                     name="createimage"
                                 >
@@ -486,16 +619,21 @@ function openFeedbackPage() {
                                     <n-button
                                         strong
                                         secondary
-                                        :type="
-                                            updateInfo.haveUpdate
-                                                ? 'info'
-                                                : 'default'
-                                        "
+                                        :type="updateInfo.type"
                                         size="small"
                                         @click="checkUpdate"
-                                        :loading="updateInfo.checking"
-                                        :disabled="updateInfo.checking"
-                                        >{{ updateInfo.btn }}</n-button
+                                        :loading="updateInfo.working"
+                                        :disabled="updateInfo.working"
+                                        >
+                                        <template #icon>
+                                            <n-icon>
+                                                <component
+                                                    :is="updateInfo.icon"
+                                                ></component>
+                                            </n-icon>
+                                          </template>
+                                        {{ updateInfo.btn }}
+                                        </n-button
                                     >
                                 </template>
                             </n-thing>
@@ -511,10 +649,16 @@ function openFeedbackPage() {
                                 项目基于 MIT 协议开源
                                 <template #action>
                                     <div class="flex flex-row gap-1">
-                                        <n-button size="small" @click="openProjectPage">
+                                        <n-button
+                                            size="small"
+                                            @click="openProjectPage"
+                                        >
                                             项目页面 (Github)
                                         </n-button>
-                                        <n-button size="small" @click="openFeedbackPage">
+                                        <n-button
+                                            size="small"
+                                            @click="openFeedbackPage"
+                                        >
                                             反馈页面 (Github)
                                         </n-button>
                                     </div>
@@ -544,6 +688,15 @@ function openFeedbackPage() {
                 </template>
             </n-card>
         </n-modal>
+        <n-modal
+            v-model:show="closeConfirm"
+            preset="dialog"
+            title="确认退出应用吗？"
+            content="若只是想要隐藏窗口，请使用最小化按钮"
+            positive-text="退出"
+            negative-text="返回"
+            @positive-click="closeApp"
+        />
     </div>
 </template>
 
