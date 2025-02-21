@@ -3,13 +3,12 @@ import { webviewWindow } from '@tauri-apps/api';
 import { window as appWindow } from '@tauri-apps/api';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { exit } from '@tauri-apps/plugin-process';
-import { getMousePosition } from '../libs/bridges';
-import { onBeforeUnmount, onMounted, ref, unref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, unref, watch, computed } from 'vue';
 import KeySelector from '@/components/KeySelector.vue';
 import { useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
 import { useShortcut } from '@/composables/useShortcut';
-import { PhysicalPosition } from '@tauri-apps/api/dpi';
+import { PhysicalPosition, currentMonitor } from '@tauri-apps/api/window';
 import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-minimize-16';
 import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
 import SolarRefreshLineDuotone from '~icons/solar/refresh-line-duotone';
@@ -19,8 +18,7 @@ import SolarRestartCircleLineDuotone from '~icons/solar/restart-circle-line-duot
 import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
 import ClipAIIcon from '@/assets/clipai_color.png';
-import { check, type Update } from '@tauri-apps/plugin-updater';
-import { bytesToSize } from '@/libs/utils';
+import { useUpdater } from '@/composables/useUpdater';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -36,16 +34,37 @@ const mainview = new webviewWindow.WebviewWindow('main', {
 
 const closeConfirm = ref(false);
 
+const PANEL_WIDTH = 400;
+const PANEL_HEIGHT = 476;
+
 const open = async () => {
     try {
-        const position = await getMousePosition();
-        if (position.length === 2) {
-            await panelview.setPosition(
-                new PhysicalPosition(position[0], position[1])
-            );
-        } else {
+        const position = await appWindow.cursorPosition();
+        const monitor = await currentMonitor();
+        
+        if (!monitor) {
             await panelview.center();
+            return;
         }
+
+        let x = position.x;
+        let y = position.y;
+
+        // 检查右边界
+        if (x + PANEL_WIDTH > monitor.size.width) {
+            x = x - PANEL_WIDTH; // 移动到光标左侧
+        }
+
+        // 检查下边界
+        if (y + PANEL_HEIGHT > monitor.size.height) {
+            y = y - PANEL_HEIGHT; // 移动到光标上方
+        }
+
+        // 确保不会超出左边界和上边界
+        x = Math.max(0, Math.min(x, monitor.size.width - PANEL_WIDTH));
+        y = Math.max(0, Math.min(y, monitor.size.height - PANEL_HEIGHT));
+
+        await panelview.setPosition(new PhysicalPosition(x, y));
     } catch {
         await panelview.center();
     }
@@ -115,142 +134,26 @@ const UpdateIcons = {
     latest: SolarCheckCircleLineDuotone,
     download: SolarDownloadMinimalisticBoldDuotone,
     install: SolarRestartCircleLineDuotone,
-    failed: SolarSadCircleLineDuotone
-}
+    failed: SolarSadCircleLineDuotone,
+};
 
-const updateInfo = ref<{
-    btn: string;
-    stage: 'check' | 'download' | 'install';
-    haveUpdate: boolean;
-    latestVersion: string;
-    latestNote: string;
-    latestDate: string;
-    working: boolean;
-    goto: string;
-    event: Update | null;
-    total: number;
-    downloaded: number;
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    icon: any;
-    type: 'default' | 'info' | 'success' | 'error';
-}>({
-    btn: '检查更新',
-    stage: 'check',
-    haveUpdate: false,
-    latestVersion: '',
-    latestNote: '',
-    latestDate: '',
-    working: false,
-    goto: '',
-    event: null,
-    total: 0,
-    downloaded: 0,
-    icon: UpdateIcons.check,
-    type: 'default',
-});
+const { updateState, checkUpdate } = useUpdater();
 
-function checkUpdate() {
-    if (updateInfo.value.working) return;
-    updateInfo.value.working = true;
-    updateInfo.value.type = 'default';
-    try {
-        switch (updateInfo.value.stage) {
-            case 'check': {
-                updateInfo.value.btn = '正在检查更新';
-                return check()
-                    .then(update => {
-                        if (update) {
-                            updateInfo.value.event = update;
-                            if (update.available) {
-                                updateInfo.value.haveUpdate = true;
-                                updateInfo.value.latestVersion = update.version;
-                                updateInfo.value.latestNote =
-                                    update.body || '无描述';
-                                updateInfo.value.latestDate =
-                                    update.date || '未知';
-                                updateInfo.value.btn = `更新到 ${update.version}`;
-                                updateInfo.value.stage = 'download';
-                                updateInfo.value.type = 'info';
-                                updateInfo.value.icon = UpdateIcons.download;
-                            } else {
-                                updateInfo.value.btn = '已是最新版本';
-                                updateInfo.value.type = 'success';
-                                updateInfo.value.icon = UpdateIcons.latest;
-                            }
-                        } else {
-                            updateInfo.value.btn = '已是最新版本';
-                            updateInfo.value.type = 'success';
-                            updateInfo.value.icon = UpdateIcons.latest;
-                        }
-                    })
-                    .catch(e => {
-                        console.error('Updater:', e);
-                        updateInfo.value.btn = '检查更新失败';
-                        updateInfo.value.type = 'error';
-                        updateInfo.value.icon = UpdateIcons.failed;
-                    })
-                    .finally(() => {
-                        updateInfo.value.working = false;
-                    });
-            }
-            case 'download': {
-                updateInfo.value.btn = '正在下载更新';
-                return updateInfo.value.event
-                    ?.download(event => {
-                        switch (event.event) {
-                            case 'Started':
-                                updateInfo.value.total =
-                                    event.data.contentLength || 0;
-                                    updateInfo.value.type = 'info';
-                                break;
-                            case 'Progress':
-                                updateInfo.value.downloaded +=
-                                    event.data.chunkLength || 0;
-                                if (updateInfo.value.total > 0) {
-                                    updateInfo.value.btn = `正在下载更新 ${Math.floor(
-                                        (updateInfo.value.downloaded /
-                                            updateInfo.value.total) *
-                                            100
-                                    )}%`;
-                                } else {
-                                    updateInfo.value.btn = `正在下载更新 ${bytesToSize(
-                                        updateInfo.value.downloaded
-                                    )}`;
-                                }
-                                break;
-                            case 'Finished':
-                                updateInfo.value.stage = 'install';
-                                updateInfo.value.btn = '重启以安装更新';
-                                updateInfo.value.type = 'success';
-                                updateInfo.value.icon = UpdateIcons.install;
-                                break;
-                        }
-                    })
-                    .catch(e => {
-                        console.error('Updater:', e);
-                        updateInfo.value.btn = '下载更新失败';
-                        updateInfo.value.type = 'error';
-                        updateInfo.value.icon = UpdateIcons.failed;
-                    })
-                    .finally(() => {
-                        updateInfo.value.working = false;
-                    });
-            }
-            case 'install': {
-                updateInfo.value.btn = '正在安装更新';
-                updateInfo.value.type = 'info';
-                return updateInfo.value.event?.install();
-            }
-        }
-    } catch (e) {
-        console.error('Updater:', e);
-        updateInfo.value.btn = '重试检查更新';
-        updateInfo.value.stage = 'check';
-        updateInfo.value.type = 'error';
-        updateInfo.value.icon = UpdateIcons.failed;
-        updateInfo.value.working = false;
+// 计算当前阶段对应的图标
+const currentIcon = computed(() => {
+    if (updateState.value.type === 'error') return UpdateIcons.failed;
+    if (updateState.value.type === 'success') return UpdateIcons.latest;
+    switch (updateState.value.stage) {
+        case 'check':
+            return UpdateIcons.check;
+        case 'download':
+            return UpdateIcons.download;
+        case 'install':
+            return UpdateIcons.install;
+        default:
+            return UpdateIcons.check;
     }
-}
+});
 
 function openProjectPage() {
     return openUrl('https://github.com/CKylinMC/PasteMe');
@@ -374,6 +277,72 @@ function openCloseConfirm() {
                                 description="按下哪个键触发窗口"
                             />
                         </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.common.enablePaste"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用直接粘贴功能"
+                                description="与直接 Ctrl+V 粘贴相同"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.common.enableCalc"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用统计功能"
+                                description="显示复制的文本字符数量"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.common.enableEdit"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用编辑功能"
+                                description="允许编辑复制的文本"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.common.enableToText"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用转为纯文本功能"
+                                description="将复制的内容重新复制为无样式文本"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.detect.enabled"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用剪贴板识别"
+                                description="尝试从剪贴板中提取信息"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.detect.detectUrl"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用剪贴板识别: 链接"
+                                description="尝试从剪贴板中提取链接"
+                            />
+                        </n-list-item>
                     </n-list>
                 </n-tab-pane>
                 <n-tab-pane name="ai" tab="AI 设置">
@@ -432,6 +401,61 @@ function openCloseConfirm() {
                             <n-thing
                                 title="AI 模型"
                                 description="使用的 AI 模型"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableToJson"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用使用 AI 提取为JSON格式"
+                                description="启用并允许使用AI将剪贴板转为JSON"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAskAI"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用咨询 AI 功能"
+                                description="启用基于剪贴板向 AI 提问功能"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAICreation"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用 AI 创作"
+                                description="启用预设的条件续写功能"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAISnipets"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用快速 AI 片段"
+                                description="启用保存和复用自定义AI提示词片段"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAIChat"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用 AI 聊天"
+                                description="启用基于剪贴板对话模式"
                             />
                         </n-list-item>
                         <n-list-item>
@@ -619,22 +643,21 @@ function openCloseConfirm() {
                                     <n-button
                                         strong
                                         secondary
-                                        :type="updateInfo.type"
+                                        :type="updateState.type"
                                         size="small"
                                         @click="checkUpdate"
-                                        :loading="updateInfo.working"
-                                        :disabled="updateInfo.working"
-                                        >
+                                        :loading="updateState.working"
+                                        :disabled="updateState.working"
+                                    >
                                         <template #icon>
                                             <n-icon>
                                                 <component
-                                                    :is="updateInfo.icon"
+                                                    :is="currentIcon"
                                                 ></component>
                                             </n-icon>
-                                          </template>
-                                        {{ updateInfo.btn }}
-                                        </n-button
-                                    >
+                                        </template>
+                                        {{ updateState.btn }}
+                                    </n-button>
                                 </template>
                             </n-thing>
                         </n-list-item>
