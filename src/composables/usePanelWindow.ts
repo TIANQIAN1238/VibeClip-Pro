@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { window as appWindow } from '@tauri-apps/api';
 import type { useClipboard } from './useClipboard';
 
-export type PanelPage = 'index' | 'calc' | 'edit' | 'tojson' | 'askai' | 'aicreate' | 'snippets' | 'snippets-ai' | 'snippets-edit' | 'chat';
+export type PanelPage = 'index' | 'calc' | 'edit' | 'tojson' | 'askai' | 'aicreate' | 'snippets' | 'snippets-ai' | 'snippets-edit' | 'chat' | 'urls' | 'urls-actions';
 
 export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
     const page = ref<PanelPage>('index');

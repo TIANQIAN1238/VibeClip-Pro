@@ -26,11 +26,14 @@ import LineMdLoadingTwotoneLoop from '~icons/line-md/loading-twotone-loop';
 import SolarSettingsLineDuotone from '~icons/solar/settings-line-duotone';
 import SolarChatLineLineDuotone from '~icons/solar/chat-line-line-duotone';
 import SolarClipboardListLineDuotone from '~icons/solar/clipboard-list-line-duotone';
-// import MdiKeyboardEsc from '~icons/mdi/keyboard-esc';
-// import MdiArrowUpDown from '~icons/mdi/arrow-up-down';
-// import MdiArrowLeftBottom from '~icons/mdi/arrow-left-bottom';
+import SolarLinkMinimalistic2BoldDuotone from '~icons/solar/link-minimalistic-2-bold-duotone';
+import SolarSquareTopDownLineDuotone from '~icons/solar/square-top-down-line-duotone';
+import SolarCopyLineDuotone from '~icons/solar/copy-line-duotone';
+import SolarDocumentTextLineDuotone from '~icons/solar/document-text-line-duotone';
 import { simulatePaste } from '@/libs/bridges';
 import AIChat from '@/components/AIChat.vue';
+import { fetchUrls } from '@/libs/utils';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { generating, generatedContent, userPrompt, generateText } =
@@ -57,6 +60,9 @@ const currentSnippet = ref({
     system: '',
 });
 
+const foundUrls = ref<string[]>([]);
+const selectedUrl = ref('');
+
 // 可保存状态
 const savable = computed(() => {
     return ['edit', 'tojson', 'askai', 'aicreate', 'snippets-ai'].includes(
@@ -65,8 +71,16 @@ const savable = computed(() => {
 });
 
 const handlePageChange = (page: PanelPage) => {
-    if (page === 'index' || page === 'snippets') {
+    if (
+        page === 'index' ||
+        page === 'snippets' ||
+        page === 'urls' ||
+        page === 'urls-actions'
+    ) {
         focusOn.value = 0;
+    }
+    if (page === 'urls') {
+        selectedUrl.value = '';
     }
     if (page === 'tojson') {
         userPrompt.value = '转换为JSON';
@@ -76,21 +90,25 @@ const handlePageChange = (page: PanelPage) => {
 };
 
 export type Menu = {
-        key: string;
-        label: string;
-        description: string;
-        action: () => void;
-        isSub?: boolean;
-        autoClose?: boolean;
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        icon: any;
-    };
+    key: string;
+    label: string;
+    description: string;
+    action: () => void;
+    isSub?: boolean;
+    autoClose?: boolean;
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    icon: any;
+};
 
 const hasContent = computed(() => content.value.trim().length > 0);
 // 菜单配置
-const menus = computed<Menu[]>(():Menu[] => {
+const menus = computed<Menu[]>((): Menu[] => {
+    selectedUrl.value = '';
+    foundUrls.value = config.value.detect.enabled
+        ? fetchUrls(content.value)
+        : [];
     const list = [
-        hasContent.value
+        hasContent.value && config.value.common.enablePaste
             ? {
                   key: 'paste',
                   label: '粘贴',
@@ -101,7 +119,7 @@ const menus = computed<Menu[]>(():Menu[] => {
                   icon: SolarClipboardListLineDuotone,
               }
             : null,
-        hasContent.value
+        hasContent.value && config.value.common.enableCalc
             ? {
                   key: 'calc',
                   label: '统计',
@@ -115,15 +133,29 @@ const menus = computed<Menu[]>(():Menu[] => {
                   icon: SolarCalculatorLineDuotone,
               }
             : null,
-        {
-            key: 'edit',
-            label: '编辑',
-            description: '直接修改内容',
-            action: () => gotoPage('edit', handlePageChange),
-            isSub: true,
-            icon: SolarTextFieldFocusLineDuotone,
-        },
-        hasContent.value
+        config.value.common.enableEdit
+            ? {
+                  key: 'edit',
+                  label: '编辑',
+                  description: '直接修改内容',
+                  action: () => gotoPage('edit', handlePageChange),
+                  isSub: true,
+                  icon: SolarTextFieldFocusLineDuotone,
+              }
+            : null,
+        foundUrls.value && foundUrls.value.length > 0
+            ? {
+                  key: 'urls',
+                  label: '提取链接...',
+                  description: `发现 ${foundUrls.value.length} 个可能的链接`,
+                  action: () => {
+                      gotoPage('urls', handlePageChange);
+                  },
+                  isSub: true,
+                  icon: SolarLinkMinimalistic2BoldDuotone,
+              }
+            : null,
+        hasContent.value && config.value.common.enableToText
             ? {
                   key: 'text',
                   label: '转为纯文本',
@@ -139,7 +171,7 @@ const menus = computed<Menu[]>(():Menu[] => {
     ];
     if (config.value?.ai.enabled) {
         list.push(
-            hasContent.value
+            hasContent.value && config.value.ai.enableToJson
                 ? {
                       key: 'json',
                       label: '转为JSON',
@@ -149,7 +181,7 @@ const menus = computed<Menu[]>(():Menu[] => {
                       icon: SolarCodeLineDuotone,
                   }
                 : null,
-            hasContent.value
+            hasContent.value && config.value.ai.enableAskAI
                 ? {
                       key: 'askai',
                       label: '询问AI...',
@@ -159,34 +191,87 @@ const menus = computed<Menu[]>(():Menu[] => {
                       icon: SolarLightbulbBoltLineDuotone,
                   }
                 : null,
-            {
-                key: 'aicreate',
-                label: '使用AI创作...',
-                description: '让AI帮忙创作',
-                action: () => gotoPage('aicreate', handlePageChange),
-                isSub: true,
-                icon: SolarPen2LineDuotone,
-            },
-            {
-                key: 'chat',
-                label: '与AI对话',
-                description: '基于剪贴板内容与AI进行可持续的对话',
-                isSub: true,
-                icon: SolarChatLineLineDuotone,
-                action: () => gotoPage('chat', handlePageChange),
-            },
-            {
-                key: 'snippets',
-                label: '快速AI片段',
-                description: '保存的AI请求片段',
-                action: () => gotoPage('snippets', handlePageChange),
-                isSub: true,
-                icon: SolarNotificationUnreadLinesLineDuotone,
-            }
+            config.value.ai.enableAICreation
+                ? {
+                      key: 'aicreate',
+                      label: '使用AI创作...',
+                      description: '让AI帮忙创作',
+                      action: () => gotoPage('aicreate', handlePageChange),
+                      isSub: true,
+                      icon: SolarPen2LineDuotone,
+                  }
+                : null,
+            config.value.ai.enableAIChat
+                ? {
+                      key: 'chat',
+                      label: '与AI对话',
+                      description: '基于剪贴板内容与AI进行可持续的对话',
+                      isSub: true,
+                      icon: SolarChatLineLineDuotone,
+                      action: () => gotoPage('chat', handlePageChange),
+                  }
+                : null,
+            config.value.ai.enableAISnipets
+                ? {
+                      key: 'snippets',
+                      label: '快速AI片段',
+                      description: '保存的AI请求片段',
+                      action: () => gotoPage('snippets', handlePageChange),
+                      isSub: true,
+                      icon: SolarNotificationUnreadLinesLineDuotone,
+                  }
+                : null
         );
     }
     return list.filter(it => !!it);
 });
+
+const linkMenu = computed<Menu[]>(() => {
+    return [
+        {
+            key: 'copy',
+            label: '复制',
+            description: '用此链接替换剪贴板内容',
+            action: () => {
+                update(selectedUrl.value);
+                hideWindow();
+            },
+            icon: SolarCopyLineDuotone,
+        },
+        {
+            key: 'open',
+            label: '打开',
+            description: '打开此链接',
+            action: () => {
+                openUrl(selectedUrl.value);
+                hideWindow();
+            },
+            icon: SolarSquareTopDownLineDuotone,
+        },
+        config.value?.ai.enabled && config.value?.ai.enableWebCrawl
+            ? {
+                  key: 'askAi',
+                  label: '总结页面',
+                  description: '尝试让 AI 总结链接',
+                  action: () => {
+                      gotoPage('askai', handlePageChange);
+                      startAskAI('总结这个链接的页面内容', selectedUrl.value);
+                  },
+                  icon: SolarDocumentTextLineDuotone,
+                  isSub: true,
+              }
+            : null,
+    ].filter(it => !!it);
+});
+
+async function executeLinkMenu(action: () => void) {
+    try {
+        await action();
+    } catch (error) {
+        console.error(error);
+        hideWindow();
+    }
+}
 
 function runSnippet(snippet: Snippet) {
     gotoPage('snippets-ai', handlePageChange);
@@ -225,6 +310,11 @@ function handleAIPageEnter() {
             startAICreate();
         }
     }
+}
+
+function selectUrl(url: string) {
+    selectedUrl.value = url;
+    gotoPage('urls-actions', handlePageChange);
 }
 
 // 监听页面变化，自动聚焦到输入框
@@ -324,6 +414,48 @@ function listenKeydown(e: KeyboardEvent) {
                     block: 'nearest',
                 });
         }
+    } else if (page.value === 'urls') {
+        if (e.key === 'ArrowUp') {
+            if (focusOn.value < 0) {
+                focusOn.value = foundUrls.value.length - 1;
+            } else {
+                focusOn.value =
+                    (focusOn.value - 1 + foundUrls.value.length) %
+                    foundUrls.value.length;
+            }
+            document.querySelector(`#url-${focusOn.value}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+            });
+        }
+        if (e.key === 'ArrowDown') {
+            if (focusOn.value < 0) {
+                focusOn.value = 0;
+            } else {
+                focusOn.value = (focusOn.value + 1) % foundUrls.value.length;
+            }
+            document.querySelector(`#url-${focusOn.value}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+            });
+        }
+    } else if (page.value === 'urls-actions') {
+        if (e.key === 'ArrowUp') {
+            if (focusOn.value < 0) {
+                focusOn.value = linkMenu.value.length - 1;
+            } else {
+                focusOn.value =
+                    (focusOn.value - 1 + linkMenu.value.length) %
+                    linkMenu.value.length;
+            }
+        }
+        if (e.key === 'ArrowDown') {
+            if (focusOn.value < 0) {
+                focusOn.value = 0;
+            } else {
+                focusOn.value = (focusOn.value + 1) % linkMenu.value.length;
+            }
+        }
     }
 
     if (e.key === 'Enter' && focusOn.value >= 0) {
@@ -331,6 +463,16 @@ function listenKeydown(e: KeyboardEvent) {
         else if (page.value === 'snippets') {
             const res = config.value.snippets[focusOn.value];
             if (res) runSnippet(res);
+        } else if (page.value === 'urls') {
+            const res = foundUrls.value[focusOn.value];
+            if (res) {
+                selectUrl(res);
+            }
+        } else if (page.value === 'urls-actions') {
+            const res = linkMenu.value[focusOn.value];
+            if (res) {
+                executeLinkMenu(res.action);
+            }
         }
     } else if (
         e.key === 'Enter' &&
@@ -450,11 +592,15 @@ const startConvertToJson = () =>
         `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
     );
 
-const startAskAI = () =>
-    createTask(
+const startAskAI = (presetPrompt?:string, text?: string) => {
+    const cliptext = text ? text : content.value;
+    const prompt = presetPrompt ? presetPrompt : userPrompt.value;
+    userPrompt.value = prompt;
+    return createTask(
         '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。',
-        `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
+        `用户指令:\n${prompt}\n\n剪贴板内容:\n${cliptext}\n\n输出:\n`
     );
+};
 
 const startAICreate = () =>
     createTask(
@@ -467,14 +613,14 @@ function doSaveAction() {
     switch (page.value) {
         case 'edit':
             update(content.value);
-            gotoPage('index');
+            gotoPage('index', handlePageChange);
             break;
         case 'tojson':
         case 'askai':
         case 'aicreate':
         case 'snippets-ai':
             update(generatedContent.value);
-            gotoPage('index');
+            gotoPage('index', handlePageChange);
             break;
     }
 }
@@ -788,11 +934,71 @@ onBeforeUnmount(() => {
         >
             <AIChat :config="config" :content="content" />
         </div>
-        <!-- <div class="h-8 bg-black/20 flex flex-row text-gray-400 text-xs items-center px-2 gap-1">
-            <div><MdiKeyboardEsc class="inline" />: {{ page==='index'?'隐藏窗口':'返回' }}</div>
-            <div v-if="['index', 'snippets'].includes(page)"><MdiArrowUpDown class="inline" />: 选择菜单</div>
-            <div v-if="['index', 'snippets'].includes(page)"><MdiArrowLeftBottom class='inline' />: 确认</div>
-        </div> -->
+        <div
+            v-else-if="page === 'urls'"
+            class="flex-1 flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
+        >
+            <div class="p-3">发现的链接</div>
+            <div>
+                <div
+                    v-for="(url, index) in foundUrls"
+                    :id="'url-' + index"
+                    :key="index"
+                    :class="[
+                        'flex flex-col gap-1 justify-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
+                        { 'bg-gray-500/10': focusOn === index },
+                    ]"
+                    @click="selectUrl(url)"
+                >
+                    <div class="text-gray-200 line-clamp-1">
+                        {{ url.slice(0, 50) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div
+            v-else-if="page === 'urls-actions'"
+            class="flex-1 flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
+        >
+            <div class="p-3 w-full">
+                <div>操作链接</div>
+                <div class="line-clamp-1 text-ellipsis text-sm text-gray-500">
+                    {{ selectedUrl }}
+                </div>
+            </div>
+            <div>
+                <div
+                    v-for="(menu, index) in linkMenu"
+                    :id="menu.key"
+                    :key="menu.key"
+                    :class="[
+                        'flex flex-row gap-1 justify-start items-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
+                        { 'bg-gray-500/10': focusOn === index },
+                    ]"
+                    @click="executeLinkMenu(menu.action)"
+                >
+                    <div class="text-gray-200 mx-3">
+                        <component
+                            :is="menu.icon"
+                            class="size-6 inline align-sub"
+                        />
+                    </div>
+                    <div class="flex flex-col">
+                        <div class="text-gray-200">
+                            {{ menu.label }}
+                        </div>
+                        <div
+                            class="text-gray-500 text-xs line-clamp-1 overflow-ellipsis"
+                        >
+                            {{ menu.description }}
+                        </div>
+                    </div>
+                    <div v-if="menu.isSub" class="absolute top-half right-2">
+                        <SolarAltArrowRightLineDuotone class="w-4 h-4" />
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 

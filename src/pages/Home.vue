@@ -377,6 +377,50 @@ function openCloseConfirm() {
                         <n-list-item>
                             <template #suffix>
                                 <n-checkbox
+                                    v-model:checked="config.common.enablePaste"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用直接粘贴功能"
+                                description="与直接 Ctrl+V 粘贴相同"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.common.enableCalc"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用统计功能"
+                                description="显示复制的文本字符数量"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.common.enableEdit"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用编辑功能"
+                                description="允许编辑复制的文本"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.common.enableToText"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用转为纯文本功能"
+                                description="将复制的内容重新复制为无样式文本"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
                                     v-model:checked="config.detect.enabled"
                                 ></n-checkbox>
                             </template>
@@ -454,6 +498,61 @@ function openCloseConfirm() {
                             <n-thing
                                 title="AI 模型"
                                 description="使用的 AI 模型"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableToJson"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用使用 AI 提取为JSON格式"
+                                description="启用并允许使用AI将剪贴板转为JSON"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAskAI"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用咨询 AI 功能"
+                                description="启用基于剪贴板向 AI 提问功能"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAICreation"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用 AI 创作"
+                                description="启用预设的条件续写功能"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAISnipets"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用快速 AI 片段"
+                                description="启用保存和复用自定义AI提示词片段"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.enableAIChat"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用 AI 聊天"
+                                description="启用基于剪贴板对话模式"
                             />
                         </n-list-item>
                         <n-list-item>
