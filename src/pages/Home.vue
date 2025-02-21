@@ -531,6 +531,7 @@ function openCloseConfirm() {
                                     </n-list>
                                 </n-collapse-item>
                                 <n-collapse-item
+                                    v-show="false"
                                     title="图片生成"
                                     name="createimage"
                                 >
