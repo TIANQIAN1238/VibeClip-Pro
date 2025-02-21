@@ -19,7 +19,7 @@ import SolarRestartCircleLineDuotone from '~icons/solar/restart-circle-line-duot
 import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
 import ClipAIIcon from '@/assets/clipai_color.png';
-import { check, type Update } from '@tauri-apps/plugin-updater';
+import { check, type Update, type DownloadEvent  } from '@tauri-apps/plugin-updater';
 import { bytesToSize } from '@/libs/utils';
 
 const { config, loadConfig, saveConfig } = useConfig();
@@ -158,7 +158,7 @@ function checkUpdate() {
             case 'check': {
                 updateInfo.value.btn = '正在检查更新';
                 return check()
-                    .then(update => {
+                    .then((update:Update|null) => {
                         if (update) {
                             updateInfo.value.event = update;
                             if (update.available) {
@@ -183,7 +183,7 @@ function checkUpdate() {
                             updateInfo.value.icon = UpdateIcons.latest;
                         }
                     })
-                    .catch(e => {
+                    .catch((e:any) => {
                         console.error('Updater:', e);
                         updateInfo.value.btn = '检查更新失败';
                         updateInfo.value.type = 'error';
@@ -196,7 +196,7 @@ function checkUpdate() {
             case 'download': {
                 updateInfo.value.btn = '正在下载更新';
                 return updateInfo.value.event
-                    ?.download(event => {
+                    ?.download((event:DownloadEvent) => {
                         switch (event.event) {
                             case 'Started':
                                 updateInfo.value.total =
@@ -226,7 +226,7 @@ function checkUpdate() {
                                 break;
                         }
                     })
-                    .catch(e => {
+                    .catch((e:any) => {
                         console.error('Updater:', e);
                         updateInfo.value.btn = '下载更新失败';
                         updateInfo.value.type = 'error';
@@ -372,6 +372,28 @@ function openCloseConfirm() {
                             <n-thing
                                 title="全局快捷键"
                                 description="按下哪个键触发窗口"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.detect.enabled"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用剪贴板识别"
+                                description="尝试从剪贴板中提取信息"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.detect.detectUrl"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="启用剪贴板识别: 链接"
+                                description="尝试从剪贴板中提取链接"
                             />
                         </n-list-item>
                     </n-list>
