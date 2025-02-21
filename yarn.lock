@@ -749,6 +749,13 @@
   dependencies:
     "@tauri-apps/api" "^2.0.0"
 
+"@tauri-apps/plugin-updater@~2":
+  version "2.5.0"
+  resolved "https://registry.npmmirror.com/@tauri-apps/plugin-updater/-/plugin-updater-2.5.0.tgz#59d40eb378e4735583f253d942efd044ab16d2df"
+  integrity sha512-CWpwrkgpMESDPgJ0EuXgQTI/U9zeZQ9NLUvMyuWVrsuRez7tJ/3c7y73LAkvkI6+ekUxVaRJrxYrSfd8W+DRvQ==
+  dependencies:
+    "@tauri-apps/api" "^2.0.0"
+
 "@tavily/core@^0.3.1":
   version "0.3.1"
   resolved "https://registry.npmmirror.com/@tavily/core/-/core-0.3.1.tgz#bd07c7328be76b061a3dc12e6b978b6ca3a56627"

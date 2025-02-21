@@ -40,12 +40,13 @@
     }
   },
   "bundle": {
-    "longDescription": "PasteMe",
+    "active": true,
     "publisher": "CKylinMC",
-    "copyright": "MIT License",
     "category": "DeveloperTool",
     "shortDescription": "Clash Verge Rev",
-    "active": true,
+    "longDescription": "PasteMe",
+    "copyright": "MIT License",
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -54,5 +55,15 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdFRDIxOUY1RDJGMDVEQgpSV1RiQlM5ZG55SHRCeHRwd0tjMlRudjQ1UWpYaG9nL1NJQTBUM3hYS1J2M3h0dG55dTY1ckE4Ugo=",
+      "endpoints": [
+        "https://github.com/CKylinMC/PasteMe/releases/latest/download/latest.json",
+        "https://gh-proxy.com/github.com/CKylinMC/PasteMe/releases/latest/download/latest.json",
+        "https://ghfast.top/https://github.com/CKylinMC/PasteMe/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
