@@ -1,6 +1,6 @@
 [package]
 name = "pasteme"
-version = "0.5.0"
+version = "1.0.0"
 description = "A simple clipboard manager"
 authors = ["CKylinMC"]
 edition = "2021"
