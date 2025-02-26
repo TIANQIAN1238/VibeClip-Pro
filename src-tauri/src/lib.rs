@@ -1,9 +1,12 @@
 mod tray;
 
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_store::StoreExt;
 use window_vibrancy::{apply_acrylic, apply_mica};
+
+use serde_json::json;
 
 #[tauri::command]
 async fn input_text(text: &str) -> Result<(), String> {
@@ -18,6 +21,45 @@ async fn simulate_paste() -> Result<(), String> {
     let _ = enigo.key(Key::Control, Direction::Press);
     let _ = enigo.key(Key::V, Direction::Click);
     let _ = enigo.key(Key::Control, Direction::Release);
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_key_from_store<R: Runtime>(
+    app: tauri::AppHandle<R>,
+    _window: tauri::Window<R>,
+    key: String,
+    fallback: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let stores = app.store("store.bin");
+    let store = match stores {
+        Ok(store) => store,
+        Err(_) => return Ok(fallback),
+    };
+    if store.has(key.clone()) {
+        let value = store
+            .get(key.clone())
+            .expect("Failed to get value from store");
+        Ok(value)
+    } else {
+        Ok(fallback)
+    }
+}
+
+#[tauri::command]
+async fn set_key_to_store<R: Runtime>(
+    app: tauri::AppHandle<R>,
+    _window: tauri::Window<R>,
+    key: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    let stores = app.store("store.bin");
+    let store = match stores {
+        Ok(store) => store,
+        Err(_) => return Err("Failed to get store".to_string()),
+    };
+    store.set(key.clone(), json!(value));
+    store.save().expect("Failed to save store");
     Ok(())
 }
 
@@ -65,7 +107,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             input_text,
-            simulate_paste
+            simulate_paste,
+            get_key_from_store,
+            set_key_to_store
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

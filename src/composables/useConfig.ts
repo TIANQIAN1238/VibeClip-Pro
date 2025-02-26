@@ -1,7 +1,8 @@
 import { ref } from 'vue';
-import { Store } from '@tauri-apps/plugin-store';
+import { Store } from '@/libs/store';
 import { tryParse } from '@/libs/utils';
 import type { CoreMessage } from 'ai';
+
 
 export interface AIConfig {
     enabled: boolean;
