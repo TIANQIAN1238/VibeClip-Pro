@@ -17,5 +17,5 @@ export function getStoreKey(key: string, fallback: JsonValue): Promise<JsonValue
 }
 
 export function setStoreKey(key: string, value: JsonValue): Promise<void> {
-    return invoke("set_key_in_store", { key, value });
+    return invoke("set_key_to_store", { key, value });
 }
