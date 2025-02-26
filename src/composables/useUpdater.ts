@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, toRaw, unref } from 'vue';
 import { check, type Update, type DownloadEvent } from '@tauri-apps/plugin-updater';
 import { bytesToSize } from '@/libs/utils';
 
@@ -102,13 +102,15 @@ export function useUpdater() {
                 }
                 case UpdateStage.DOWNLOAD: {
                     state.value.btn = '正在下载更新';
-                    await state.value.event?.download(handleDownloadProgress);
+                    const _state = toRaw(unref(state));
+                    await _state?.event?.download(handleDownloadProgress);
                     break;
                 }
                 case UpdateStage.INSTALL: {
                     state.value.btn = '正在安装更新';
                     state.value.type = UpdateType.INFO;
-                    await state.value.event?.install();
+                    const _state = toRaw(unref(state));
+                    await _state?.event?.install();
                     break;
                 }
             }
