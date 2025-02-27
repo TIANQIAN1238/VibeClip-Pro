@@ -32,8 +32,9 @@ import SolarCopyLineDuotone from '~icons/solar/copy-line-duotone';
 import SolarDocumentTextLineDuotone from '~icons/solar/document-text-line-duotone';
 import { simulatePaste } from '@/libs/bridges';
 import AIChat from '@/components/AIChat.vue';
-import { fetchUrls } from '@/libs/utils';
+import { asString, fetchUrls } from '@/libs/utils';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { marked } from 'marked';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { generating, generatedContent, userPrompt, generateText } =
@@ -52,12 +53,15 @@ const stopToken = ref<StopToken | null>(null);
 // 菜单焦点
 const focusOn = ref(0);
 
+const useMarkdownRender = ref(false);
+
 const currentSnippet = ref({
     isNew: false,
     id: '',
     name: '',
     prompt: '',
     system: '',
+    markdown: true,
 });
 
 const foundUrls = ref<string[]>([]);
@@ -71,12 +75,12 @@ const savable = computed(() => {
 });
 
 const handlePageChange = (page: PanelPage) => {
-    if (
-        page === 'index' ||
-        page === 'snippets' ||
-        page === 'urls' ||
-        page === 'urls-actions'
-    ) {
+    if (['askai', 'aicreate', 'snippets-ai'].includes(page)) {
+        useMarkdownRender.value = true;
+    } else {
+        useMarkdownRender.value = false;
+    }
+    if (['index', 'snippets', 'urls', 'urls-actions'].includes(page)) {
         focusOn.value = 0;
     }
     if (page === 'urls') {
@@ -277,9 +281,10 @@ function runSnippet(snippet: Snippet) {
     gotoPage('snippets-ai', handlePageChange);
     currentSnippet.value = {
         ...snippet,
+        markdown: snippet.markdown ?? false,
         isNew: false,
     };
-
+    useMarkdownRender.value = snippet.markdown ?? false;
     createTask(
         snippet.system,
         `用户指令:\n${snippet.prompt}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
@@ -497,6 +502,7 @@ function gotoCreateSnippet() {
     currentSnippet.value.system =
         '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。';
     currentSnippet.value.id = '';
+    currentSnippet.value.markdown = true;
 }
 
 function gotoEditSnippet(snippet: Snippet) {
@@ -506,6 +512,7 @@ function gotoEditSnippet(snippet: Snippet) {
     currentSnippet.value.prompt = snippet.prompt;
     currentSnippet.value.system = snippet.system;
     currentSnippet.value.id = snippet.id;
+    currentSnippet.value.markdown = snippet.markdown ?? false;
 }
 
 const snippetFormOK = computed(() => {
@@ -532,6 +539,7 @@ function saveSnippet() {
             name: currentSnippet.value.name,
             prompt: currentSnippet.value.prompt,
             system: currentSnippet.value.system,
+            markdown: currentSnippet.value.markdown,
         });
         currentSnippet.value.isNew = false;
     } else {
@@ -544,6 +552,7 @@ function saveSnippet() {
                 name: currentSnippet.value.name,
                 prompt: currentSnippet.value.prompt,
                 system: currentSnippet.value.system,
+                markdown: currentSnippet.value.markdown,
             };
         }
     }
@@ -592,7 +601,7 @@ const startConvertToJson = () =>
         `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
     );
 
-const startAskAI = (presetPrompt?:string, text?: string) => {
+const startAskAI = (presetPrompt?: string, text?: string) => {
     const cliptext = text ? text : content.value;
     const prompt = presetPrompt ? presetPrompt : userPrompt.value;
     userPrompt.value = prompt;
@@ -660,7 +669,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        class="flex flex-col size-full"
+        class="flex flex-col size-full select-none"
         @mouseover="mouseInRange = true"
         @mouseleave="mouseInRange = false"
     >
@@ -703,7 +712,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-if="page === 'index'"
-            class="flex-1 overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
+            class="flex-1 shrink-0 overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div
                 v-for="(menu, index) in menus"
@@ -788,7 +797,7 @@ onBeforeUnmount(() => {
                 page === 'aicreate' ||
                 page === 'snippets-ai'
             "
-            class="flex-1 flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
+            class="flex-1 shrink-0 size-full flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
             <div>
                 <n-input
@@ -835,11 +844,19 @@ onBeforeUnmount(() => {
             >
                 生成
             </n-button>
-            <textarea
-                :disabled="generating"
-                v-model="generatedContent"
-                class="flex-1 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
-            ></textarea>
+            <template v-if="useMarkdownRender">
+                <span
+                    v-html="marked.parse(asString(generatedContent))"
+                    class="markdown-align flex-1 shrink-0 bg-gray-800 text-gray-200 p-2 rounded thin-scrollbar overflow-y-auto"
+                ></span>
+            </template>
+            <template v-else>
+                <textarea
+                    :disabled="generating"
+                    v-model="generatedContent"
+                    class="flex-1 shrink-0 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
+                ></textarea>
+            </template>
         </div>
         <div
             v-else-if="page === 'snippets'"
@@ -927,6 +944,12 @@ onBeforeUnmount(() => {
                     v-model:value="currentSnippet.prompt"
                 ></n-input>
             </div>
+            <div class="flex flex-row justify-between">
+                <div>使用 Markdown 输出</div>
+                <div>
+                    <n-switch v-model:value="currentSnippet.markdown" />
+                </div>
+            </div>
         </div>
         <div
             v-else-if="page === 'chat'"
@@ -1009,5 +1032,10 @@ body {
     height: 476px;
     width: 400px;
     overflow: hidden;
+}
+.markdown-align pre,
+.markdown-align code {
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 </style>

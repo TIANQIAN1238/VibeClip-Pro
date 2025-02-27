@@ -19,6 +19,7 @@ import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
 import ClipAIIcon from '@/assets/clipai_color.png';
 import { useUpdater } from '@/composables/useUpdater';
+import { debounce } from '@/libs/utils';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -74,11 +75,13 @@ const open = async () => {
     await panelview.setFocus();
 };
 
+const debouncedSaveConfig = debounce(saveConfig, 500);
+
 watch(
     () => config.value,
     () => {
         console.log('save', unref(config));
-        saveConfig();
+        debouncedSaveConfig();
         mountShortcut(config.value.globalShortcut, open);
     },
     { deep: true }
@@ -401,6 +404,17 @@ function openCloseConfirm() {
                             <n-thing
                                 title="AI 模型"
                                 description="使用的 AI 模型"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
+                                    v-model:checked="config.ai.disableTools"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="禁用 Tools Calling"
+                                description="若模型不支持 Tools Calling，在此处关闭。注意关闭后联网功能无法使用。"
                             />
                         </n-list-item>
                         <n-list-item>

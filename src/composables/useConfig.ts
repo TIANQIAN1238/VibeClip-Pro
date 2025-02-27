@@ -9,6 +9,7 @@ export interface AIConfig {
     apiKey: string;
     endpoint: string;
     model: string;
+    disableTools?: boolean;
     enableToJson: boolean;
     enableAskAI: boolean;
     enableAICreation: boolean;
@@ -30,6 +31,7 @@ export interface Snippet {
     name: string;
     system: string;
     prompt: string;
+    markdown?: boolean;
 }
 
 export interface CommonConfig {
@@ -62,6 +64,7 @@ export function useConfig() {
             apiKey: '',
             endpoint: 'https://api.openai.com/v1',
             model: 'gpt-4o',
+            disableTools: false,
             enableToJson: true,
             enableAskAI: true,
             enableAICreation: true,
@@ -102,6 +105,7 @@ export function useConfig() {
                 apiKey: (await store.get('ai.apiKey')) || '',
                 endpoint: (await store.get('ai.endpoint')) || 'https://api.openai.com/v1',
                 model: (await store.get('ai.model')) || 'gpt-4o',
+                disableTools: !!(await store.get('ai.disableTools') ?? false),
                 enableToJson: !!(await store.get('ai.enableToJson') ?? true),
                 enableAskAI: !!(await store.get('ai.enableAskAI') ?? true),
                 enableAICreation: !!(await store.get('ai.enableAICreation') ?? true),
@@ -149,6 +153,7 @@ export function useConfig() {
         await store.set('ai.apiKey', config.value.ai.apiKey);
         await store.set('ai.endpoint', config.value.ai.endpoint);
         await store.set('ai.model', config.value.ai.model);
+        await store.set('ai.disableTools', config.value.ai.disableTools);
         await store.set('ai.enableToJson', config.value.ai.enableToJson);
         await store.set('ai.enableAskAI', config.value.ai.enableAskAI);
         await store.set('ai.enableAICreation', config.value.ai.enableAICreation);
