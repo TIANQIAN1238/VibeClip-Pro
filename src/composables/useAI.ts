@@ -54,7 +54,7 @@ export function useAIImage(config: Ref<Config>) {
             const ai = getAIInstance();
             const model = ai?.imageModel?.(config.value.ai.imageModel);
             if (!model) {
-                console.error("No image model found",{
+                console.error("No image model found", {
                     model: config.value.ai.imageModel,
                     endpoint: config.value.ai.imageAIEndpoint,
                     apiKey: config.value.ai.imageApiKey,
@@ -233,7 +233,7 @@ export function useAI(config: Ref<Config>) {
                 model: ai.chatModel(config.value.ai.model),
                 system,
                 prompt,
-                tools: getTools(),
+                tools: config.value.ai.disableTools ? undefined : getTools(),
                 maxSteps: 5,
             });
             let stop = false;

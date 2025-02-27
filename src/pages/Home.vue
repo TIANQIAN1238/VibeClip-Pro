@@ -409,6 +409,17 @@ function openCloseConfirm() {
                         <n-list-item>
                             <template #suffix>
                                 <n-checkbox
+                                    v-model:checked="config.ai.disableTools"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="禁用 Tools Calling"
+                                description="若模型不支持 Tools Calling，在此处关闭。注意关闭后联网功能无法使用。"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
                                     v-model:checked="config.ai.enableToJson"
                                 ></n-checkbox>
                             </template>

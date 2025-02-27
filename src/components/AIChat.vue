@@ -96,7 +96,10 @@ function handleSubmit() {
     }
 
     scrollToBottom();
-    fetchAIResponse(scrollToBottom, tools).then(saveSession);
+    fetchAIResponse(
+        scrollToBottom,
+        props.config.ai.disableTools ? undefined : tools
+    ).then(saveSession);
 }
 
 function copy(str: string) {
