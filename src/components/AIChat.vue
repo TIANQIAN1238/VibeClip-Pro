@@ -154,7 +154,7 @@ onMounted(() => {
                             <SolarBoltCircleLineDuotone class="size-8" />
                         </div>
                         <div class="flex flex-col gap-1">
-                            <div class="bg-blue-600 text-white p-2 rounded-lg">
+                            <div class="bg-white text-black p-2 rounded-lg">
                                 <span
                                     v-html="
                                         marked.parse(asString(message.content))
