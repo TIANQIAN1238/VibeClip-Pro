@@ -54,17 +54,17 @@ const { webCrawlTool, crawling: usingWebCrawler } =
 
 const usingTools = computed(
     () =>
-        usingImageGeneration.value ||
         usingWebSearch.value ||
-        usingWebCrawler.value
+        usingWebCrawler.value ||
+        usingImageGeneration.value
 );
 
 const inputPlaceholder = computed(() => {
     if (generating.value) {
         if (usingTools.value) {
-            if (usingImageGeneration) return '正在生成图片...';
-            if (usingWebCrawler) return '正在获取网页信息...';
             if (usingWebSearch) return '正在联网搜索...';
+            if (usingWebCrawler) return '正在获取网页信息...';
+            if (usingImageGeneration) return '正在生成图片...';
             return 'AI 正在使用工具...';
         }
         return 'AI 正在回答...';
@@ -159,6 +159,7 @@ onMounted(() => {
                         <div class="flex flex-col gap-1">
                             <div class="bg-white text-black p-2 rounded-lg">
                                 <span
+                                    class="markdown-align"
                                     v-html="
                                         marked.parse(asString(message.content))
                                     "
@@ -275,3 +276,10 @@ onMounted(() => {
         </div>
     </div>
 </template>
+<style>
+.markdown-align pre,
+.markdown-align code {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+</style>
