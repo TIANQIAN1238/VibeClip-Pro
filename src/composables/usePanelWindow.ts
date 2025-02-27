@@ -23,7 +23,7 @@ export function usePanelWindow(clipboard: ReturnType<typeof useClipboard>) {
                 if (!mouseInRange.value) {
                     console.log('blur', event);
                     isBlured.value = true;
-                    // onHide();
+                    onHide();
                 }
             }),
             appWindow.getCurrentWindow().listen('tauri://focus', async () => {
