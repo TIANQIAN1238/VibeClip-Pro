@@ -30,6 +30,7 @@ export interface Snippet {
     name: string;
     system: string;
     prompt: string;
+    markdown?: boolean;
 }
 
 export interface CommonConfig {
