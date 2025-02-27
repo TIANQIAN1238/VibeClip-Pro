@@ -19,6 +19,7 @@ import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
 import ClipAIIcon from '@/assets/clipai_color.png';
 import { useUpdater } from '@/composables/useUpdater';
+import { debounce } from '@/libs/utils';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -74,11 +75,13 @@ const open = async () => {
     await panelview.setFocus();
 };
 
+const debouncedSaveConfig = debounce(saveConfig, 500);
+
 watch(
     () => config.value,
     () => {
         console.log('save', unref(config));
-        saveConfig();
+        debouncedSaveConfig();
         mountShortcut(config.value.globalShortcut, open);
     },
     { deep: true }
