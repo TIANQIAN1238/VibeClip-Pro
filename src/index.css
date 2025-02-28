@@ -30,3 +30,78 @@ html, body, #app {
         border-radius: 2px;
     }
 }
+
+
+.markdown-align {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+.markdown-align pre,
+.markdown-align code {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.markdown-align h1 {
+    font-size: 1.5em;
+    text-align: left;
+}
+.markdown-align h2 {
+    font-size: 1.3em;
+}
+.markdown-align h3 {
+    font-size: 1.1em;
+}
+.markdown-align h4 {
+    font-size: 1em;
+}
+.markdown-align h5 {
+    font-size: 0.9em;
+}
+.markdown-align h6 {
+    font-size: 0.8em;
+}
+.markdown-align hr {
+    border: none;
+    border-top: 3px solid #cccccc79;
+    margin: 10px 0;
+}
+.markdown-align blockquote {
+    border-left: 4px solid #ccc;
+    padding: 0 15px;
+    margin: 0;
+}
+.markdown-align ul {
+    list-style-type: disc;
+    padding-left: 20px;
+}
+.markdown-align ol {
+    list-style-type: decimal;
+    padding-left: 20px;
+}
+.markdown-align p {
+    margin: 0;
+    padding: 0;
+}
+.markdown-align a {
+    color: #007bff;
+    text-decoration: none;
+}
+.markdown-align a:hover {
+    text-decoration: underline;
+}
+.markdown-align code {
+    background-color: #f8f9fa1a;
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+.markdown-align pre {
+    background-color: #f8f9fa1a;
+    border-radius: 3px;
+    padding: 5px;
+    margin: 3px 0;
+    overflow: auto;
+}
+.markdown-align pre code {
+    background-color: transparent;
+    padding: 0;
+}

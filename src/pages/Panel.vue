@@ -35,6 +35,7 @@ import AIChat from '@/components/AIChat.vue';
 import { asString, fetchUrls } from '@/libs/utils';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { marked } from 'marked';
+import HijackedATag from '@/components/HijackedATag.vue';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { generating, generatedContent, userPrompt, generateText } =
@@ -43,6 +44,10 @@ const clipboard = useClipboard();
 const { content, contentPreview, stats, refresh, update } = clipboard;
 const { page, showPreview, mouseInRange, gotoPage, setupWindowListeners } =
     usePanelWindow(clipboard);
+
+const vFocus = {
+    mounted: (el: HTMLElement) => el.focus(),
+};
 
 const mainView = new webviewWindow.WebviewWindow('main', {
     url: '/',
@@ -787,6 +792,7 @@ onBeforeUnmount(() => {
         >
             <textarea
                 v-model="content"
+                v-focus
                 class="size-full bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar edit-textarea"
             ></textarea>
         </div>
@@ -845,10 +851,12 @@ onBeforeUnmount(() => {
                 生成
             </n-button>
             <template v-if="useMarkdownRender">
-                <span
-                    v-html="marked.parse(asString(generatedContent))"
-                    class="markdown-align flex-1 shrink-0 bg-gray-800 text-gray-200 p-2 rounded thin-scrollbar overflow-y-auto"
-                ></span>
+                <HijackedATag
+                    asExternalLink
+                    asTemplate
+                    :html="marked.parse(asString(generatedContent)) || ''"
+                    className="markdown-align flex-1 shrink-0 bg-gray-800 text-gray-200 p-2 rounded thin-scrollbar overflow-y-auto"
+                />
             </template>
             <template v-else>
                 <textarea
@@ -1032,10 +1040,5 @@ body {
     height: 476px;
     width: 400px;
     overflow: hidden;
-}
-.markdown-align pre,
-.markdown-align code {
-    white-space: pre-wrap;
-    word-wrap: break-word;
 }
 </style>

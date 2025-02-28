@@ -19,7 +19,9 @@ import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
 import ClipAIIcon from '@/assets/clipai_color.png';
 import { useUpdater } from '@/composables/useUpdater';
-import { debounce } from '@/libs/utils';
+import { asString, debounce } from '@/libs/utils';
+import { marked } from 'marked';
+import HijackedATag from '@/components/HijackedATag.vue';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -42,7 +44,7 @@ const open = async () => {
     try {
         const position = await appWindow.cursorPosition();
         const monitor = await currentMonitor();
-        
+
         if (!monitor) {
             await panelview.center();
             return;
@@ -168,6 +170,9 @@ function openFeedbackPage() {
 function openCloseConfirm() {
     closeConfirm.value = true;
 }
+
+const updateSuffix =
+    '\n\n------\n\n若下载失败请前往<a href="https://github.com/ckylinmc/pasteme/releases">发布页面</a>手动下载更新';
 </script>
 
 <template>
@@ -674,6 +679,32 @@ function openCloseConfirm() {
                                     </n-button>
                                 </template>
                             </n-thing>
+                            <n-collapse-transition
+                                :show="updateState.haveUpdate"
+                            >
+                                <div class="w-[600px] mt-5">
+                                    <div
+                                        class="mb-3"
+                                        v-if="updateState.latestDate"
+                                    >
+                                        发布于 {{ updateState.latestDate }}
+                                    </div>
+                                    <HijackedATag as-external-link>
+                                        <div
+                                            class="markdown-align"
+                                            v-html="
+                                                marked.parse(
+                                                    asString(
+                                                        (updateState.latestNote ||
+                                                            '*请打开项目页面查看更新信息*') +
+                                                            updateSuffix
+                                                    )
+                                                )
+                                            "
+                                        ></div>
+                                    </HijackedATag>
+                                </div>
+                            </n-collapse-transition>
                         </n-list-item>
                         <n-list-item>
                             <n-thing title="作者" description="CKylinMC" />
