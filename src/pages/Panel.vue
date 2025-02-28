@@ -674,18 +674,18 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        class="flex flex-col size-full select-none"
+        class="flex flex-col size-full select-none dark:bg-transparent dark:text-white"
         @mouseover="mouseInRange = true"
         @mouseleave="mouseInRange = false"
     >
         <div
-            class="bg-black/90 p-2"
+            class="bg-neutral-500/10 dark:bg-black p-2"
             :class="[showPreview && hasContent ? 'h-[120px]' : 'h-[32px]']"
         >
-            <div data-tauri-drag-region class="text-gray-400 h-6 relative">
+            <div data-tauri-drag-region class="text-gray-800 dark:text-gray-400 h-6 relative">
                 <div
                     data-tauri-drag-region
-                    class="cursor-move absolute top-1 left-1/2 -translate-x-1/2 w-10 h-2 rounded-lg bg-white/40"
+                    class="cursor-move absolute top-1 left-1/2 -translate-x-1/2 w-10 h-2 rounded-lg bg-neutral-500 dark:bg-white/40"
                 ></div>
                 <SolarAltArrowLeftLineDuotone
                     class="inline hover:bg-gray-500/30 animate-fade-right animate-once animate-duration-300 animate-ease-out"
@@ -709,7 +709,7 @@ onBeforeUnmount(() => {
             </div>
             <n-collapse-transition :show="showPreview && hasContent">
                 <div
-                    class="bg-gray-800/60 h-20 rounded flex-1 p-2 overflow-scroll thin-scrollbar"
+                    class="bg-gray-300/60 dark:bg-gray-800/60 h-20 rounded flex-1 p-2 overflow-scroll thin-scrollbar"
                 >
                     <pre>{{ contentPreview }}</pre>
                 </div>
@@ -724,19 +724,19 @@ onBeforeUnmount(() => {
                 :id="menu.key"
                 :key="menu.key"
                 :class="[
-                    'flex flex-row gap-1 justify-start items-center p-2 hover:cursor-pointer hover:bg-gray-500/10 relative',
-                    { 'bg-gray-500/10': focusOn === index },
+                    'flex flex-row gap-1 justify-start items-center p-2 hover:cursor-pointer hover:bg-gray-500/10  relative',
+                    { 'bg-gray-500/10 dark:bg-gray-500/10': focusOn === index },
                 ]"
                 @click="executeMenu(menu.key)"
             >
-                <div class="text-gray-200 mx-3">
+                <div class="text-gray-900 dark:text-gray-200 mx-3">
                     <component
                         :is="menu.icon"
                         class="size-6 inline align-sub"
                     />
                 </div>
                 <div class="flex flex-col">
-                    <div class="text-gray-200">
+                    <div class="text-gray-900 dark:text-gray-200">
                         {{ menu.label }}
                     </div>
                     <div
@@ -754,36 +754,36 @@ onBeforeUnmount(() => {
             v-else-if="page === 'calc'"
             class="flex-1 overflow-y-auto thin-scrollbar p-3 animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
-            <div class="text-gray-200 text-lg font-bold mb-2">统计</div>
-            <div class="text-gray-400 space-y-1 grid grid-cols-2 gap-x-2">
+            <div class="text-gray-900 dark:text-gray-200 text-lg font-bold mb-2">统计</div>
+            <div class="text-gray-900 dark:text-gray-400 space-y-1 grid grid-cols-2 gap-x-2">
                 <div>字符总数:</div>
-                <div class="text-gray-300">{{ stats.totalChars }}</div>
+                <div>{{ stats.totalChars }}</div>
                 <div>非空字符总数:</div>
-                <div class="text-gray-300">{{ stats.nonEmptyChars }}</div>
+                <div>{{ stats.nonEmptyChars }}</div>
                 <div>行数:</div>
-                <div class="text-gray-300">{{ stats.totalLines }}</div>
+                <div>{{ stats.totalLines }}</div>
                 <div>非空行数:</div>
-                <div class="text-gray-300">{{ stats.nonEmptyLines }}</div>
+                <div>{{ stats.nonEmptyLines }}</div>
                 <div>英文字母总数:</div>
-                <div class="text-gray-300">{{ stats.totalLetters }}</div>
+                <div>{{ stats.totalLetters }}</div>
                 <div>英语单词总数:</div>
-                <div class="text-gray-300">{{ stats.totalWords }}</div>
+                <div>{{ stats.totalWords }}</div>
                 <div>非Ascii字符总数:</div>
-                <div class="text-gray-300">{{ stats.nonAsciiChars }}</div>
+                <div>{{ stats.nonAsciiChars }}</div>
                 <div>数字总数:</div>
-                <div class="text-gray-300">{{ stats.totalDigits }}</div>
+                <div>{{ stats.totalDigits }}</div>
                 <div>标点符号总数:</div>
-                <div class="text-gray-300">{{ stats.totalPunctuation }}</div>
+                <div>{{ stats.totalPunctuation }}</div>
                 <div>空格总数:</div>
-                <div class="text-gray-300">{{ stats.totalSpaces }}</div>
+                <div>{{ stats.totalSpaces }}</div>
                 <div>汉字总数:</div>
-                <div class="text-gray-300">{{ stats.totalChineseChars }}</div>
+                <div>{{ stats.totalChineseChars }}</div>
                 <div>大写字母总数:</div>
-                <div class="text-gray-300">{{ stats.totalUppercase }}</div>
+                <div>{{ stats.totalUppercase }}</div>
                 <div>小写字母总数:</div>
-                <div class="text-gray-300">{{ stats.totalLowercase }}</div>
+                <div>{{ stats.totalLowercase }}</div>
                 <div>最长行长度:</div>
-                <div class="text-gray-300">{{ stats.longestLine }}</div>
+                <div>{{ stats.longestLine }}</div>
             </div>
         </div>
         <div
@@ -793,7 +793,7 @@ onBeforeUnmount(() => {
             <textarea
                 v-model="content"
                 v-focus
-                class="size-full bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar edit-textarea"
+                class="size-full text-black dark:bg-gray-800 dark:text-gray-200 p-2 rounded resize-none thin-scrollbar edit-textarea"
             ></textarea>
         </div>
         <div
@@ -855,14 +855,14 @@ onBeforeUnmount(() => {
                     asExternalLink
                     asTemplate
                     :html="marked.parse(asString(generatedContent)) || ''"
-                    className="markdown-align flex-1 shrink-0 bg-gray-800 text-gray-200 p-2 rounded thin-scrollbar overflow-y-auto"
+                    className="markdown-align flex-1 shrink-0 text-black dark:bg-gray-800 dark:text-gray-200 p-2 rounded thin-scrollbar overflow-y-auto"
                 />
             </template>
             <template v-else>
                 <textarea
                     :disabled="generating"
                     v-model="generatedContent"
-                    class="flex-1 shrink-0 bg-gray-800 text-gray-200 p-2 rounded resize-none thin-scrollbar"
+                    class="flex-1 shrink-0 text-black dark:bg-gray-800 dark:text-gray-200 p-2 rounded resize-none thin-scrollbar"
                 ></textarea>
             </template>
         </div>
@@ -887,7 +887,7 @@ onBeforeUnmount(() => {
                     ]"
                     @click="runSnippet(snippet)"
                 >
-                    <div class="text-gray-200">
+                    <div class="dark:text-gray-200">
                         {{ snippet.name }}
                     </div>
                     <div
@@ -981,7 +981,7 @@ onBeforeUnmount(() => {
                     ]"
                     @click="selectUrl(url)"
                 >
-                    <div class="text-gray-200 line-clamp-1">
+                    <div class="text-gray-900 dark:text-gray-200 line-clamp-1">
                         {{ url.slice(0, 50) }}
                     </div>
                 </div>
@@ -1008,14 +1008,14 @@ onBeforeUnmount(() => {
                     ]"
                     @click="executeLinkMenu(menu.action)"
                 >
-                    <div class="text-gray-200 mx-3">
+                    <div class="text-gray-900 dark:text-gray-200 mx-3">
                         <component
                             :is="menu.icon"
                             class="size-6 inline align-sub"
                         />
                     </div>
                     <div class="flex flex-col">
-                        <div class="text-gray-200">
+                        <div class="text-gray-900 dark:text-gray-200">
                             {{ menu.label }}
                         </div>
                         <div

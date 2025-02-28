@@ -176,7 +176,7 @@ const updateSuffix =
 </script>
 
 <template>
-    <div class="text-white p-5 align-left relative select-none bg-transparent">
+    <div class="text-black p-5 align-left relative select-none dark:bg-transparent dark:text-white">
         <div
             data-tauri-drag-region
             class="absolute top-0 right-0 h-10 w-full flex flex-row justify-end items-start"
