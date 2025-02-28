@@ -58,7 +58,12 @@ jobs:
         with:
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
           releaseName: '${{ steps.relinfo.outputs.release }}'
-          releaseBody: '# ${{ steps.relinfo.outputs.release }}\n\n------\n\n${{ steps.relinfo.outputs.body }}'
+          releaseBody: |
+            # ${{ steps.relinfo.outputs.release }}
+            
+            ------
+            
+            ${{ steps.relinfo.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
