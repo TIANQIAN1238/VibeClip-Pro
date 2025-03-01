@@ -165,7 +165,7 @@ function openProjectPage() {
 }
 
 function openFeedbackPage() {
-    return openUrl('https://github.com/CKylinMC/PasteMe/issues/new');
+    return openUrl('https://github.com/CKylinMC/PasteMe/issues/new/choose');
 }
 function openCloseConfirm() {
     closeConfirm.value = true;
