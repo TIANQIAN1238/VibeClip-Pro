@@ -20,6 +20,7 @@ import { marked } from 'marked';
 import { asString } from '@/libs/utils';
 import type { Tool } from 'ai';
 import { useClipboard } from '@/composables/useClipboard';
+import HijackedATag from './HijackedATag.vue';
 
 const props = defineProps<{
     content: string;
@@ -158,12 +159,12 @@ onMounted(() => {
                         </div>
                         <div class="flex flex-col gap-1">
                             <div class="bg-white text-black p-2 rounded-lg">
-                                <span
-                                    class="markdown-align"
-                                    v-html="
+                                <HijackedATag asExternalLink asTemplate
+                                    className="markdown-align"
+                                    :html="
                                         marked.parse(asString(message.content))
                                     "
-                                ></span>
+                                />
                                 <LineMdLoadingTwotoneLoop
                                     v-if="
                                         index === messages.length - 1 &&
@@ -276,10 +277,3 @@ onMounted(() => {
         </div>
     </div>
 </template>
-<style>
-.markdown-align pre,
-.markdown-align code {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-</style>

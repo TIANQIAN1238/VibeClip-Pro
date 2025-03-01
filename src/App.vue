@@ -1,10 +1,33 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
 import { darkTheme } from 'naive-ui';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import type { BuiltInGlobalTheme } from 'naive-ui/es/themes/interface';
+
+const usingTheme = ref<BuiltInGlobalTheme|null>(null);
+
+const isSystemDarkTheme = computed(
+    () => !!window.matchMedia('(prefers-color-scheme: dark)')?.matches
+);
+
+const updateTheme = () => {
+    usingTheme.value = isSystemDarkTheme.value ? darkTheme : null;
+};
+
+onMounted(() => {
+    updateTheme();
+    window.matchMedia('(prefers-color-scheme: dark)')
+        .addEventListener('change', updateTheme);
+});
+
+onBeforeUnmount(() => {
+    window.matchMedia('(prefers-color-scheme: dark)')
+        .removeEventListener('change', updateTheme);
+});
 </script>
 
 <template>
-    <n-config-provider :theme="darkTheme" class="size-full !bg-transparent">
+    <n-config-provider :theme="usingTheme" class="size-full !bg-transparent">
         <RouterView />
     </n-config-provider>
 </template>
