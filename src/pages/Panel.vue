@@ -674,7 +674,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        class="flex flex-col size-full select-none dark:bg-transparent dark:text-white"
+        class="flex flex-col size-full select-none bg-white/95 dark:bg-transparent dark:text-white"
         @mouseover="mouseInRange = true"
         @mouseleave="mouseInRange = false"
     >
