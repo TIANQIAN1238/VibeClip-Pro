@@ -27,7 +27,6 @@ const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
 const { mountShortcut, unregisterAll } = useShortcut();
 
-const modalShortcutSetter = ref(false);
 const panelview = new webviewWindow.WebviewWindow('context', {
     url: '/panel',
 });
@@ -118,14 +117,6 @@ function handleShortcutChange(shortcut: string) {
     config.value.globalShortcut = shortcut;
 }
 
-function openShortcutSetter() {
-    modalShortcutSetter.value = true;
-}
-
-function closeShortcutSetter() {
-    modalShortcutSetter.value = false;
-}
-
 function closeApp() {
     exit(0);
 }
@@ -165,7 +156,7 @@ function openProjectPage() {
 }
 
 function openFeedbackPage() {
-    return openUrl('https://github.com/CKylinMC/PasteMe/issues/new');
+    return openUrl('https://github.com/CKylinMC/PasteMe/issues/new/choose');
 }
 function openCloseConfirm() {
     closeConfirm.value = true;
@@ -176,7 +167,9 @@ const updateSuffix =
 </script>
 
 <template>
-    <div class="text-black p-5 align-left relative select-none dark:bg-transparent dark:text-white">
+    <div
+        class="text-black p-5 align-left relative select-none bg-white/95 dark:bg-transparent dark:text-white"
+    >
         <div
             data-tauri-drag-region
             class="absolute top-0 right-0 h-10 w-full flex flex-row justify-end items-start"
@@ -273,12 +266,12 @@ const updateSuffix =
                         </n-list-item>
                         <n-list-item>
                             <template #suffix>
-                                <n-button @click="openShortcutSetter">{{
-                                    config.globalShortcut?.replace(
-                                        'CommandOrControl',
-                                        'Ctrl'
-                                    ) || '未设置'
-                                }}</n-button>
+                                <div class="w-60 text-right">
+                                    <KeySelector
+                                        @set="handleShortcutChange"
+                                        :shortcut="config.globalShortcut"
+                                    />
+                                </div>
                             </template>
                             <n-thing
                                 title="全局快捷键"
@@ -737,25 +730,7 @@ const updateSuffix =
                 </n-tab-pane>
             </n-tabs>
         </div>
-
-        <n-modal :show="modalShortcutSetter">
-            <n-card
-                style="width: 400px"
-                title="设置全局快捷键"
-                :bordered="false"
-                size="huge"
-                role="dialog"
-                aria-modal="true"
-            >
-                <KeySelector
-                    @set="handleShortcutChange"
-                    v-model:shortcut="config.globalShortcut"
-                />
-                <template #footer>
-                    <n-button @click="closeShortcutSetter">确定</n-button>
-                </template>
-            </n-card>
-        </n-modal>
+        
         <n-modal
             v-model:show="closeConfirm"
             preset="dialog"
