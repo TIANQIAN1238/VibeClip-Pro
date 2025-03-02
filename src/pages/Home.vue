@@ -19,7 +19,7 @@ import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
 import ClipAIIcon from '@/assets/clipai_color.png';
 import { useUpdater } from '@/composables/useUpdater';
-import { asString, debounce } from '@/libs/utils';
+import { asString, convertDatetime, debounce } from '@/libs/utils';
 import { marked } from 'marked';
 import HijackedATag from '@/components/HijackedATag.vue';
 
@@ -680,7 +680,7 @@ const updateSuffix =
                                         class="mb-3"
                                         v-if="updateState.latestDate"
                                     >
-                                        发布于 {{ updateState.latestDate }}
+                                        发布于 {{ convertDatetime(updateState.latestDate || '') }}
                                     </div>
                                     <HijackedATag as-external-link>
                                         <div
