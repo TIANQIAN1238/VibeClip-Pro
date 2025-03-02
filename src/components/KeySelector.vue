@@ -14,7 +14,7 @@ const props = defineProps({
     },
     keytip: {
         type: String,
-        default: '请按键...',
+        default: '请按键...(ESC取消，退格清空)',
     },
     hovertip: {
         type: String,
@@ -209,31 +209,37 @@ onBeforeUnmount(() => {
     margin: 1px 5px;
     display: inline-block;
     transition: 0.3s;
+    background: #b9b9b91a;
+    color: rgb(0, 0, 0);
+    border: 2px solid rgba(128, 128, 128, 0.116);
+}
+.dark .keyBox {
     background: #383838;
     color: white;
     border: 2px solid rgba(128, 128, 128, 0.116);
 }
 .keyBox:hover {
+    background: rgba(97, 97, 97, 0.13);
+    border: 2px solid rgba(128, 128, 128, 0.216);
+}
+.dark .keyBox:hover {
     background: rgb(104, 104, 104);
     border: 2px solid rgba(128, 128, 128, 0.216);
 }
 .keyBox.editMode {
-    border: 2px solid rgb(19, 151, 245);
+    border: 2px solid #18a058;
     animation: blink 1.5s infinite;
 }
-.keyBox.editMode:hover {
+.dark .keyBox.editMode:hover {
     background: rgb(126, 126, 126);
-    border: 2px solid rgb(19, 151, 245);
+    border: 2px solid #18a058;
 }
 @keyframes blink {
-    0% {
-        border: 2px solid rgb(19, 151, 245);
+    0%, 100% {
+        border: 2px solid #18a058;
     }
     50% {
         border: 2px solid rgba(19, 151, 245, 0);
-    }
-    100% {
-        border: 2px solid rgb(19, 151, 245);
     }
 }
 </style>
