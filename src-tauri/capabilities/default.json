@@ -43,6 +43,7 @@
     "clipboard-manager:allow-write-image",
     "clipboard-manager:allow-write-text",
     "process:default",
+    "cors-fetch:default",
     "updater:default",
     {
       "identifier": "http:default",

@@ -2872,7 +2872,7 @@ dependencies = [
 
 [[package]]
 name = "pasteme"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "enigo",
  "serde",
@@ -2881,6 +2881,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-autostart",
  "tauri-plugin-clipboard-manager",
+ "tauri-plugin-cors-fetch",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-http",
  "tauri-plugin-opener",
@@ -4276,6 +4277,24 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.11",
+]
+
+[[package]]
+name = "tauri-plugin-cors-fetch"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1c9fefd34eb48cccf780e79ece8708ac482a9053fcc6bded0787fb662d63b77"
+dependencies = [
+ "http",
+ "once_cell",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.11",
+ "tokio",
+ "url",
 ]
 
 [[package]]

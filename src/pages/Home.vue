@@ -7,8 +7,6 @@ import { onBeforeUnmount, onMounted, ref, unref, watch, computed } from 'vue';
 import KeySelector from '@/components/KeySelector.vue';
 import { useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
-import { useShortcut } from '@/composables/useShortcut';
-import { PhysicalPosition, currentMonitor } from '@tauri-apps/api/window';
 import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-minimize-16';
 import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
 import SolarRefreshLineDuotone from '~icons/solar/refresh-line-duotone';
@@ -19,62 +17,17 @@ import SolarSadCircleLineDuotone from '~icons/solar/sad-circle-line-duotone';
 import { AppInfo } from '@/AppInfo';
 import ClipAIIcon from '@/assets/clipai_color.png';
 import { useUpdater } from '@/composables/useUpdater';
-import { asString, debounce } from '@/libs/utils';
+import { asString, convertDatetime, debounce } from '@/libs/utils';
 import { marked } from 'marked';
 import HijackedATag from '@/components/HijackedATag.vue';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
-const { mountShortcut, unregisterAll } = useShortcut();
-
-const panelview = new webviewWindow.WebviewWindow('context', {
-    url: '/panel',
-});
 const mainview = new webviewWindow.WebviewWindow('main', {
     url: '/',
 });
 
 const closeConfirm = ref(false);
-
-const PANEL_WIDTH = 400;
-const PANEL_HEIGHT = 476;
-
-const open = async () => {
-    try {
-        const position = await appWindow.cursorPosition();
-        const monitor = await currentMonitor();
-
-        if (!monitor) {
-            await panelview.center();
-            return;
-        }
-
-        let x = position.x;
-        let y = position.y;
-
-        // 检查右边界
-        if (x + PANEL_WIDTH > monitor.size.width) {
-            x = x - PANEL_WIDTH; // 移动到光标左侧
-        }
-
-        // 检查下边界
-        if (y + PANEL_HEIGHT > monitor.size.height) {
-            y = y - PANEL_HEIGHT; // 移动到光标上方
-        }
-
-        // 确保不会超出左边界和上边界
-        x = Math.max(0, Math.min(x, monitor.size.width - PANEL_WIDTH));
-        y = Math.max(0, Math.min(y, monitor.size.height - PANEL_HEIGHT));
-
-        await panelview.setPosition(new PhysicalPosition(x, y));
-    } catch {
-        await panelview.center();
-    }
-
-    await panelview.show();
-    await panelview.setAlwaysOnTop(true);
-    await panelview.setFocus();
-};
 
 const debouncedSaveConfig = debounce(saveConfig, 500);
 
@@ -83,12 +36,10 @@ watch(
     () => {
         console.log('save', unref(config));
         debouncedSaveConfig();
-        mountShortcut(config.value.globalShortcut, open);
     },
     { deep: true }
 );
 
-// 收集所有需要清理的事件监听器
 const cleanupFns: Array<() => Promise<void> | void> = [];
 
 onMounted(async () => {
@@ -107,12 +58,9 @@ onMounted(async () => {
 
 onBeforeUnmount(async () => {
     await saveConfig();
-    await unregisterAll();
-    // 清理所有事件监听器
     await Promise.all(cleanupFns.map(fn => fn()));
 });
 
-// UI 相关的处理函数
 function handleShortcutChange(shortcut: string) {
     config.value.globalShortcut = shortcut;
 }
@@ -135,7 +83,6 @@ const UpdateIcons = {
 
 const { updateState, checkUpdate } = useUpdater();
 
-// 计算当前阶段对应的图标
 const currentIcon = computed(() => {
     if (updateState.value.type === 'error') return UpdateIcons.failed;
     if (updateState.value.type === 'success') return UpdateIcons.latest;
@@ -418,6 +365,17 @@ const updateSuffix =
                         <n-list-item>
                             <template #suffix>
                                 <n-checkbox
+                                    v-model:checked="config.ai.corsCompatiable"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="兼容性模式"
+                                description="对于NIM等具有CORS限制模型服务，可使用兼容性模式。注意，此模式将会减慢回应速度。"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
                                     v-model:checked="config.ai.enableToJson"
                                 ></n-checkbox>
                             </template>
@@ -680,7 +638,7 @@ const updateSuffix =
                                         class="mb-3"
                                         v-if="updateState.latestDate"
                                     >
-                                        发布于 {{ updateState.latestDate }}
+                                        发布于 {{ convertDatetime(updateState.latestDate || '') }}
                                     </div>
                                     <HijackedATag as-external-link>
                                         <div
