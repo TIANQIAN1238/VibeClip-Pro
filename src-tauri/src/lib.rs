@@ -1,12 +1,17 @@
 mod tray;
 
-use enigo::{Direction, Enigo, Key, Keyboard, Settings};
-use tauri::{AppHandle, Manager, Runtime};
+use enigo::{Direction, Enigo, Key, Keyboard, Mouse, Settings};
+use tauri::{AppHandle, Manager, Monitor, PhysicalPosition, Runtime};
 use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_store::StoreExt;
 use window_vibrancy::{apply_acrylic, apply_mica};
 
 use serde_json::json;
+
+// 定义默认的Panel窗口大小
+const DEFAULT_PANEL_WIDTH: i32 = 400;
+const DEFAULT_PANEL_HEIGHT: i32 = 476;
 
 #[tauri::command]
 async fn input_text(text: &str) -> Result<(), String> {
@@ -27,7 +32,6 @@ async fn simulate_paste() -> Result<(), String> {
 #[tauri::command]
 async fn get_key_from_store<R: Runtime>(
     app: tauri::AppHandle<R>,
-    _window: tauri::Window<R>,
     key: String,
     fallback: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
@@ -49,7 +53,6 @@ async fn get_key_from_store<R: Runtime>(
 #[tauri::command]
 async fn set_key_to_store<R: Runtime>(
     app: tauri::AppHandle<R>,
-    _window: tauri::Window<R>,
     key: String,
     value: serde_json::Value,
 ) -> Result<(), String> {
@@ -66,12 +69,156 @@ async fn set_key_to_store<R: Runtime>(
 fn show_window(app: &AppHandle) {
     let windows = app.webview_windows();
 
-    windows
-        .values()
-        .next()
-        .expect("Sorry, no window found")
-        .set_focus()
-        .expect("Can't Bring Window to Focus");
+    let window = windows.values().next().expect("Sorry, no window found");
+    window.show().expect("Can't Show Window");
+    window.set_focus().expect("Can't Bring Window to Focus");
+}
+
+fn show_window_with_name(app: &AppHandle<tauri::Wry>, name: &str) {
+    let windows = app.webview_windows();
+
+    let window = windows.get(name).expect("Sorry, no window found");
+    window.show().expect("Can't Show Window");
+    window.set_focus().expect("Can't Bring Window to Focus");
+}
+
+fn show_window_with_name_and_position(app: &AppHandle<tauri::Wry>, pos: PhysicalPosition<i32>) {
+    println!("show_window_with_name_and_position: triggered");
+    let windows = app.webview_windows();
+    let window = match windows.get("context") {
+        Some(win) => win.clone(),
+        None => return,
+    };
+
+    println!("show_window_with_name_and_position: window got");
+    let monitors = match window.available_monitors() {
+        Ok(m) => m,
+        Err(_) => {
+            let _ = window.center();
+            let _ = window.show();
+            let _ = window.set_focus();
+            return;
+        }
+    };
+
+    if monitors.is_empty() {
+        let _ = window.center();
+        let _ = window.show();
+        let _ = window.set_focus();
+        return;
+    }
+
+    println!("show_window_with_name_and_position: monitor got");
+    tauri::async_runtime::spawn(async move {
+        let panel_width = DEFAULT_PANEL_WIDTH;
+        let panel_height = DEFAULT_PANEL_HEIGHT;
+
+        let mut current_monitor: Option<Monitor> = None;
+        for monitor in monitors {
+            let size = monitor.size();
+            let position: &PhysicalPosition<i32> = monitor.position();
+
+            let monitor_x = position.x;
+            let monitor_y = position.y;
+            let monitor_width = size.width as i32;
+            let monitor_height = size.height as i32;
+
+            if pos.x >= monitor_x
+                && pos.x < monitor_x + monitor_width
+                && pos.y >= monitor_y
+                && pos.y < monitor_y + monitor_height
+            {
+                current_monitor = Some(monitor);
+                break;
+            }
+        }
+
+        if let Some(monitor) = current_monitor {
+            let size = monitor.size();
+            let position = monitor.position();
+
+            let monitor_x = position.x;
+            let monitor_y = position.y;
+            let monitor_width = size.width as i32;
+            let monitor_height = size.height as i32;
+
+            let mut x = pos.x;
+            let mut y = pos.y;
+
+            if x + panel_width > monitor_x + monitor_width {
+                x = x - panel_width;
+            }
+
+            if y + panel_height > monitor_y + monitor_height {
+                y = y - panel_height;
+            }
+
+            x = std::cmp::max(
+                monitor_x,
+                std::cmp::min(x, monitor_x + monitor_width - panel_width),
+            );
+            y = std::cmp::max(
+                monitor_y,
+                std::cmp::min(y, monitor_y + monitor_height - panel_height),
+            );
+
+            let adjusted_pos = PhysicalPosition::new(x, y);
+
+            let _ = window.set_position(adjusted_pos);
+            let _ = window.show();
+            let _ = window.set_always_on_top(true);
+            let _ = window.set_focus();
+            return;
+        }
+
+        println!("show_window_with_name_and_position: position got");
+        let _ = window.set_position(pos);
+        let _ = window.show();
+        let _ = window.set_always_on_top(true);
+        let _ = window.set_focus();
+
+        println!("show_window_with_name_and_position: show");
+    });
+}
+
+#[tauri::command]
+async fn reregister_panel_shortcut(app: tauri::AppHandle<tauri::Wry>) -> Result<(), String> {
+    let _ = app.global_shortcut().unregister_all();
+    let mut shortcut_string = "CmdOrControl+Shift+V".to_string();
+    let stores = app.store("store.bin");
+    let _store = match stores {
+        Ok(store) => {
+            if let Some(value) = store.get("globalShortcut") {
+                if let Some(s) = value.as_str() {
+                    shortcut_string = s.to_string();
+                }
+            }
+        }
+        Err(_) => return Err("Failed to read config".to_string()),
+    };
+    let shortcut = match shortcut_string.parse::<Shortcut>() {
+        Ok(s) => s,
+        Err(_) => return Err("Failed to parse shortcut".to_string()),
+    };
+
+    let _ = app
+        .global_shortcut()
+        .on_shortcut(shortcut, move |app_handle, _event, _shortcut| {
+            println!("Global shortcut triggered");
+            let enigo = Enigo::new(&Settings::default());
+            let mut location = PhysicalPosition::new(0, 0);
+
+            // 获取鼠标位置
+            if let Ok(enigo) = enigo {
+                if let Ok(pos) = enigo.location() {
+                    location = PhysicalPosition::new(pos.0 as i32, pos.1 as i32);
+                }
+            }
+
+            show_window_with_name_and_position(app_handle, location);
+        });
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -102,6 +249,17 @@ pub fn run() {
 
             let handle = app.handle();
             let _ = tray::create_tray(handle);
+
+            let args: Vec<String> = std::env::args().collect();
+            if !args.contains(&"--autostart".to_string()) && !args.contains(&"--silent".to_string())
+            {
+                show_window_with_name(app.handle(), "main");
+            }
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = reregister_panel_shortcut(app_handle).await;
+                println!("registered global shortcut");
+            });
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -109,7 +267,8 @@ pub fn run() {
             input_text,
             simulate_paste,
             get_key_from_store,
-            set_key_to_store
+            set_key_to_store,
+            reregister_panel_shortcut
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

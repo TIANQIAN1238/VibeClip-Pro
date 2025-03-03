@@ -19,6 +19,7 @@
         "decorations": false,
         "resizable": false,
         "transparent": true,
+        "visible": false,
         "url": "/"
       },
       {
