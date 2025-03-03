@@ -83,14 +83,12 @@ fn show_window_with_name(app: &AppHandle<tauri::Wry>, name: &str) {
 }
 
 fn show_window_with_name_and_position(app: &AppHandle<tauri::Wry>, pos: PhysicalPosition<i32>) {
-    println!("show_window_with_name_and_position: triggered");
     let windows = app.webview_windows();
     let window = match windows.get("context") {
         Some(win) => win.clone(),
         None => return,
     };
 
-    println!("show_window_with_name_and_position: window got");
     let monitors = match window.available_monitors() {
         Ok(m) => m,
         Err(_) => {
@@ -108,7 +106,6 @@ fn show_window_with_name_and_position(app: &AppHandle<tauri::Wry>, pos: Physical
         return;
     }
 
-    println!("show_window_with_name_and_position: monitor got");
     tauri::async_runtime::spawn(async move {
         let panel_width = DEFAULT_PANEL_WIDTH;
         let panel_height = DEFAULT_PANEL_HEIGHT;
@@ -171,13 +168,11 @@ fn show_window_with_name_and_position(app: &AppHandle<tauri::Wry>, pos: Physical
             return;
         }
 
-        println!("show_window_with_name_and_position: position got");
         let _ = window.set_position(pos);
         let _ = window.show();
         let _ = window.set_always_on_top(true);
         let _ = window.set_focus();
 
-        println!("show_window_with_name_and_position: show");
     });
 }
 
@@ -204,7 +199,6 @@ async fn reregister_panel_shortcut(app: tauri::AppHandle<tauri::Wry>) -> Result<
     let _ = app
         .global_shortcut()
         .on_shortcut(shortcut, move |app_handle, _event, _shortcut| {
-            println!("Global shortcut triggered");
             let enigo = Enigo::new(&Settings::default());
             let mut location = PhysicalPosition::new(0, 0);
 
@@ -258,7 +252,6 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let _ = reregister_panel_shortcut(app_handle).await;
-                println!("registered global shortcut");
             });
             Ok(())
         })
