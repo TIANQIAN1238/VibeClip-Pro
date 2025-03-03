@@ -66,14 +66,6 @@ async fn set_key_to_store<R: Runtime>(
     Ok(())
 }
 
-fn show_window(app: &AppHandle) {
-    let windows = app.webview_windows();
-
-    let window = windows.values().next().expect("Sorry, no window found");
-    window.show().expect("Can't Show Window");
-    window.set_focus().expect("Can't Bring Window to Focus");
-}
-
 fn show_window_with_name(app: &AppHandle<tauri::Wry>, name: &str) {
     let windows = app.webview_windows();
 
