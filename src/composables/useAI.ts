@@ -6,6 +6,13 @@ import { z } from 'zod';
 import { tavily, type TavilyClient } from '@tavily/core';
 import { fetch } from '@tauri-apps/plugin-http';
 
+declare global {
+    interface Window {
+        fetchCORS: typeof fetch;
+        fetchNative: typeof fetch;
+    }
+}
+
 export class StopToken {
     _stop = false;
     _fns: (() => void)[] = [];
@@ -206,6 +213,11 @@ export function useAI(config: Ref<Config>) {
             name: 'OpenAICompatiable',
             apiKey: config.value.ai.apiKey,
             baseURL: config.value.ai.endpoint,
+            fetch: (...args) => {
+                return config.value.ai.corsCompatiable
+                ? window.fetchCORS(...args)
+                : window.fetchNative(...args)
+            }
         });
     };
 
@@ -274,6 +286,11 @@ export function useAIChat(config: Ref<Config>) {
             name: 'OpenAICompatiable',
             apiKey: config.value.ai.apiKey,
             baseURL: config.value.ai.endpoint,
+            fetch: (...args) => {
+                return config.value.ai.corsCompatiable
+                ? window.fetchCORS(...args)
+                : window.fetchNative(...args)
+            }
         });
     };
 

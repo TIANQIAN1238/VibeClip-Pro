@@ -418,6 +418,17 @@ const updateSuffix =
                         <n-list-item>
                             <template #suffix>
                                 <n-checkbox
+                                    v-model:checked="config.ai.corsCompatiable"
+                                ></n-checkbox>
+                            </template>
+                            <n-thing
+                                title="兼容性模式"
+                                description="对于NIM等具有CORS限制模型服务，可使用兼容性模式。注意，此模式将会减慢回应速度。"
+                            />
+                        </n-list-item>
+                        <n-list-item>
+                            <template #suffix>
+                                <n-checkbox
                                     v-model:checked="config.ai.enableToJson"
                                 ></n-checkbox>
                             </template>
