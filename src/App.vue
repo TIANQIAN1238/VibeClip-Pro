@@ -27,7 +27,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <n-config-provider :theme="usingTheme" class="size-full !bg-transparent">
+    <n-config-provider :theme="usingTheme" :class="['size-full !bg-transparent', isSystemDarkTheme ? 'dark' : '']">
         <RouterView />
     </n-config-provider>
 </template>

@@ -210,12 +210,12 @@ onBeforeUnmount(() => {
     display: inline-block;
     transition: 0.3s;
     background: #b9b9b91a;
-    color: rgb(0, 0, 0);
+    color: black;
     border: 2px solid rgba(128, 128, 128, 0.116);
 }
 .dark .keyBox {
     background: #383838;
-    color: white;
+    color: white !important;
     border: 2px solid rgba(128, 128, 128, 0.116);
 }
 .keyBox:hover {
