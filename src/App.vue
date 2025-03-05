@@ -4,32 +4,40 @@ import { darkTheme } from 'naive-ui';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { BuiltInGlobalTheme } from 'naive-ui/es/themes/interface';
 
-const usingTheme = ref<BuiltInGlobalTheme|null>(null);
+const usingTheme = ref<BuiltInGlobalTheme | null>(null);
 
-const isSystemDarkTheme =
-    () => !!window.matchMedia('(prefers-color-scheme: dark)')?.matches;
+const isSystemDarkTheme = () =>
+    !!window.matchMedia('(prefers-color-scheme: dark)')?.matches;
 const isSystemDarkThemeRef = ref(false);
 
 const updateTheme = () => {
-    console.log('updateTheme', isSystemDarkTheme()?'dark':'light');
+    console.log('updateTheme', isSystemDarkTheme() ? 'dark' : 'light');
     usingTheme.value = isSystemDarkTheme() ? darkTheme : null;
     isSystemDarkThemeRef.value = isSystemDarkTheme();
 };
 
 onMounted(() => {
     updateTheme();
-    window.matchMedia('(prefers-color-scheme: dark)')
+    window
+        .matchMedia('(prefers-color-scheme: dark)')
         .addEventListener('change', updateTheme);
 });
 
 onBeforeUnmount(() => {
-    window.matchMedia('(prefers-color-scheme: dark)')
+    window
+        .matchMedia('(prefers-color-scheme: dark)')
         .removeEventListener('change', updateTheme);
 });
 </script>
 
 <template>
-    <n-config-provider :theme="usingTheme" :class="['size-full bg-neutral-800', isSystemDarkThemeRef ? 'dark' : '']">
+    <n-config-provider
+        :theme="usingTheme"
+        :class="[
+            'size-full bg-neutral-800',
+            isSystemDarkThemeRef ? 'dark' : '',
+        ]"
+    >
         <RouterView />
     </n-config-provider>
 </template>
