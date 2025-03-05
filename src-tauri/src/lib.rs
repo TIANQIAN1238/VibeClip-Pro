@@ -8,7 +8,6 @@ use tauri_plugin_store::StoreExt;
 
 use serde_json::json;
 
-// 定义默认的Panel窗口大小
 const DEFAULT_PANEL_WIDTH: i32 = 400;
 const DEFAULT_PANEL_HEIGHT: i32 = 476;
 
@@ -98,9 +97,6 @@ fn show_window_with_name_and_position(app: &AppHandle<tauri::Wry>, pos: Physical
     }
 
     tauri::async_runtime::spawn(async move {
-        let panel_width = DEFAULT_PANEL_WIDTH;
-        let panel_height = DEFAULT_PANEL_HEIGHT;
-
         let mut current_monitor: Option<Monitor> = None;
         for monitor in monitors {
             let size = monitor.size();
@@ -122,6 +118,10 @@ fn show_window_with_name_and_position(app: &AppHandle<tauri::Wry>, pos: Physical
         }
 
         if let Some(monitor) = current_monitor {
+            let scale = monitor.scale_factor();
+            let panel_width = (DEFAULT_PANEL_WIDTH as f64 * scale) as i32;
+            let panel_height = (DEFAULT_PANEL_HEIGHT as f64 * scale) as i32;
+            
             let size = monitor.size();
             let position = monitor.position();
 
@@ -193,7 +193,6 @@ async fn reregister_panel_shortcut(app: tauri::AppHandle<tauri::Wry>) -> Result<
             let enigo = Enigo::new(&Settings::default());
             let mut location = PhysicalPosition::new(0, 0);
 
-            // 获取鼠标位置
             if let Ok(enigo) = enigo {
                 if let Ok(pos) = enigo.location() {
                     location = PhysicalPosition::new(pos.0 as i32, pos.1 as i32);
