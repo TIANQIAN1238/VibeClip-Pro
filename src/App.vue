@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
 import { darkTheme } from 'naive-ui';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { BuiltInGlobalTheme } from 'naive-ui/es/themes/interface';
 
 const usingTheme = ref<BuiltInGlobalTheme|null>(null);
@@ -29,7 +29,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <n-config-provider :theme="usingTheme" :class="['size-full bg-neutral-800 ', isSystemDarkThemeRef ? 'dark' : '']">
+    <n-config-provider :theme="usingTheme" :class="['size-full bg-neutral-800', isSystemDarkThemeRef ? 'dark' : '']">
         <RouterView />
     </n-config-provider>
 </template>
