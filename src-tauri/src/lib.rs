@@ -5,7 +5,6 @@ use tauri::{AppHandle, Manager, Monitor, PhysicalPosition, Runtime};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_store::StoreExt;
-use window_vibrancy::{apply_acrylic, apply_mica};
 
 use serde_json::json;
 
@@ -224,15 +223,6 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
-            let mainwindow = app.get_webview_window("main").unwrap();
-            let panelwindow = app.get_webview_window("context").unwrap();
-            apply_mica(mainwindow.clone(), Some(true))
-                .or_else(|_| apply_acrylic(mainwindow, Some((18, 18, 18, 125))))
-                .expect("unsupported");
-            apply_mica(panelwindow.clone(), Some(true))
-                .or_else(|_| apply_acrylic(panelwindow, Some((18, 18, 18, 125))))
-                .expect("unsupported");
-
             let handle = app.handle();
             let _ = tray::create_tray(handle);
 

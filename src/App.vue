@@ -6,12 +6,14 @@ import type { BuiltInGlobalTheme } from 'naive-ui/es/themes/interface';
 
 const usingTheme = ref<BuiltInGlobalTheme|null>(null);
 
-const isSystemDarkTheme = computed(
-    () => !!window.matchMedia('(prefers-color-scheme: dark)')?.matches
-);
+const isSystemDarkTheme =
+    () => !!window.matchMedia('(prefers-color-scheme: dark)')?.matches;
+const isSystemDarkThemeRef = ref(false);
 
 const updateTheme = () => {
-    usingTheme.value = isSystemDarkTheme.value ? darkTheme : null;
+    console.log('updateTheme', isSystemDarkTheme()?'dark':'light');
+    usingTheme.value = isSystemDarkTheme() ? darkTheme : null;
+    isSystemDarkThemeRef.value = isSystemDarkTheme();
 };
 
 onMounted(() => {
@@ -27,7 +29,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <n-config-provider :theme="usingTheme" :class="['size-full !bg-transparent', isSystemDarkTheme ? 'dark' : '']">
+    <n-config-provider :theme="usingTheme" :class="['size-full bg-neutral-800 ', isSystemDarkThemeRef ? 'dark' : '']">
         <RouterView />
     </n-config-provider>
 </template>
