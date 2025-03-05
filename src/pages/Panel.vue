@@ -83,7 +83,7 @@ const savable = computed(() => {
 });
 
 const handlePageChange = (page: PanelPage) => {
-    if (['askai', 'snippets-ai'].includes(page)) {
+    if (page === 'snippets-ai') {
         useMarkdownRender.value = true;
     } else {
         useMarkdownRender.value = false;
@@ -599,9 +599,9 @@ function clearTask() {
 async function createTask(system: string, prompt: string) {
     clearTask();
     stopToken.value = new StopToken();
-    try{
-        return await generateText(system, prompt, stopToken.value)
-    }catch(e){
+    try {
+        return await generateText(system, prompt, stopToken.value);
+    } catch (e) {
         console.error(e);
         toast.value.sendToast('AI 生成时遇到问题');
     }
@@ -619,7 +619,7 @@ const startAskAI = (presetPrompt?: string, text?: string) => {
     const prompt = presetPrompt ? presetPrompt : userPrompt.value;
     userPrompt.value = prompt;
     return createTask(
-        '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。',
+        '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。不要使用markdown。',
         `用户指令:\n${prompt}\n\n剪贴板内容:\n${cliptext}\n\n输出:\n`
     );
 };
