@@ -77,7 +77,7 @@ const selectedUrl = ref('');
 
 // 可保存状态
 const savable = computed(() => {
-    return ['edit', 'tojson', 'askai', 'aicreate', 'snippets-ai'].includes(
+    return ['edit', 'tojson', 'askai', 'snippets-ai'].includes(
         page.value
     );
 });
@@ -195,19 +195,9 @@ const menus = computed<Menu[]>((): Menu[] => {
             hasContent.value && config.value.ai.enableAskAI
                 ? {
                       key: 'askai',
-                      label: '询问AI...',
-                      description: '让AI帮忙处理',
+                      label: '修改或处理...',
+                      description: '让AI帮忙处理数据或询问有关问题',
                       action: () => gotoPage('askai', handlePageChange),
-                      isSub: true,
-                      icon: SolarLightbulbBoltLineDuotone,
-                  }
-                : null,
-            config.value.ai.enableAICreation
-                ? {
-                      key: 'aicreate',
-                      label: '使用AI创作...',
-                      description: '让AI帮忙创作',
-                      action: () => gotoPage('aicreate', handlePageChange),
                       isSub: true,
                       icon: SolarPen2LineDuotone,
                   }
@@ -318,8 +308,6 @@ function handleAIPageEnter() {
             startConvertToJson();
         } else if (page.value === 'askai') {
             startAskAI();
-        } else if (page.value === 'aicreate') {
-            startAICreate();
         }
     }
 }
@@ -335,7 +323,7 @@ watch(page, newPage => {
         const selector =
             newPage === 'edit'
                 ? '.edit-textarea'
-                : ['tojson', 'askai', 'aicreate'].includes(newPage)
+                : ['tojson', 'askai'].includes(newPage)
                 ? '.prompt-input'
                 : null;
         const focusInput = selector
@@ -488,7 +476,7 @@ function listenKeydown(e: KeyboardEvent) {
         }
     } else if (
         e.key === 'Enter' &&
-        ['tojson', 'askai', 'aicreate'].includes(page.value)
+        ['tojson', 'askai'].includes(page.value)
     ) {
         handleAIPageEnter();
         e.preventDefault();
@@ -619,16 +607,10 @@ const startAskAI = (presetPrompt?: string, text?: string) => {
     const prompt = presetPrompt ? presetPrompt : userPrompt.value;
     userPrompt.value = prompt;
     return createTask(
-        '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。不要使用markdown。',
+        '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容进行修改、处理、续写或回答问题。不要使用markdown。',
         `用户指令:\n${prompt}\n\n剪贴板内容:\n${cliptext}\n\n输出:\n`
     );
 };
-
-const startAICreate = () =>
-    createTask(
-        '你的任务是基于用户的指令继续创作内容。使用用户的指令和剪贴板内容进行创作。不要使用markdown。',
-        `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
-    );
 
 // 保存操作处理
 function doSaveAction() {
@@ -640,7 +622,6 @@ function doSaveAction() {
             break;
         case 'tojson':
         case 'askai':
-        case 'aicreate':
         case 'snippets-ai':
             update(generatedContent.value);
             gotoPage('index', handlePageChange);
@@ -819,7 +800,6 @@ onBeforeUnmount(() => {
             v-else-if="
                 page === 'tojson' ||
                 page === 'askai' ||
-                page === 'aicreate' ||
                 page === 'snippets-ai'
             "
             class="flex-1 shrink-0 size-full flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
@@ -862,9 +842,7 @@ onBeforeUnmount(() => {
                 @click="
                     page === 'tojson'
                         ? startConvertToJson()
-                        : page === 'askai'
-                        ? startAskAI()
-                        : startAICreate()
+                        : startAskAI()
                 "
             >
                 生成
