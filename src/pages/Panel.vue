@@ -83,7 +83,7 @@ const savable = computed(() => {
 });
 
 const handlePageChange = (page: PanelPage) => {
-    if (['askai', 'aicreate', 'snippets-ai'].includes(page)) {
+    if (['askai', 'snippets-ai'].includes(page)) {
         useMarkdownRender.value = true;
     } else {
         useMarkdownRender.value = false;
@@ -626,7 +626,7 @@ const startAskAI = (presetPrompt?: string, text?: string) => {
 
 const startAICreate = () =>
     createTask(
-        '你的任务是基于用户的指令继续创作内容。使用用户的指令和剪贴板内容进行创作。',
+        '你的任务是基于用户的指令继续创作内容。使用用户的指令和剪贴板内容进行创作。不要使用markdown。',
         `用户指令:\n${userPrompt.value}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
     );
 
