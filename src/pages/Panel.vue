@@ -69,6 +69,7 @@ const currentSnippet = ref({
     prompt: '',
     system: '',
     markdown: true,
+    advanced: false,
 });
 
 const foundUrls = ref<string[]>([]);
@@ -76,9 +77,7 @@ const selectedUrl = ref('');
 
 // 可保存状态
 const savable = computed(() => {
-    return ['edit', 'tojson', 'askai', 'snippets-ai'].includes(
-        page.value
-    );
+    return ['edit', 'tojson', 'askai', 'snippets-ai'].includes(page.value);
 });
 
 const handlePageChange = (page: PanelPage) => {
@@ -278,12 +277,15 @@ function runSnippet(snippet: Snippet) {
     currentSnippet.value = {
         ...snippet,
         markdown: snippet.markdown ?? false,
+        advanced: snippet.advanced ?? false,
         isNew: false,
     };
     useMarkdownRender.value = snippet.markdown ?? false;
     createTask(
-        snippet.system,
-        `用户指令:\n${snippet.prompt}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
+        snippet.system.replace(/{{\s*clipboard\s*}}/g, content.value),
+        snippet.advanced
+            ? snippet.prompt.replace(/{{\s*clipboard\s*}}/g, content.value)
+            : `用户指令:\n${snippet.prompt}\n\n剪贴板内容:\n${content.value}\n\n输出:\n`
     );
 }
 
@@ -473,10 +475,7 @@ function listenKeydown(e: KeyboardEvent) {
                 executeLinkMenu(res.action);
             }
         }
-    } else if (
-        e.key === 'Enter' &&
-        ['tojson', 'askai'].includes(page.value)
-    ) {
+    } else if (e.key === 'Enter' && ['tojson', 'askai'].includes(page.value)) {
         handleAIPageEnter();
         e.preventDefault();
     }
@@ -492,11 +491,13 @@ function gotoCreateSnippet() {
     gotoPage('snippets-edit', handlePageChange);
     currentSnippet.value.isNew = true;
     currentSnippet.value.name = `AI片段 #${Math.round(Math.random() * 100)}`;
-    currentSnippet.value.prompt = '';
+    currentSnippet.value.prompt =
+        '剪贴板内容:\n{{clipboard}}\n\n用户指令:\n请把内容...';
     currentSnippet.value.system =
         '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。';
     currentSnippet.value.id = '';
     currentSnippet.value.markdown = true;
+    currentSnippet.value.advanced = true;
 }
 
 function gotoEditSnippet(snippet: Snippet) {
@@ -507,6 +508,7 @@ function gotoEditSnippet(snippet: Snippet) {
     currentSnippet.value.system = snippet.system;
     currentSnippet.value.id = snippet.id;
     currentSnippet.value.markdown = snippet.markdown ?? false;
+    currentSnippet.value.advanced = snippet.advanced ?? false;
 }
 
 const snippetFormOK = computed(() => {
@@ -535,6 +537,7 @@ function saveSnippet() {
             prompt: currentSnippet.value.prompt,
             system: currentSnippet.value.system,
             markdown: currentSnippet.value.markdown,
+            advanced: currentSnippet.value.advanced,
         });
         currentSnippet.value.isNew = false;
     } else {
@@ -548,10 +551,16 @@ function saveSnippet() {
                 prompt: currentSnippet.value.prompt,
                 system: currentSnippet.value.system,
                 markdown: currentSnippet.value.markdown,
+                advanced: currentSnippet.value.advanced,
             };
         }
     }
     return saveConfig().then(() => toast.value.sendToast('保存片段成功'));
+}
+
+function upgradeSnippet(){
+    currentSnippet.value.advanced = true;
+    return saveSnippet();
 }
 
 function deleteSnippet() {
@@ -664,7 +673,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        class="flex flex-col size-full select-none bg-white/95 dark:bg-transparent dark:text-white"
+        class="panelroot flex flex-col size-full select-none bg-white/95 dark:bg-transparent dark:text-white"
         @mouseover="mouseInRange = true"
         @mouseleave="mouseInRange = false"
     >
@@ -797,9 +806,7 @@ onBeforeUnmount(() => {
         </div>
         <div
             v-else-if="
-                page === 'tojson' ||
-                page === 'askai' ||
-                page === 'snippets-ai'
+                page === 'tojson' || page === 'askai' || page === 'snippets-ai'
             "
             class="flex-1 shrink-0 size-full flex flex-col animate-fade-up animate-once animate-duration-500 animate-ease-out"
         >
@@ -838,11 +845,7 @@ onBeforeUnmount(() => {
                 strong
                 secondary
                 type="info"
-                @click="
-                    page === 'tojson'
-                        ? startConvertToJson()
-                        : startAskAI()
-                "
+                @click="page === 'tojson' ? startConvertToJson() : startAskAI()"
             >
                 生成
             </n-button>
@@ -947,6 +950,25 @@ onBeforeUnmount(() => {
                     placeholder="角色为User的提示词，通常用于描述任务"
                     v-model:value="currentSnippet.prompt"
                 ></n-input>
+            </div>
+            <div v-if="!currentSnippet.advanced">
+                <div class="flex flex-row justify-between">
+                    <div>使用新版提示词功能</div>
+                    <n-button
+                        size="small"
+                        type="primary"
+                        @click="upgradeSnippet"
+                        >升级</n-button
+                    >
+                </div>
+                <span class="opacity-50"
+                    >新版本提示词功能不再内置模板而是完全使用用户定义的内容，并且支持使用<span
+                        class="markdown-align"
+                        ><code v-pre>{{
+                            clipboard
+                        }}</code></span
+                    >作为剪贴板内容占位符。为了避免破坏原有提示词功能，需要手动确认升级。</span
+                >
             </div>
             <div class="flex flex-row justify-between">
                 <div>使用 Markdown 输出</div>
