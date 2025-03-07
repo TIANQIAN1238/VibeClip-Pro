@@ -3,9 +3,17 @@ import { webviewWindow } from '@tauri-apps/api';
 import { window as appWindow } from '@tauri-apps/api';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { exit } from '@tauri-apps/plugin-process';
-import { onBeforeUnmount, onMounted, ref, unref, watch, computed } from 'vue';
+import {
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    unref,
+    watch,
+    computed,
+    toRaw,
+} from 'vue';
 import KeySelector from '@/components/KeySelector.vue';
-import { useConfig } from '@/composables/useConfig';
+import { type Snippet, useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
 import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-minimize-16';
 import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
@@ -20,6 +28,13 @@ import { useUpdater } from '@/composables/useUpdater';
 import { asString, convertDatetime, debounce } from '@/libs/utils';
 import { marked } from 'marked';
 import HijackedATag from '@/components/HijackedATag.vue';
+import MdiPlus from '~icons/mdi/plus';
+import MdiPencil from '~icons/mdi/pencil';
+import MdiDelete from '~icons/mdi/delete';
+import MdiCheck from '~icons/mdi/check';
+import MdiFileDocumentEditOutline from '~icons/mdi/file-document-edit-outline';
+import MdiKeyboardBackspace from '~icons/mdi/keyboard-backspace';
+import Toast from '@/components/Toast.vue';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
@@ -28,6 +43,18 @@ const mainview = new webviewWindow.WebviewWindow('main', {
 });
 
 const closeConfirm = ref(false);
+const toast = ref();
+
+const snippetPage = ref<'list' | 'edit'>('list');
+const currentSnippet = ref<Snippet & { isNew: boolean }>({
+    id: '',
+    name: '',
+    prompt: '',
+    system: '',
+    markdown: true,
+    isNew: true,
+    advanced: false,
+});
 
 const debouncedSaveConfig = debounce(saveConfig, 500);
 
@@ -111,6 +138,74 @@ function openCloseConfirm() {
 
 const updateSuffix =
     '\n\n------\n\n若下载失败请前往<a href="https://github.com/ckylinmc/pasteme/releases">发布页面</a>手动下载更新';
+
+function createSnippet() {
+    currentSnippet.value = {
+        id: `n-${Math.random()}`,
+        name: `AI片段 #${Math.round(Math.random() * 100)}`,
+        prompt: '剪贴板内容:\n{{clipboard}}\n\n用户指令:\n请把内容...',
+        system: '你的任务是分析用户的剪贴板数据。使用用户的指令和剪贴板内容回答问题。如果没有明确要求，不需要重复收到的剪贴板内容，直接进行回答。',
+        markdown: true,
+        advanced: true,
+        isNew: true,
+    };
+    snippetPage.value = 'edit';
+}
+
+function editSnippet(snippet: Snippet) {
+    currentSnippet.value = {
+        ...snippet,
+        isNew: false,
+        markdown: snippet.markdown ?? true,
+        advanced: snippet.advanced ?? false,
+    };
+    snippetPage.value = 'edit';
+}
+
+function saveSnippet() {
+    if (
+        currentSnippet.value.system === '' ||
+        currentSnippet.value.prompt === '' ||
+        currentSnippet.value.name === ''
+    ) {
+        toast.value.sendToast('请填写完整信息');
+        return;
+    }
+    if (currentSnippet.value.isNew) {
+        const rawclone = JSON.parse(
+            JSON.stringify(toRaw(unref(currentSnippet.value)))
+        );
+        rawclone.isNew = undefined;
+        config.value.snippets.push(rawclone);
+        toast.value.sendToast('创建片段成功');
+    } else {
+        const index = config.value.snippets.findIndex(
+            s => s.id === currentSnippet.value.id
+        );
+        if (index >= 0) {
+            config.value.snippets[index] = currentSnippet.value;
+        }
+        toast.value.sendToast('片段修改已保存');
+    }
+    currentSnippet.value.isNew = false;
+}
+
+function deleteSnippet(snippet: Snippet) {
+    config.value.snippets = config.value.snippets.filter(
+        s => s.id !== snippet.id
+    );
+    snippetPage.value = 'list';
+    toast.value.sendToast('片段已删除');
+}
+
+function backToSnippetList() {
+    snippetPage.value = 'list';
+}
+
+function upgradeSnippet() {
+    currentSnippet.value.advanced = true;
+    saveSnippet();
+}
 </script>
 
 <template>
@@ -142,7 +237,7 @@ const updateSuffix =
             <n-tabs type="line" animated placement="left" class="size-full">
                 <n-tab-pane name="welcome" tab="欢迎使用">
                     <n-list
-                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar"
+                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
                     >
                         <n-list-item>
                             <n-thing title="这是什么？">
@@ -197,7 +292,7 @@ const updateSuffix =
                 </n-tab-pane>
                 <n-tab-pane name="global" tab="全局设置">
                     <n-list
-                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar"
+                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
                     >
                         <n-list-item>
                             <template #suffix>
@@ -295,7 +390,7 @@ const updateSuffix =
                 </n-tab-pane>
                 <n-tab-pane name="ai" tab="AI 设置">
                     <n-list
-                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar"
+                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
                     >
                         <n-list-item>
                             <template #suffix>
@@ -315,6 +410,7 @@ const updateSuffix =
                                         v-model:value="config.ai.apiKey"
                                         type="password"
                                         placeholder="API Key"
+                                        show-password-on="click"
                                     />
                                 </div>
                             </template>
@@ -391,19 +487,8 @@ const updateSuffix =
                                 ></n-checkbox>
                             </template>
                             <n-thing
-                                title="启用咨询 AI 功能"
-                                description="启用基于剪贴板向 AI 提问功能"
-                            />
-                        </n-list-item>
-                        <n-list-item>
-                            <template #suffix>
-                                <n-checkbox
-                                    v-model:checked="config.ai.enableAICreation"
-                                ></n-checkbox>
-                            </template>
-                            <n-thing
-                                title="启用 AI 创作"
-                                description="启用预设的条件续写功能"
+                                title="启用修改或提问"
+                                description="基于剪贴板要求 AI 修改或提问"
                             />
                         </n-list-item>
                         <n-list-item>
@@ -414,7 +499,7 @@ const updateSuffix =
                             </template>
                             <n-thing
                                 title="启用快速 AI 片段"
-                                description="启用保存和复用自定义AI提示词片段"
+                                description="保存和复用自定义AI提示词片段"
                             />
                         </n-list-item>
                         <n-list-item>
@@ -425,7 +510,7 @@ const updateSuffix =
                             </template>
                             <n-thing
                                 title="启用 AI 聊天"
-                                description="启用基于剪贴板对话模式"
+                                description="基于剪贴板的对话模式"
                             />
                         </n-list-item>
                         <n-list-item>
@@ -476,6 +561,7 @@ const updateSuffix =
                                                                 .tavilyApiKey
                                                         "
                                                         type="password"
+                                                        show-password-on="click"
                                                         placeholder="Tavily API Key"
                                                     />
                                                 </div>
@@ -513,6 +599,7 @@ const updateSuffix =
                                                             config.ai.jinaApiKey
                                                         "
                                                         type="password"
+                                                        show-password-on="click"
                                                         placeholder="Jina API Key"
                                                     />
                                                 </div>
@@ -552,6 +639,7 @@ const updateSuffix =
                                                                 .imageApiKey
                                                         "
                                                         type="password"
+                                                        show-password-on="click"
                                                         placeholder="API Key"
                                                     />
                                                 </div>
@@ -600,9 +688,238 @@ const updateSuffix =
                         </n-list-item>
                     </n-list>
                 </n-tab-pane>
+                <n-tab-pane
+                    name="ai-snippets"
+                    tab="AI 快速片段"
+                    v-if="config.ai.enableAISnipets"
+                >
+                    <template v-if="snippetPage === 'list'">
+                        <n-thing
+                            title="快速片段"
+                            description="自定义的AI 快速片段"
+                            class="animate-fade-up animate-once animate-duration-500 animate-ease-out"
+                        >
+                            <template #header-extra>
+                                <div>
+                                    <n-button @click="createSnippet">
+                                        <template #icon>
+                                            <n-icon>
+                                                <MdiPlus />
+                                            </n-icon>
+                                        </template>
+                                        添加
+                                    </n-button>
+                                </div>
+                            </template>
+                        </n-thing>
+                        <div
+                            class="w-full h-[445px] p-2 animate-fade-up animate-once animate-duration-500 animate-ease-out"
+                        >
+                            <n-list
+                                class="!bg-transparent size-full overflow-y-auto thin-scrollbar"
+                            >
+                                <template v-for="snippet in config.snippets">
+                                    <n-list-item class="group">
+                                        <n-thing
+                                            :title="snippet.name"
+                                            :description="
+                                                snippet.prompt.slice(0, 80) +
+                                                (snippet.prompt.length > 80
+                                                    ? '...'
+                                                    : '')
+                                            "
+                                        >
+                                            <template #avatar>
+                                                <n-avatar>
+                                                    <n-icon>
+                                                        <MdiFileDocumentEditOutline />
+                                                    </n-icon>
+                                                </n-avatar>
+                                            </template>
+                                            <template #header-extra>
+                                                <div
+                                                    class="flex flex-row gap-1 opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <n-button
+                                                        size="small"
+                                                        @click="
+                                                            () =>
+                                                                editSnippet(
+                                                                    snippet
+                                                                )
+                                                        "
+                                                    >
+                                                        <template #icon>
+                                                            <n-icon>
+                                                                <MdiPencil />
+                                                            </n-icon>
+                                                        </template>
+                                                    </n-button>
+
+                                                    <n-popconfirm
+                                                        @positive-click="
+                                                            () =>
+                                                                deleteSnippet(
+                                                                    snippet
+                                                                )
+                                                        "
+                                                    >
+                                                        <template #trigger>
+                                                            <n-button
+                                                                size="small"
+                                                                ghost
+                                                                type="error"
+                                                            >
+                                                                <template #icon>
+                                                                    <n-icon>
+                                                                        <MdiDelete />
+                                                                    </n-icon>
+                                                                </template>
+                                                            </n-button>
+                                                        </template>
+                                                        确定删除吗？
+                                                    </n-popconfirm>
+                                                </div>
+                                            </template>
+                                        </n-thing>
+                                    </n-list-item>
+                                </template>
+                            </n-list>
+                        </div>
+                    </template>
+                    <template v-else-if="snippetPage === 'edit'">
+                        <n-thing
+                            :title="
+                                (currentSnippet.isNew ? '创建' : '修改') +
+                                'AI快速片段'
+                            "
+                            class="animate-fade-up animate-once animate-duration-500 animate-ease-out"
+                        >
+                            <template #avatar>
+                                <n-avatar>
+                                    <n-icon>
+                                        <MdiFileDocumentEditOutline />
+                                    </n-icon>
+                                </n-avatar>
+                            </template>
+                            <template #header-extra>
+                                <div class="flex flex-row gap-1">
+                                    <n-button
+                                        @click="() => backToSnippetList()"
+                                    >
+                                        <template #icon>
+                                            <n-icon>
+                                                <MdiKeyboardBackspace />
+                                            </n-icon>
+                                        </template>
+                                        返回
+                                    </n-button>
+                                    <n-button
+                                        v-if="!currentSnippet.isNew"
+                                        @click="
+                                            () => deleteSnippet(currentSnippet)
+                                        "
+                                        ghost
+                                        type="error"
+                                    >
+                                        <template #icon>
+                                            <n-icon>
+                                                <MdiDelete />
+                                            </n-icon>
+                                        </template>
+                                        删除
+                                    </n-button>
+                                    <n-button @click="() => saveSnippet()">
+                                        <template #icon>
+                                            <n-icon>
+                                                <MdiCheck />
+                                            </n-icon>
+                                        </template>
+                                        保存
+                                    </n-button>
+                                </div>
+                            </template>
+
+                            <div
+                                class="flex flex-col gap-2 thin-scrollbar overflow-y-auto h-[440px]"
+                            >
+                                <div>
+                                    <span>名称</span>
+                                    <n-input
+                                        placeholder="片段名称"
+                                        v-model:value="currentSnippet.name"
+                                    ></n-input>
+                                </div>
+                                <div>
+                                    <span>系统提示词</span>
+                                    <n-input
+                                        :autosize="{
+                                            minRows: 2,
+                                            maxRows: 10,
+                                        }"
+                                        type="textarea"
+                                        placeholder="角色为System的提示词，通常用于描述AI角色，可用{{clipboard}}表示剪贴板内容"
+                                        v-model:value="currentSnippet.system"
+                                    ></n-input>
+                                </div>
+                                <div>
+                                    <span>用户提示词</span>
+                                    <n-input
+                                        :autosize="{
+                                            minRows: 3,
+                                            maxRows: 15,
+                                        }"
+                                        type="textarea"
+                                        :placeholder="
+                                            '角色为User的提示词，通常用于描述任务' +
+                                            (currentSnippet.advanced
+                                                ? '，可用{{clipboard}}表示剪贴板内容'
+                                                : '')
+                                        "
+                                        v-model:value="currentSnippet.prompt"
+                                    ></n-input>
+                                </div>
+                                <div v-if="!currentSnippet.advanced">
+                                    <div class="flex flex-row justify-between">
+                                        <div>使用新版提示词功能</div>
+                                        <n-button
+                                            size="small"
+                                            type="primary"
+                                            @click="upgradeSnippet"
+                                            >升级</n-button
+                                        >
+                                    </div>
+                                    <span class="opacity-50"
+                                        >新版本提示词功能不再内置模板而是完全使用用户定义的内容，并且支持使用<span
+                                            class="markdown-align"
+                                            ><code v-pre>{{
+                                                clipboard
+                                            }}</code></span
+                                        >作为剪贴板内容占位符。为了避免破坏原有提示词功能，需要手动确认升级。</span
+                                    >
+                                </div>
+                                <div>
+                                    <div class="flex flex-row justify-between">
+                                        <div>使用 Markdown 输出</div>
+                                        <div>
+                                            <n-switch
+                                                v-model:value="
+                                                    currentSnippet.markdown
+                                                "
+                                            />
+                                        </div>
+                                    </div>
+                                    <span class="opacity-50"
+                                        >使用Markdown输出将会导致结果无法直接编辑。</span
+                                    >
+                                </div>
+                            </div>
+                        </n-thing>
+                    </template>
+                </n-tab-pane>
                 <n-tab-pane name="about" tab="关于">
                     <n-list
-                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar"
+                        class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
                     >
                         <n-list-item>
                             <n-thing
@@ -638,7 +955,12 @@ const updateSuffix =
                                         class="mb-3"
                                         v-if="updateState.latestDate"
                                     >
-                                        发布于 {{ convertDatetime(updateState.latestDate || '') }}
+                                        发布于
+                                        {{
+                                            convertDatetime(
+                                                updateState.latestDate || ''
+                                            )
+                                        }}
                                     </div>
                                     <HijackedATag as-external-link>
                                         <div
@@ -688,7 +1010,7 @@ const updateSuffix =
                 </n-tab-pane>
             </n-tabs>
         </div>
-        
+
         <n-modal
             v-model:show="closeConfirm"
             preset="dialog"
@@ -698,6 +1020,8 @@ const updateSuffix =
             negative-text="返回"
             @positive-click="closeApp"
         />
+
+        <Toast ref="toast" />
     </div>
 </template>
 
