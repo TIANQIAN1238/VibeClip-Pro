@@ -15,7 +15,6 @@ import { webviewWindow } from '@tauri-apps/api';
 import SolarTextFieldFocusLineDuotone from '~icons/solar/text-field-focus-line-duotone';
 import SolarTextBoldDuotone from '~icons/solar/text-bold-duotone';
 import SolarCodeLineDuotone from '~icons/solar/code-line-duotone';
-import SolarLightbulbBoltLineDuotone from '~icons/solar/lightbulb-bolt-line-duotone';
 import SolarPen2LineDuotone from '~icons/solar/pen-2-line-duotone';
 import SolarCalculatorLineDuotone from '~icons/solar/calculator-line-duotone';
 import SolarAltArrowLeftLineDuotone from '~icons/solar/alt-arrow-left-line-duotone';
@@ -1032,9 +1031,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
-html,
-body {
-    background: transparent !important;
+.panelroot {
     height: 476px;
     width: 400px;
     overflow: hidden;

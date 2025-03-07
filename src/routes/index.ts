@@ -1,12 +1,15 @@
+import Home from '../pages/Home.vue';
+import Panel from '../pages/Panel.vue';
+
 export const routes = [
     {
         path: '/panel',
         name: 'panel',
-        component: () => import('../pages/Panel.vue')
+        component: Panel
     },
     {
         path: '/',
         name: 'home',
-        component: () => import('../pages/Home.vue')
+        component: Home
     },
 ]
