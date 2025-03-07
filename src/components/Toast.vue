@@ -25,8 +25,14 @@ function sendToast(text: string, duration = 3000) {
 defineExpose({
     sendToast,
 });
-
 </script>
 <template>
-    <div :class="['absolute transition-all left-0 -bottom-10 w-full h-10 bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white p-2', currentTask.show?'bottom-0':'']">{{currentTask.text}}</div>
+    <div
+        :class="[
+            'absolute transition-all left-0 -bottom-12 h-12 w-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white',
+            currentTask.show ? 'bottom-0' : '',
+        ]"
+    >
+        <div class="size-full my-2 mx-2">{{ currentTask.text }}</div>
+    </div>
 </template>
