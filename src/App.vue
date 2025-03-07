@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
-import { darkTheme } from 'naive-ui';
+import { darkTheme, zhCN, dateZhCN } from 'naive-ui';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { BuiltInGlobalTheme } from 'naive-ui/es/themes/interface';
 
@@ -32,6 +32,8 @@ onBeforeUnmount(() => {
 
 <template>
     <n-config-provider
+        :locale="zhCN"
+        :date-locale="dateZhCN"
         :theme="usingTheme"
         :class="[
             'size-full bg-neutral-800',
