@@ -1,3 +1,5 @@
 export const AppInfo = {
-    version: "1.2.4",
+  version: "1.0.0",
 };
+
+export default AppInfo;
