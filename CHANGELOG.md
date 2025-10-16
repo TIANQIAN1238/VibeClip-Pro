@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.1 (2025-10-16)
+- Fix: removed deprecated set_transparent API (Tauri v2)
+- Fix: clean up build warnings and ensure compatibility
+- Improve: verified pnpm tauri dev/build runs successfully
+
 ## v1.2.0 · 2025-10-18
 
 ### 🛠 可用性修复

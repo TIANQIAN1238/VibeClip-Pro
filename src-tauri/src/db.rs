@@ -189,7 +189,7 @@ impl DbState {
 
     pub fn import_many(&self, items: Vec<ClipItem>) -> anyhow::Result<usize> {
         let mut conn = self.connect()?;
-        let mut tx = conn.transaction()?;
+        let tx = conn.transaction()?;
         let mut changes = 0usize;
         for item in items {
             tx.execute(
