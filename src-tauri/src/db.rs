@@ -6,7 +6,7 @@ use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, 
 use rusqlite::{named_params, params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Clone)]
 pub struct DbState {
@@ -99,12 +99,13 @@ impl DbState {
 
     pub fn get(&self, id: i64) -> anyhow::Result<Option<ClipItem>> {
         let conn = self.connect()?;
-        conn.query_row(
-            "SELECT id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips WHERE id = ?1",
-            params![id],
-            map_clip_row,
-        )
-        .optional()
+        Ok(conn
+            .query_row(
+                "SELECT id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips WHERE id = ?1",
+                params![id],
+                map_clip_row,
+            )
+            .optional()?)
     }
 
     pub fn insert(&self, payload: ClipPayload) -> anyhow::Result<ClipItem> {
@@ -187,7 +188,7 @@ impl DbState {
     }
 
     pub fn import_many(&self, items: Vec<ClipItem>) -> anyhow::Result<usize> {
-        let conn = self.connect()?;
+        let mut conn = self.connect()?;
         let mut tx = conn.transaction()?;
         let mut changes = 0usize;
         for item in items {
@@ -294,7 +295,9 @@ impl FromSql for ClipKind {
             1 => Ok(ClipKind::Text),
             2 => Ok(ClipKind::Image),
             3 => Ok(ClipKind::File),
-            other => Err(FromSqlError::Other(Box::new(anyhow::anyhow!(
+            other => Err(FromSqlError::Other(Box::<
+                dyn std::error::Error + Send + Sync,
+            >::from(anyhow::anyhow!(
                 "unknown clip kind value: {}",
                 other
             )))),

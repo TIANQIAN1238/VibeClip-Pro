@@ -213,7 +213,7 @@ async fn get_value_from_store<R: Runtime>(
         Ok(store) => store,
         Err(_) => return Ok(fallback),
     };
-    Ok(store.get(&key).cloned().unwrap_or(fallback))
+    Ok(store.get(&key).unwrap_or(fallback))
 }
 
 #[tauri::command]
