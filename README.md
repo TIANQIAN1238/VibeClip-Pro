@@ -30,8 +30,10 @@
 
 ## 功能亮点
 
-- **多类型历史存档**：自动保存文本、图像（Base64）与文件路径到 SQLite，支持快速搜索、置顶与收藏。
-- **AI 快捷面板**：内置翻译、摘要、润色、JSON 化及自定义 Prompt，兼容 OpenAI 标准接口，可一键写回剪贴板。
+- **连续剪贴板捕获**：全新后台监听器以 250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径到 SQLite，带时间戳与内容哈希去重。
+- **历史体验升级**：内置筛选（全部 / 文本 / 图像 / 文件）、关键字搜索、虚拟滚动与图片懒加载，长列表依旧顺滑。
+- **AI 右键菜单**：历史文本右键即可翻译 / 摘要 / 润色，结果支持复制或写回历史，未配置 API Key 时提示跳转设置。
+- **多入口导航**：全新侧栏整合「剪贴板 / 历史记录 / 收藏 / AI 工具 / 设置」，与窗口拖拽、托盘操作保持连贯。
 - **两种主题 / 自定义行距**：220 px 渐变侧栏 + 卡片化主界面，浅色与深色自动切换，字体、圆角、过渡统一调性。
 - **系统级控制**：默认全局快捷键 `Ctrl+Shift+V`，托盘可一键显示/隐藏、暂停监听或切换离线模式。
 - **导入导出**：JSON 备份/恢复历史，保留 `id`、`kind`、`timestamp` 信息，便于跨设备迁移。
@@ -96,16 +98,16 @@ pnpm tauri build
 
 生成的安装包位于 `src-tauri/target/release/bundle`。发布建议：
 
-1. 创建 `release/v1.0.1` 分支并推送：
+1. 创建 `release/v1.3.0` 分支并推送：
    ```bash
-   git checkout -b release/v1.0.1
-   git push -u origin release/v1.0.1
-   git tag -a v1.0.1 -m "VibeClip Pro v1.0.1"
-   git push origin v1.0.1
+   git checkout -b release/v1.3.0
+   git push -u origin release/v1.3.0
+   git tag -a v1.3.0 -m "VibeClip Pro v1.3.0"
+   git push origin v1.3.0
    ```
 2. 新建 GitHub Release：
-   - **Title**：`VibeClip Pro v1.0.1`
-   - **Highlights**：全新 UI、SQLite 历史、AI 快捷操作、托盘 & 全局热键。
+   - **Title**：`VibeClip Pro v1.3.0`
+   - **Highlights**：多类型剪贴板监听、AI 右键菜单、历史虚拟滚动与筛选等。
    - **Assets**：`*.msi`、`*.dmg`、`latest.json` 等。
    - **Screenshots**：可附上本文档中的 SVG 预览或自行截取界面。
 

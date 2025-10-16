@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
@@ -24,6 +25,7 @@ function normalizeClip(raw: any): ClipItem {
     id: raw.id,
     kind: kindNumber,
     content: String(raw.content ?? ""),
+    contentHash: raw.content_hash ?? raw.contentHash ?? "",
     preview: raw.preview ?? raw.extra ?? null,
     extra: raw.extra ?? null,
     isPinned: Boolean(raw.is_pinned ?? raw.isPinned),
@@ -38,6 +40,7 @@ function serializeClip(item: ClipItem) {
     id: item.id,
     kind: item.kind,
     content: item.content,
+    content_hash: item.contentHash,
     preview: item.preview ?? null,
     extra: item.extra ?? null,
     is_pinned: item.isPinned,
@@ -58,9 +61,14 @@ export const useHistoryStore = defineStore("history", () => {
   const aiBusy = ref(false);
   const initialized = ref(false);
   const lastError = ref<string | null>(null);
-  let fetchTimer: number | null = null;
+let fetchTimer: number | null = null;
+let clipboardUnlisten: UnlistenFn | null = null;
 
   const settings = useSettingsStore();
+
+  if (typeof window !== "undefined") {
+    void ensureClipboardListener();
+  }
 
   function raise(message: string, error: unknown): never {
     const reason =
@@ -128,6 +136,21 @@ export const useHistoryStore = defineStore("history", () => {
     } finally {
       isLoading.value = false;
       initialized.value = true;
+    }
+  }
+
+  async function ensureClipboardListener() {
+    if (clipboardUnlisten) {
+      return;
+    }
+    try {
+      clipboardUnlisten = await listen<ClipItem>("clipboard://captured", event => {
+        const clip = normalizeClip(event.payload);
+        items.value = [clip, ...items.value.filter(entry => entry.id !== clip.id)].slice(0, HISTORY_LIMIT);
+        latest.value = clip;
+      });
+    } catch (error) {
+      console.error("无法订阅剪贴板事件", error);
     }
   }
 
@@ -243,20 +266,26 @@ export const useHistoryStore = defineStore("history", () => {
     }
   }
 
-  async function runAiAction(request: AiActionRequest) {
+  async function runAiAction(request: AiActionRequest, options?: { persist?: boolean; copy?: boolean }) {
     if (settings.offlineMode) {
       throw new Error("离线模式下无法调用 AI 服务");
     }
     aiBusy.value = true;
     try {
       const response = await invoke<AiActionResponse>("perform_ai_action", { request });
-      await insertClip({
-        kind: ClipKindEnum.Text,
-        text: response.result,
-        preview: response.result.slice(0, 96),
-        extra: response.used_prompt,
-      });
-      await writeText(response.result);
+      const persist = options?.persist ?? true;
+      const copy = options?.copy ?? true;
+      if (persist) {
+        await insertClip({
+          kind: ClipKindEnum.Text,
+          text: response.result,
+          preview: response.result.slice(0, 96),
+          extra: response.used_prompt,
+        });
+      }
+      if (copy) {
+        await writeText(response.result);
+      }
       return response;
     } catch (error) {
       raise("AI 操作失败", error);
@@ -305,6 +334,7 @@ export const useHistoryStore = defineStore("history", () => {
     lastError,
     refresh,
     scheduleFetch,
+    ensureClipboardListener,
     setListening,
     syncStatus,
     insertClip,
