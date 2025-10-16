@@ -2,8 +2,8 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { open, save } from "@tauri-apps/api/dialog";
-import { readTextFile, writeTextFile } from "@tauri-apps/api/fs";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import type {
   AiActionRequest,
   AiActionResponse,
@@ -233,12 +233,12 @@ export const useHistoryStore = defineStore("history", () => {
   }
 
   async function runAiAction(request: AiActionRequest) {
-    if (settings.offlineMode.value) {
+    if (settings.offlineMode) {
       throw new Error("离线模式下无法调用 AI 服务");
     }
     aiBusy.value = true;
     try {
-      const response = await invoke<AiActionResponse>("perform_ai_action", request);
+      const response = await invoke<AiActionResponse>("perform_ai_action", { request });
       await insertClip({
         kind: ClipKindEnum.Text,
         text: response.result,

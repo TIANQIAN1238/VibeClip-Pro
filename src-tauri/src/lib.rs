@@ -153,8 +153,8 @@ async fn perform_ai_action(
         return Err("离线模式已开启，无法调用 AI 服务".into());
     }
     let store = app.store("store.bin").map_err(|e| e.to_string())?;
-    let offline_block = store.get("offlineMode");
-    if offline_block
+    if store
+        .get("offlineMode")
         .and_then(|value| value.as_bool())
         .unwrap_or(false)
     {
@@ -213,14 +213,7 @@ async fn get_value_from_store<R: Runtime>(
         Ok(store) => store,
         Err(_) => return Ok(fallback),
     };
-    if store.has(key.clone()) {
-        let value = store
-            .get(key.clone())
-            .map_err(|_| "读取配置失败".to_string())?;
-        Ok(value)
-    } else {
-        Ok(fallback)
-    }
+    Ok(store.get(&key).cloned().unwrap_or(fallback))
 }
 
 #[tauri::command]
@@ -234,9 +227,7 @@ async fn set_value_to_store<R: Runtime>(
         Ok(store) => store,
         Err(_) => return Err("无法获取配置存储".to_string()),
     };
-    store
-        .set(key.clone(), value)
-        .map_err(|_| "写入配置失败".to_string())?;
+    store.set(&key, value);
     store.save().map_err(|_| "保存配置失败".to_string())?;
     Ok(())
 }
@@ -270,6 +261,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -288,10 +281,12 @@ pub fn run() {
             let handle = app.handle();
             let status = AppStatus::default();
             if let Ok(store) = handle.store("store.bin") {
-                if let Ok(value) = store.get("offlineMode") {
-                    if value.as_bool().unwrap_or(false) {
-                        status.set_offline(true);
-                    }
+                if store
+                    .get("offlineMode")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(false)
+                {
+                    status.set_offline(true);
                 }
             }
             app.manage(status);

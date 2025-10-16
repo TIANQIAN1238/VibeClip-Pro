@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
+use rusqlite::{named_params, params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tauri::AppHandle;
@@ -70,10 +71,13 @@ impl DbState {
         let mut sql = String::from(
             "SELECT id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips",
         );
-        let mut params_vec: Vec<(String, String)> = Vec::new();
-        if let Some(q) = query.as_ref().filter(|q| !q.trim().is_empty()) {
+        let search_term = query
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .map(|value| format!("%{}%", value));
+        if search_term.is_some() {
             sql.push_str(" WHERE content LIKE :q OR COALESCE(preview, '') LIKE :q");
-            params_vec.push((":q".into(), format!("%{}%", q.trim())));
         }
         if include_favorites_first {
             sql.push_str(" ORDER BY is_favorite DESC, is_pinned DESC, updated_at DESC");
@@ -84,25 +88,12 @@ impl DbState {
             sql.push_str(&format!(" LIMIT {}", l));
         }
         let mut statement = conn.prepare(&sql)?;
-        let named_params: Vec<(&str, &str)> = params_vec
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-        let items = statement
-            .query_map_named(named_params.as_slice(), |row| {
-                Ok(ClipItem {
-                    id: row.get(0)?,
-                    kind: row.get(1)?,
-                    content: row.get(2)?,
-                    preview: row.get(3)?,
-                    extra: row.get(4)?,
-                    is_pinned: row.get::<_, i64>(5)? == 1,
-                    is_favorite: row.get::<_, i64>(6)? == 1,
-                    created_at: timestamp_to_datetime(row.get(7)?),
-                    updated_at: timestamp_to_datetime(row.get(8)?),
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
+        let rows = if let Some(ref value) = search_term {
+            statement.query_map(named_params! {":q": value.as_str()}, map_clip_row)?
+        } else {
+            statement.query_map([], map_clip_row)?
+        };
+        let items = rows.collect::<Result<Vec<_>, _>>()?;
         Ok(items)
     }
 
@@ -111,19 +102,7 @@ impl DbState {
         conn.query_row(
             "SELECT id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips WHERE id = ?1",
             params![id],
-            |row| {
-                Ok(ClipItem {
-                    id: row.get(0)?,
-                    kind: row.get(1)?,
-                    content: row.get(2)?,
-                    preview: row.get(3)?,
-                    extra: row.get(4)?,
-                    is_pinned: row.get::<_, i64>(5)? == 1,
-                    is_favorite: row.get::<_, i64>(6)? == 1,
-                    created_at: timestamp_to_datetime(row.get(7)?),
-                    updated_at: timestamp_to_datetime(row.get(8)?),
-                })
-            },
+            map_clip_row,
         )
         .optional()
     }
@@ -134,7 +113,7 @@ impl DbState {
         conn.execute(
             "INSERT INTO clips (kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
-                payload.kind as i64,
+                i64::from(payload.kind),
                 payload.content,
                 payload.preview,
                 payload.extra,
@@ -159,32 +138,21 @@ impl DbState {
         }
 
         let conn = self.connect()?;
-        let mut sql = String::from("UPDATE clips SET ");
-        let mut sets = Vec::new();
-        if let Some(_) = pinned {
-            sets.push("is_pinned = :pinned".to_string());
-        }
-        if let Some(_) = favorite {
-            sets.push("is_favorite = :favorite".to_string());
-        }
-        sets.push("updated_at = :updated_at".to_string());
-        sql.push_str(&sets.join(", "));
-        sql.push_str(" WHERE id = :id");
-
-        use rusqlite::types::Value;
-        let mut statement = conn.prepare(&sql)?;
-        let now = datetime_to_timestamp(Utc::now());
-        let mut bindings: Vec<(&str, Value)> = vec![
-            (":updated_at", Value::Integer(now)),
-            (":id", Value::Integer(id)),
-        ];
-        if let Some(value) = pinned {
-            bindings.push((":pinned", Value::Integer(if value { 1 } else { 0 })));
-        }
-        if let Some(value) = favorite {
-            bindings.push((":favorite", Value::Integer(if value { 1 } else { 0 })));
-        }
-        statement.execute_named(bindings.as_slice())?;
+        let pinned_value = pinned.map(|value| if value { 1 } else { 0 });
+        let favorite_value = favorite.map(|value| if value { 1 } else { 0 });
+        conn.execute(
+            "UPDATE clips SET \
+                is_pinned = COALESCE(:pinned, is_pinned), \
+                is_favorite = COALESCE(:favorite, is_favorite), \
+                updated_at = :updated_at \
+            WHERE id = :id",
+            named_params! {
+                ":pinned": pinned_value,
+                ":favorite": favorite_value,
+                ":updated_at": datetime_to_timestamp(Utc::now()),
+                ":id": id,
+            },
+        )?;
         Ok(())
     }
 
@@ -220,14 +188,14 @@ impl DbState {
 
     pub fn import_many(&self, items: Vec<ClipItem>) -> anyhow::Result<usize> {
         let conn = self.connect()?;
-        let tx = conn.transaction()?;
+        let mut tx = conn.transaction()?;
         let mut changes = 0usize;
         for item in items {
             tx.execute(
                 "INSERT INTO clips (id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 params![
                     item.id,
-                    item.kind as i64,
+                    i64::from(item.kind),
                     item.content,
                     item.preview,
                     item.extra,
@@ -272,10 +240,13 @@ fn datetime_to_timestamp(dt: DateTime<Utc>) -> i64 {
 }
 
 fn timestamp_to_datetime(ts: i64) -> DateTime<Utc> {
-    DateTime::<Utc>::from_utc(
-        chrono::NaiveDateTime::from_timestamp_opt(ts, 0).unwrap(),
-        Utc,
-    )
+    DateTime::from_timestamp(ts, 0).unwrap_or_else(|| {
+        log::warn!(
+            "invalid timestamp {} in database; falling back to current time",
+            ts
+        );
+        Utc::now()
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -309,4 +280,46 @@ pub enum ClipKind {
     Text = 1,
     Image = 2,
     File = 3,
+}
+
+impl From<ClipKind> for i64 {
+    fn from(value: ClipKind) -> Self {
+        value as i64
+    }
+}
+
+impl FromSql for ClipKind {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_i64()? {
+            1 => Ok(ClipKind::Text),
+            2 => Ok(ClipKind::Image),
+            3 => Ok(ClipKind::File),
+            other => Err(FromSqlError::Other(Box::new(anyhow::anyhow!(
+                "unknown clip kind value: {}",
+                other
+            )))),
+        }
+    }
+}
+
+impl ToSql for ClipKind {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::from(i64::from(*self)))
+    }
+}
+
+fn map_clip_row(row: &Row<'_>) -> rusqlite::Result<ClipItem> {
+    let created_at_ts: i64 = row.get(7)?;
+    let updated_at_ts: i64 = row.get(8)?;
+    Ok(ClipItem {
+        id: row.get(0)?,
+        kind: row.get(1)?,
+        content: row.get(2)?,
+        preview: row.get(3)?,
+        extra: row.get(4)?,
+        is_pinned: row.get::<_, i64>(5)? == 1,
+        is_favorite: row.get::<_, i64>(6)? == 1,
+        created_at: timestamp_to_datetime(created_at_ts),
+        updated_at: timestamp_to_datetime(updated_at_ts),
+    })
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
 import { computed, onMounted } from "vue";
-import { darkTheme, dateZhCN, zhCN, lightTheme } from "naive-ui";
+import { darkTheme, dateZhCN, zhCN } from "naive-ui";
 import { useSettingsStore } from "./store/settings";
 
 const settings = useSettingsStore();
