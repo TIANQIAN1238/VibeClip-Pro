@@ -5,6 +5,14 @@ import App from "./App.vue";
 import "./index.css";
 import { routes } from "./router";
 
+window.addEventListener("error", event => {
+  console.error("Uncaught error", event.error ?? event.message);
+});
+
+window.addEventListener("unhandledrejection", event => {
+  console.error("Unhandled promise rejection", event.reason);
+});
+
 const router = createRouter({
   history: createWebHistory(),
   routes,

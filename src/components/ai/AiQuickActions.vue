@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive } from "vue";
+import { useRouter } from "vue-router";
 import type { AiActionKind } from "@/types/history";
 import { useSettingsStore } from "@/store/settings";
 import MdiSparkle from "~icons/mdi/sparkles";
@@ -12,6 +13,7 @@ const props = defineProps<{
 }>();
 
 const settings = useSettingsStore();
+const router = useRouter();
 
 const state = reactive({
   action: "translate" as AiActionKind,
@@ -19,6 +21,9 @@ const state = reactive({
   customPrompt: "",
   input: "",
 });
+
+const settingsReady = computed(() => settings.hydrated);
+const needsSetup = computed(() => !settings.apiKey);
 
 const languageOptions = [
   { label: "中文", value: "zh-CN" },
@@ -59,15 +64,32 @@ async function handleSubmit() {
   });
   state.input = "";
 }
+
+function openSettings() {
+  router.push("/settings");
+}
 </script>
 
 <template>
   <div class="ai-card">
-    <header class="ai-header">
-      <div class="title-group">
-        <n-icon :component="MdiSparkle" size="20" />
-        <div>
-          <h3>AI 快捷操作</h3>
+    <div v-if="!settingsReady" class="ai-skeleton">
+      <n-skeleton height="20px" :sharp="false" />
+      <n-skeleton height="18px" :sharp="false" />
+      <n-skeleton height="120px" :sharp="false" />
+    </div>
+    <div v-else-if="needsSetup" class="ai-placeholder">
+      <n-empty description="AI 功能未配置">
+        <template #extra>
+          <n-button size="small" type="primary" @click="openSettings">前往设置 API Key</n-button>
+        </template>
+      </n-empty>
+    </div>
+    <template v-else>
+      <header class="ai-header">
+        <div class="title-group">
+          <n-icon :component="MdiSparkle" size="20" />
+          <div>
+            <h3>AI 快捷操作</h3>
           <p>翻译、摘要、润色或快速 JSON 化</p>
         </div>
       </div>
@@ -116,6 +138,7 @@ async function handleSubmit() {
         执行
       </n-button>
     </div>
+    </template>
   </div>
 </template>
 
@@ -188,5 +211,18 @@ async function handleSubmit() {
   gap: 6px;
   font-size: 12px;
   color: var(--vibe-text-muted);
+}
+
+.ai-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
 }
 </style>

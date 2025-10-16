@@ -39,7 +39,7 @@ async function toggleOffline() {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" data-tauri-drag-region>
     <div class="brand">
       <div class="brand-icon">⎋</div>
       <div class="brand-meta">
@@ -99,6 +99,7 @@ async function toggleOffline() {
   border-top-right-radius: var(--vibe-radius-xl);
   border-bottom-right-radius: var(--vibe-radius-xl);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  -webkit-app-region: drag;
 }
 
 .brand {
@@ -136,6 +137,7 @@ async function toggleOffline() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  -webkit-app-region: no-drag;
 }
 
 .nav-item {
@@ -150,6 +152,7 @@ async function toggleOffline() {
   font-size: 14px;
   transition: background var(--vibe-transition), transform var(--vibe-transition);
   cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 
 .nav-item:hover {
@@ -168,6 +171,7 @@ async function toggleOffline() {
   gap: 16px;
   margin-top: auto;
   padding-top: 32px;
+  -webkit-app-region: no-drag;
 }
 
 .action-row {
@@ -198,6 +202,7 @@ async function toggleOffline() {
   gap: 4px;
   font-size: 12px;
   color: var(--vibe-sidebar-muted);
+  -webkit-app-region: no-drag;
 }
 
 .sidebar-footer .muted {

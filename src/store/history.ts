@@ -56,9 +56,19 @@ export const useHistoryStore = defineStore("history", () => {
   const listening = ref(true);
   const latest = ref<ClipItem | null>(null);
   const aiBusy = ref(false);
+  const initialized = ref(false);
+  const lastError = ref<string | null>(null);
   let fetchTimer: number | null = null;
 
   const settings = useSettingsStore();
+
+  function raise(message: string, error: unknown): never {
+    const reason =
+      error instanceof Error ? error : new Error(String(error ?? message));
+    console.error(message, reason);
+    lastError.value = `${message}: ${reason.message}`;
+    throw reason;
+  }
 
   const filteredItems = computed(() => {
     const base = items.value.filter(item => {
@@ -97,7 +107,7 @@ export const useHistoryStore = defineStore("history", () => {
     }
     fetchTimer = window.setTimeout(() => {
       fetchTimer = null;
-      void refresh();
+      void refresh().catch(() => undefined);
     }, 280);
   }
 
@@ -114,9 +124,10 @@ export const useHistoryStore = defineStore("history", () => {
         latest.value = items.value[0];
       }
     } catch (error) {
-      console.warn("Failed to load history", error);
+      raise("无法加载剪贴板历史", error);
     } finally {
       isLoading.value = false;
+      initialized.value = true;
     }
   }
 
@@ -128,7 +139,7 @@ export const useHistoryStore = defineStore("history", () => {
       listening.value = status.listening;
       settings.setOfflineLocal(status.offline);
     } catch (error) {
-      console.warn("Failed to sync app status", error);
+      raise("无法同步应用状态", error);
     }
   }
 
@@ -137,7 +148,7 @@ export const useHistoryStore = defineStore("history", () => {
       await invoke("set_listening", { listening: value });
       listening.value = value;
     } catch (error) {
-      console.warn("Unable to update listening state", error);
+      raise("无法更新监听状态", error);
     }
   }
 
@@ -151,7 +162,7 @@ export const useHistoryStore = defineStore("history", () => {
       items.value = [clip, ...items.value].slice(0, HISTORY_LIMIT);
       latest.value = clip;
     } catch (error) {
-      console.warn("Failed to insert clip", error);
+      raise("保存剪贴板内容失败", error);
     }
   }
 
@@ -172,7 +183,7 @@ export const useHistoryStore = defineStore("history", () => {
           : item
       );
     } catch (error) {
-      console.warn("Failed to update clip flags", error);
+      raise("更新剪贴板标记失败", error);
     }
   }
 
@@ -181,7 +192,7 @@ export const useHistoryStore = defineStore("history", () => {
       await invoke("remove_clip", { id });
       items.value = items.value.filter(item => item.id !== id);
     } catch (error) {
-      console.warn("Failed to remove clip", error);
+      raise("删除剪贴板记录失败", error);
     }
   }
 
@@ -191,7 +202,7 @@ export const useHistoryStore = defineStore("history", () => {
       items.value = [];
       latest.value = null;
     } catch (error) {
-      console.warn("Failed to clear history", error);
+      raise("清空历史记录失败", error);
     }
   }
 
@@ -208,7 +219,7 @@ export const useHistoryStore = defineStore("history", () => {
       if (!target) return;
       await writeTextFile(target, JSON.stringify(payload, null, 2));
     } catch (error) {
-      console.warn("Failed to export history", error);
+      raise("导出历史记录失败", error);
     } finally {
       isExporting.value = false;
     }
@@ -228,7 +239,7 @@ export const useHistoryStore = defineStore("history", () => {
       await invoke("import_history", { items: normalized });
       await refresh();
     } catch (error) {
-      console.warn("Failed to import history", error);
+      raise("导入历史记录失败", error);
     }
   }
 
@@ -247,27 +258,37 @@ export const useHistoryStore = defineStore("history", () => {
       });
       await writeText(response.result);
       return response;
+    } catch (error) {
+      raise("AI 操作失败", error);
     } finally {
       aiBusy.value = false;
     }
   }
 
   async function copyClip(item: ClipItem) {
-    if (item.kind === ClipKindEnum.Text || item.kind === ClipKindEnum.File) {
-      await writeText(item.content);
-    } else if (item.kind === ClipKindEnum.Image) {
-      await writeText("[Image copied]");
+    try {
+      if (item.kind === ClipKindEnum.Text || item.kind === ClipKindEnum.File) {
+        await writeText(item.content);
+      } else if (item.kind === ClipKindEnum.Image) {
+        await writeText("[Image copied]");
+      }
+    } catch (error) {
+      raise("复制到系统剪贴板失败", error);
     }
   }
 
   async function captureText(text: string, options?: Partial<ClipboardDraftPayload>) {
-    await insertClip({
-      kind: ClipKindEnum.Text,
-      text,
-      preview: text.slice(0, 120),
-      ...options,
-    });
-    await writeText(text);
+    try {
+      await insertClip({
+        kind: ClipKindEnum.Text,
+        text,
+        preview: text.slice(0, 120),
+        ...options,
+      });
+      await writeText(text);
+    } catch (error) {
+      raise("保存文本失败", error);
+    }
   }
 
   return {
@@ -280,6 +301,8 @@ export const useHistoryStore = defineStore("history", () => {
     listening,
     latest,
     aiBusy,
+    initialized,
+    lastError,
     refresh,
     scheduleFetch,
     setListening,

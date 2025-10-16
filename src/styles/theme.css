@@ -70,11 +70,18 @@ body::before {
 }
 
 .app-shell {
-  display: flex;
+  position: relative;
   height: 100%;
   width: 100%;
-  position: relative;
   backdrop-filter: blur(24px) saturate(140%);
+  overflow: hidden;
+}
+
+.app-content {
+  position: absolute;
+  inset: 40px 0 0 0;
+  display: flex;
+  height: calc(100% - 40px);
 }
 
 .n-config-provider {
