@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
 import { useSettingsStore } from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
@@ -9,14 +10,30 @@ const settings = useSettingsStore();
 const history = useHistoryStore();
 const message = useMessage();
 
+const booting = computed(() => !settings.hydrated);
+
+function reportError(label: string, error: unknown) {
+  console.error(label, error);
+  const detail = error instanceof Error ? error.message : String(error ?? "");
+  message.error(`${label}${detail ? `：${detail}` : ""}`);
+}
+
 async function handleAutoLaunchChange(value: boolean) {
-  await settings.toggleAutoLaunch(value);
-  message.success(value ? "已开启开机自启" : "已关闭开机自启");
+  try {
+    await settings.toggleAutoLaunch(value);
+    message.success(value ? "已开启开机自启" : "已关闭开机自启");
+  } catch (error) {
+    reportError("更新开机自启失败", error);
+  }
 }
 
 async function clearHistory() {
-  await history.clearHistory();
-  message.success("缓存已清理");
+  try {
+    await history.clearHistory();
+    message.success("缓存已清理");
+  } catch (error) {
+    reportError("清理缓存失败", error);
+  }
 }
 
 function resetAiSettings() {
@@ -32,98 +49,111 @@ function resetAiSettings() {
   <div class="settings-page">
     <AppSidebar />
     <section class="main">
-      <header class="page-header">
-        <div>
-          <h1>设置</h1>
-          <p>自定义主题、快捷键与 AI 服务连接</p>
+      <div v-if="booting" class="settings-skeleton">
+        <n-skeleton height="36px" :sharp="false" />
+        <div class="settings-skeleton-grid">
+          <n-skeleton v-for="i in 3" :key="i" height="220px" :sharp="false" />
         </div>
-      </header>
-
-      <div class="settings-grid">
-        <n-card title="主题与显示" size="small" embedded>
-          <n-radio-group v-model:value="settings.themeMode" name="theme">
-            <div class="radio-grid">
-              <n-radio value="light">浅色</n-radio>
-              <n-radio value="dark">深色</n-radio>
-              <n-radio value="system">跟随系统</n-radio>
-            </div>
-          </n-radio-group>
-          <div class="field-row">
-            <label>内容行高</label>
-            <n-slider
-              v-model:value="settings.lineHeight"
-              :step="0.1"
-              :min="1.2"
-              :max="2"
-              style="width: 200px;"
-            />
-            <span>{{ settings.lineHeight.toFixed(1) }}</span>
-          </div>
-          <div class="field-row">
-            <label>强调颜色</label>
-            <n-color-picker v-model:value="settings.accentColor" size="small" />
-          </div>
-          <div class="field-row">
-            <label>全局快捷键</label>
-            <n-input v-model:value="settings.globalShortcut" placeholder="例如 CmdOrControl+Shift+V" />
-          </div>
-        </n-card>
-
-        <n-card title="AI 服务" size="small" embedded>
-          <n-form label-placement="top" :model="settings">
-            <n-form-item label="Base URL">
-              <n-input v-model:value="settings.apiBaseUrl" placeholder="https://api.openai.com" />
-            </n-form-item>
-            <n-form-item label="API Key">
-              <n-input v-model:value="settings.apiKey" type="password" show-password-on="click" placeholder="sk-" />
-            </n-form-item>
-            <div class="field-row">
-              <n-form-item label="模型">
-                <n-input v-model:value="settings.model" placeholder="gpt-4o-mini" />
-              </n-form-item>
-              <n-form-item label="温度">
-                <n-slider
-                  v-model:value="settings.temperature"
-                  :step="0.1"
-                  :min="0"
-                  :max="1"
-                  style="width: 200px;"
-                />
-              </n-form-item>
-            </div>
-          </n-form>
-          <n-button quaternary size="tiny" @click="resetAiSettings">恢复默认</n-button>
-        </n-card>
-
-        <n-card title="系统" size="small" embedded>
-          <div class="field-row">
-            <label>开机自启</label>
-            <n-switch :value="settings.autoLaunch" @update:value="handleAutoLaunchChange" />
-          </div>
-          <div class="field-row">
-            <label>离线模式</label>
-            <n-switch v-model:value="settings.offlineMode" />
-          </div>
-          <n-divider />
-          <div class="field-row">
-            <div>
-              <strong>缓存历史</strong>
-              <p class="muted">当前共有 {{ history.items.length }} 条历史记录</p>
-            </div>
-            <n-button tertiary type="error" size="small" @click="clearHistory">清理</n-button>
-          </div>
-        </n-card>
+        <n-skeleton height="100px" :sharp="false" />
       </div>
+      <template v-else>
+        <header class="page-header">
+          <div>
+            <h1>设置</h1>
+            <p>自定义主题、快捷键与 AI 服务连接</p>
+          </div>
+        </header>
 
-      <footer class="about">
-        <h3>关于 VibeClip Pro</h3>
-        <ul>
-          <li>版本 {{ AppInfo.version }}</li>
-          <li>默认全局快捷键：{{ settings.globalShortcut }}</li>
-          <li>数据保存在应用数据目录中的 SQLite 数据库</li>
-          <li>导出 JSON 格式可用于备份和跨设备迁移</li>
-        </ul>
-      </footer>
+        <n-alert v-if="settings.lastError" type="warning" show-icon class="settings-alert">
+          {{ settings.lastError }}
+        </n-alert>
+
+        <div class="settings-grid">
+          <n-card title="主题与显示" size="small" embedded>
+            <n-radio-group v-model:value="settings.themeMode" name="theme">
+              <div class="radio-grid">
+                <n-radio value="light">浅色</n-radio>
+                <n-radio value="dark">深色</n-radio>
+                <n-radio value="system">跟随系统</n-radio>
+              </div>
+            </n-radio-group>
+            <div class="field-row">
+              <label>内容行高</label>
+              <n-slider
+                v-model:value="settings.lineHeight"
+                :step="0.1"
+                :min="1.2"
+                :max="2"
+                style="width: 200px;"
+              />
+              <span>{{ settings.lineHeight.toFixed(1) }}</span>
+            </div>
+            <div class="field-row">
+              <label>强调颜色</label>
+              <n-color-picker v-model:value="settings.accentColor" size="small" />
+            </div>
+            <div class="field-row">
+              <label>全局快捷键</label>
+              <n-input v-model:value="settings.globalShortcut" placeholder="例如 CmdOrControl+Shift+V" />
+            </div>
+          </n-card>
+
+          <n-card title="AI 服务" size="small" embedded>
+            <n-form label-placement="top" :model="settings">
+              <n-form-item label="Base URL">
+                <n-input v-model:value="settings.apiBaseUrl" placeholder="https://api.openai.com" />
+              </n-form-item>
+              <n-form-item label="API Key">
+                <n-input v-model:value="settings.apiKey" type="password" show-password-on="click" placeholder="sk-" />
+              </n-form-item>
+              <div class="field-row">
+                <n-form-item label="模型">
+                  <n-input v-model:value="settings.model" placeholder="gpt-4o-mini" />
+                </n-form-item>
+                <n-form-item label="温度">
+                  <n-slider
+                    v-model:value="settings.temperature"
+                    :step="0.1"
+                    :min="0"
+                    :max="1"
+                    style="width: 200px;"
+                  />
+                </n-form-item>
+              </div>
+            </n-form>
+            <n-button quaternary size="tiny" @click="resetAiSettings">恢复默认</n-button>
+          </n-card>
+
+          <n-card title="系统" size="small" embedded>
+            <div class="field-row">
+              <label>开机自启</label>
+              <n-switch :value="settings.autoLaunch" @update:value="handleAutoLaunchChange" />
+            </div>
+            <div class="field-row">
+              <label>离线模式</label>
+              <n-switch v-model:value="settings.offlineMode" />
+            </div>
+            <n-divider />
+            <div class="field-row">
+              <div>
+                <strong>缓存历史</strong>
+                <p class="muted">当前共有 {{ history.items.length }} 条历史记录</p>
+              </div>
+              <n-button tertiary type="error" size="small" @click="clearHistory">清理</n-button>
+            </div>
+          </n-card>
+        </div>
+
+        <footer class="about">
+          <h3>关于 VibeClip Pro</h3>
+          <ul>
+            <li>版本 {{ AppInfo.version }}</li>
+            <li>默认全局快捷键：{{ settings.globalShortcut }}</li>
+            <li>数据保存在应用数据目录中的 SQLite 数据库</li>
+            <li>导出 JSON 格式可用于备份和跨设备迁移</li>
+          </ul>
+        </footer>
+      </template>
     </section>
   </div>
 </template>
@@ -199,5 +229,22 @@ function resetAiSettings() {
   margin: 0;
   padding-left: 18px;
   color: var(--vibe-text-muted);
+}
+
+.settings-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 12px;
+}
+
+.settings-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.settings-alert {
+  margin-bottom: 16px;
 }
 </style>

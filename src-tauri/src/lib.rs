@@ -16,6 +16,8 @@ use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_store::StoreExt;
+use tracing::{error, info, warn};
+use tracing_subscriber::EnvFilter;
 
 const DEFAULT_SHORTCUT: &str = "CmdOrControl+Shift+V";
 const HISTORY_LIMIT: u32 = 200;
@@ -32,6 +34,7 @@ async fn insert_clip(
     db: State<'_, DbState>,
     draft: ClipboardDraft,
 ) -> Result<ClipItem, String> {
+    info!("insert_clip invoked");
     if !status.listening() {
         return Err("监听已暂停".into());
     }
@@ -66,6 +69,10 @@ async fn fetch_clips(
     favorites_first: Option<bool>,
     limit: Option<u32>,
 ) -> Result<Vec<ClipItem>, String> {
+    info!(
+        "fetch_clips query={:?} favorites_first={:?} limit={:?}",
+        query, favorites_first, limit
+    );
     let db_clone = db.clone_for_thread();
     let query_clone = query.clone();
     tauri::async_runtime::spawn_blocking(move || {
@@ -237,8 +244,13 @@ async fn register_history_shortcut(app: AppHandle, shortcut: Option<String>) -> 
     let parsed_shortcut = shortcut.unwrap_or_else(|| DEFAULT_SHORTCUT.to_string());
     let parsed = parsed_shortcut
         .parse::<Shortcut>()
-        .map_err(|err| err.to_string())?;
-    let _ = app.global_shortcut().unregister_all();
+        .map_err(|err| {
+            error!("failed to parse shortcut {parsed_shortcut}: {err}");
+            err.to_string()
+        })?;
+    if let Err(err) = app.global_shortcut().unregister_all() {
+        warn!("unable to unregister previous shortcuts: {err}");
+    }
     app.global_shortcut()
         .on_shortcut(parsed, move |app_handle, _event, _shortcut| {
             if let Some(window) = app_handle.get_webview_window("main") {
@@ -246,7 +258,11 @@ async fn register_history_shortcut(app: AppHandle, shortcut: Option<String>) -> 
                 let _ = window.set_focus();
             }
         })
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| {
+            error!("failed to register shortcut {parsed_shortcut}: {err}");
+            err.to_string()
+        })?;
+    info!("registered history shortcut: {parsed_shortcut}");
     Ok(())
 }
 
@@ -258,6 +274,12 @@ struct AppStatusSnapshot {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .try_init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_http::init())
@@ -294,6 +316,12 @@ pub fn run() {
             app.manage(db_state);
             tray::create_tray(&handle)?;
 
+            #[cfg(debug_assertions)]
+            if let Some(window) = handle.get_webview_window("main") {
+                let _ = window.set_transparent(false);
+                let _ = window.open_devtools();
+            }
+
             let args: Vec<String> = std::env::args().collect();
             if !args.contains(&"--autostart".to_string()) && !args.contains(&"--silent".to_string())
             {
@@ -301,6 +329,7 @@ pub fn run() {
                     let _ = window.show();
                 }
             }
+            info!("application setup complete");
             let app_handle = handle.clone();
             tauri::async_runtime::spawn(async move {
                 let _ = register_history_shortcut(app_handle, None).await;
