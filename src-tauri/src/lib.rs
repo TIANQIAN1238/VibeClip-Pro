@@ -204,7 +204,7 @@ async fn input_text(text: &str) -> Result<(), String> {
 async fn simulate_paste() -> Result<(), String> {
     let mut enigo = Enigo::new(&Settings::default()).map_err(|err| err.to_string())?;
     let _ = enigo.key(Key::Control, Direction::Press);
-    let _ = enigo.key(Key::V, Direction::Click);
+    let _ = enigo.key(Key::Unicode('v'), Direction::Click);
     let _ = enigo.key(Key::Control, Direction::Release);
     Ok(())
 }
@@ -318,7 +318,7 @@ pub fn run() {
 
             #[cfg(debug_assertions)]
             if let Some(window) = handle.get_webview_window("main") {
-                let _ = window.set_transparent(false);
+                let _ = window.set_decorations(true);
                 let _ = window.open_devtools();
             }
 
