@@ -20,10 +20,10 @@ async function clearHistory() {
 }
 
 function resetAiSettings() {
-  settings.apiKey.value = "";
-  settings.apiBaseUrl.value = "https://api.openai.com";
-  settings.model.value = "gpt-4o-mini";
-  settings.temperature.value = 0.3;
+  settings.apiKey = "";
+  settings.apiBaseUrl = "https://api.openai.com";
+  settings.model = "gpt-4o-mini";
+  settings.temperature = 0.3;
   message.success("AI 配置已重置");
 }
 </script>

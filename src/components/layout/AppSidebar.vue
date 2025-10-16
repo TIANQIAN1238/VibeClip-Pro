@@ -30,11 +30,11 @@ function navigate(path: string) {
 }
 
 async function toggleListening() {
-  await history.setListening(!history.listening.value);
+  await history.setListening(!history.listening);
 }
 
 async function toggleOffline() {
-  settings.offlineMode.value = !settings.offlineMode.value;
+  settings.offlineMode = !settings.offlineMode;
 }
 </script>
 
@@ -67,7 +67,7 @@ async function toggleOffline() {
             {{ history.listening ? '实时记录' : '暂停中' }}
           </span>
         </div>
-        <n-switch :value="history.listening.value" @update:value="toggleListening" size="small" />
+        <n-switch :value="history.listening" @update:value="toggleListening" size="small" />
       </div>
       <div class="action-row">
         <div class="action-meta">
@@ -77,7 +77,7 @@ async function toggleOffline() {
             {{ settings.offlineMode ? '已断开 AI 服务' : '连接服务' }}
           </span>
         </div>
-        <n-switch :value="settings.offlineMode.value" @update:value="toggleOffline" size="small" />
+        <n-switch :value="settings.offlineMode" @update:value="toggleOffline" size="small" />
       </div>
     </div>
     <footer class="sidebar-footer">

@@ -7,16 +7,16 @@ import HistoryItem from "@/components/history/HistoryItem.vue";
 import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
-import { ClipKind, type AiActionKind } from "@/types/history";
+import { ClipKind, type AiActionKind, type HistoryFilter } from "@/types/history";
 
 const history = useHistoryStore();
 const settings = useSettingsStore();
 const message = useMessage();
 
 const searchValue = computed({
-  get: () => history.searchTerm.value,
+  get: () => history.searchTerm,
   set: value => {
-    history.searchTerm.value = value;
+    history.searchTerm = value;
     history.scheduleFetch();
   },
 });
@@ -74,7 +74,7 @@ async function handleAiRun(payload: {
   language: string;
   customPrompt?: string;
 }) {
-  if (!settings.apiKey.value) {
+  if (!settings.apiKey) {
     message.error("请先在设置中配置 OpenAI 兼容接口 Key");
     return;
   }
@@ -84,10 +84,10 @@ async function handleAiRun(payload: {
       input: payload.input,
       language: payload.language,
       customPrompt: payload.customPrompt,
-      apiKey: settings.apiKey.value,
-      baseUrl: settings.apiBaseUrl.value,
-      model: settings.model.value,
-      temperature: settings.temperature.value,
+      apiKey: settings.apiKey,
+      baseUrl: settings.apiBaseUrl,
+      model: settings.model,
+      temperature: settings.temperature,
     });
     message.success("AI 操作已完成并写入剪贴板");
   } catch (error) {
@@ -107,24 +107,24 @@ onBeforeUnmount(() => {
 });
 
 function handleFilterChange(value: string) {
-  history.filter.value = value as any;
+  history.filter = value as HistoryFilter;
   history.scheduleFetch();
 }
 
-async function handleCopy(item: typeof history.items.value[number]) {
+async function handleCopy(item: (typeof history.items)[number]) {
   await history.copyClip(item);
   message.success("已写入系统剪贴板");
 }
 
-async function handlePin(item: typeof history.items.value[number]) {
+async function handlePin(item: (typeof history.items)[number]) {
   await history.updateFlags(item.id, { pinned: !item.isPinned });
 }
 
-async function handleFavorite(item: typeof history.items.value[number]) {
+async function handleFavorite(item: (typeof history.items)[number]) {
   await history.updateFlags(item.id, { favorite: !item.isFavorite });
 }
 
-async function handleRemove(item: typeof history.items.value[number]) {
+async function handleRemove(item: (typeof history.items)[number]) {
   await history.removeClip(item.id);
   message.success("已删除");
 }
@@ -189,7 +189,7 @@ async function handleSavePreview() {
 
       <section class="filters">
         <n-segmented
-          :value="history.filter.value"
+          :value="history.filter"
           size="small"
           :options="[
             { label: '全部', value: 'all' },

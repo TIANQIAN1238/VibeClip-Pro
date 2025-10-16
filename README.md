@@ -96,15 +96,15 @@ pnpm tauri build
 
 生成的安装包位于 `src-tauri/target/release/bundle`。发布建议：
 
-1. 创建 `release/v1.0.0` 分支并推送：
+1. 创建 `release/v1.0.1` 分支并推送：
    ```bash
-   git checkout -b release/v1.0.0
-   git push -u origin release/v1.0.0
-   git tag -a v1.0.0 -m "VibeClip Pro v1.0.0"
-   git push origin v1.0.0
+   git checkout -b release/v1.0.1
+   git push -u origin release/v1.0.1
+   git tag -a v1.0.1 -m "VibeClip Pro v1.0.1"
+   git push origin v1.0.1
    ```
 2. 新建 GitHub Release：
-   - **Title**：`VibeClip Pro v1.0.0`
+   - **Title**：`VibeClip Pro v1.0.1`
    - **Highlights**：全新 UI、SQLite 历史、AI 快捷操作、托盘 & 全局热键。
    - **Assets**：`*.msi`、`*.dmg`、`latest.json` 等。
    - **Screenshots**：可附上本文档中的 SVG 预览或自行截取界面。

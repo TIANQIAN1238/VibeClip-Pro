@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, reactive } from "vue";
 import type { AiActionKind } from "@/types/history";
 import { useSettingsStore } from "@/store/settings";
 import MdiSparkle from "~icons/mdi/sparkles";
@@ -15,10 +15,22 @@ const settings = useSettingsStore();
 
 const state = reactive({
   action: "translate" as AiActionKind,
-  language: settings.preferredLanguage.value,
+  language: settings.preferredLanguage,
   customPrompt: "",
   input: "",
 });
+
+const languageOptions = [
+  { label: "中文", value: "zh-CN" },
+  { label: "English", value: "en" },
+  { label: "日本語", value: "ja" },
+  { label: "한국어", value: "ko" },
+  { label: "Français", value: "fr" },
+] as const;
+
+type LanguageOption = (typeof languageOptions)[number];
+
+const renderLanguageLabel = (option: LanguageOption) => option.label;
 
 const actions = [
   { key: "translate", label: "翻译", description: "翻译到目标语言" },
@@ -42,7 +54,7 @@ async function handleSubmit() {
   await props.onRun({
     action: state.action,
     input,
-    language: state.language || settings.preferredLanguage.value,
+    language: state.language || settings.preferredLanguage,
     customPrompt: state.customPrompt.trim() || undefined,
   });
   state.input = "";
@@ -63,14 +75,8 @@ async function handleSubmit() {
         v-model:value="state.language"
         class="language-select"
         size="small"
-        :options="[
-          { label: '中文', value: 'zh-CN' },
-          { label: 'English', value: 'en' },
-          { label: '日本語', value: 'ja' },
-          { label: '한국어', value: 'ko' },
-          { label: 'Français', value: 'fr' },
-        ]"
-        :render-label="option => option.label"
+        :options="languageOptions"
+        :render-label="renderLanguageLabel"
       />
     </header>
     <div class="action-tabs">

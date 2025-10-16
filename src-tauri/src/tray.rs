@@ -28,12 +28,15 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         ],
     )?;
 
+    let listening_menu_item = listening_item.clone();
+    let offline_menu_item = offline_item.clone();
+
     TrayIconBuilder::with_id("main")
         .icon(Image::from(include_image!("icons/icon.png")).to_owned())
         .menu(&menu)
         .tooltip("VibeClip Pro")
         .show_menu_on_left_click(false)
-        .on_menu_event(move |app, event| match event.id.as_ref() {
+        .on_menu_event(move |app, event| match event.id().as_ref() {
             "show" => {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
@@ -48,24 +51,20 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             "toggle-listener" => {
                 let status = app.state::<AppStatus>();
                 let is_listening = status.toggle_listening();
-                if let Some(item) = event.menu_item() {
-                    let _ = item.set_text(if is_listening {
-                        "暂停剪贴板监听"
-                    } else {
-                        "恢复剪贴板监听"
-                    });
-                }
+                let _ = listening_menu_item.set_text(if is_listening {
+                    "暂停剪贴板监听"
+                } else {
+                    "恢复剪贴板监听"
+                });
             }
             "toggle-offline" => {
                 let status = app.state::<AppStatus>();
                 let offline = status.toggle_offline();
-                if let Some(item) = event.menu_item() {
-                    let _ = item.set_text(if offline {
-                        "关闭离线模式"
-                    } else {
-                        "切换离线模式"
-                    });
-                }
+                let _ = offline_menu_item.set_text(if offline {
+                    "关闭离线模式"
+                } else {
+                    "切换离线模式"
+                });
             }
             "quit" => {
                 app.exit(0);
