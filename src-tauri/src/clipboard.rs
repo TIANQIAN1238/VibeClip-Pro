@@ -3,7 +3,10 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
-use crate::db::{ClipKind, ClipPayload};
+use crate::{
+    db::{ClipKind, ClipPayload},
+    hash::compute_content_hash,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,44 +35,63 @@ impl ClipboardDraft {
                 let content = self
                     .text
                     .context("Text clipboard payload is missing text field")?;
-                Ok(ClipPayload {
+                let preview = self
+                    .preview
+                    .or_else(|| Some(content.chars().take(120).collect()));
+                Ok(finalize_payload(ClipPayload {
                     kind: ClipKind::Text,
                     content,
-                    preview: self.preview.or_else(|| Some("文本".to_string())),
+                    preview,
                     extra: self.extra,
+                    content_hash: None,
                     is_pinned: self.is_pinned,
                     is_favorite: self.is_favorite,
-                })
+                }))
             }
             ClipKind::Image => {
                 let image_base64 = self
                     .image_base64
                     .context("Image payload requires base64 data")?;
                 validate_base64(&image_base64)?;
-                Ok(ClipPayload {
+                let preview = self
+                    .preview
+                    .or_else(|| Some("图像".to_string()));
+                Ok(finalize_payload(ClipPayload {
                     kind: ClipKind::Image,
                     content: image_base64.clone(),
-                    preview: self.preview.or(Some("Image".into())),
+                    preview,
                     extra: self.extra,
+                    content_hash: None,
                     is_pinned: self.is_pinned,
                     is_favorite: self.is_favorite,
-                })
+                }))
             }
             ClipKind::File => {
                 let path = self
                     .file_path
                     .context("File clipboard payload is missing file_path")?;
-                Ok(ClipPayload {
+                let preview = self
+                    .preview
+                    .or_else(|| Some(path.clone()));
+                Ok(finalize_payload(ClipPayload {
                     kind: ClipKind::File,
                     content: path.clone(),
-                    preview: self.preview.or_else(|| Some(path)),
+                    preview,
                     extra: self.extra,
+                    content_hash: None,
                     is_pinned: self.is_pinned,
                     is_favorite: self.is_favorite,
-                })
+                }))
             }
         }
     }
+}
+
+pub fn finalize_payload(mut payload: ClipPayload) -> ClipPayload {
+    if payload.content_hash.is_none() {
+        payload.content_hash = Some(compute_content_hash(payload.kind, &payload.content));
+    }
+    payload
 }
 
 fn validate_base64(data: &str) -> Result<()> {

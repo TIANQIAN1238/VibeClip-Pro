@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useMessage } from "naive-ui";
-import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { useMessage, type DropdownOption } from "naive-ui";
+import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
 import HistoryItem from "@/components/history/HistoryItem.vue";
 import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
-import { ClipKind, type AiActionKind, type HistoryFilter } from "@/types/history";
+import { ClipKind, type AiActionKind, type ClipItem, type HistoryFilter } from "@/types/history";
+import { useRouter } from "vue-router";
 
 const history = useHistoryStore();
 const settings = useSettingsStore();
 const message = useMessage();
+const router = useRouter();
 
 const searchValue = computed({
   get: () => history.searchTerm,
@@ -33,6 +35,44 @@ const filterOptions = [
   { label: "图像", value: "images" },
   { label: "文件", value: "files" },
 ] as const;
+
+const aiLabels: Record<AiActionKind, string> = {
+  translate: "翻译",
+  summarize: "摘要",
+  polish: "润色",
+  jsonify: "结构化",
+  custom: "自定义",
+};
+
+const contextMenu = reactive({
+  show: false,
+  x: 0,
+  y: 0,
+  item: null as ClipItem | null,
+});
+
+const contextOptions: DropdownOption[] = [
+  { label: aiLabels.translate, key: "translate" },
+  { label: aiLabels.summarize, key: "summarize" },
+  { label: aiLabels.polish, key: "polish" },
+];
+
+const aiDialog = reactive({
+  visible: false,
+  loading: false,
+  action: null as AiActionKind | null,
+  result: "",
+  source: null as ClipItem | null,
+});
+
+const aiDialogTitle = computed(() => {
+  if (!aiDialog.action) return "AI 结果";
+  return `${aiLabels[aiDialog.action]}结果`;
+});
+
+const contextActionLanguage: Partial<Record<AiActionKind, string | undefined>> = {
+  translate: "zh",
+};
 
 function reportError(label: string, error: unknown) {
   console.error(label, error);
@@ -84,6 +124,117 @@ function handlePaste(event: ClipboardEvent) {
   }
 }
 
+function closeContextMenu() {
+  contextMenu.show = false;
+  contextMenu.item = null;
+}
+
+function handleContextMenu(item: ClipItem, event: MouseEvent) {
+  if (item.kind !== ClipKind.Text) {
+    closeContextMenu();
+    return;
+  }
+  event.preventDefault();
+  contextMenu.item = item;
+  contextMenu.x = event.clientX;
+  contextMenu.y = event.clientY;
+  contextMenu.show = true;
+}
+
+async function handleContextSelect(key: string | number) {
+  const target = contextMenu.item;
+  closeContextMenu();
+  if (!target) return;
+  const action = String(key) as AiActionKind;
+  await runContextAction(target, action);
+}
+
+async function runContextAction(item: ClipItem, action: AiActionKind) {
+  if (!settings.apiKey) {
+    message.warning("请先在设置中配置 OpenAI 兼容接口 Key");
+    router.push("/settings");
+    return;
+  }
+  aiDialog.visible = true;
+  aiDialog.loading = true;
+  aiDialog.action = action;
+  aiDialog.source = item;
+  aiDialog.result = "";
+  try {
+    const response = await history.runAiAction(
+      {
+        action,
+        input: item.content,
+        language: contextActionLanguage[action],
+        apiKey: settings.apiKey,
+        baseUrl: settings.apiBaseUrl,
+        model: settings.model,
+        temperature: settings.temperature,
+      },
+      { persist: false, copy: false }
+    );
+    aiDialog.result = response.result;
+  } catch (error) {
+    aiDialog.visible = false;
+    reportError("AI 操作失败", error);
+  } finally {
+    aiDialog.loading = false;
+  }
+}
+
+function handleContextVisibility(value: boolean) {
+  if (!value) {
+    closeContextMenu();
+  } else {
+    contextMenu.show = value;
+  }
+}
+
+function handleAiDialogToggle(value: boolean) {
+  if (aiDialog.loading) {
+    aiDialog.visible = true;
+    return;
+  }
+  aiDialog.visible = value;
+  if (!value) {
+    aiDialog.result = "";
+    aiDialog.action = null;
+    aiDialog.source = null;
+  }
+}
+
+async function copyAiResult() {
+  if (!aiDialog.result) return;
+  try {
+    await writeText(aiDialog.result);
+    message.success("已复制到剪贴板");
+  } catch (error) {
+    reportError("复制结果失败", error);
+  }
+}
+
+async function saveAiResult() {
+  if (!aiDialog.result) return;
+  try {
+    const extraParts: string[] = [];
+    if (aiDialog.action) {
+      extraParts.push(aiLabels[aiDialog.action]);
+    }
+    if (aiDialog.source) {
+      extraParts.push(`来源 #${aiDialog.source.id}`);
+    }
+    await history.insertClip({
+      kind: ClipKind.Text,
+      text: aiDialog.result,
+      preview: aiDialog.result.slice(0, 120),
+      extra: extraParts.length ? extraParts.join(" · ") : undefined,
+    });
+    message.success("结果已保存到历史");
+  } catch (error) {
+    reportError("保存结果失败", error);
+  }
+}
+
 async function handleAiRun(payload: {
   action: AiActionKind;
   input: string;
@@ -126,10 +277,12 @@ onMounted(() => {
     await syncSystemClipboard();
   })();
   window.addEventListener("paste", handlePaste);
+  window.addEventListener("click", closeContextMenu);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("paste", handlePaste);
+  window.removeEventListener("click", closeContextMenu);
 });
 
 function handleFilterChange(value: string) {
@@ -298,26 +451,73 @@ async function handleClear() {
         </n-alert>
 
         <section class="history-list" :style="{ '--line-height': settings.lineHeight }">
-          <transition-group name="fade" tag="div" class="history-grid">
-            <HistoryItem
-              v-for="item in history.filteredItems"
-              :key="item.id"
-              :item="item"
-              @copy="handleCopy"
-              @pin="handlePin"
-              @favorite="handleFavorite"
-              @remove="handleRemove"
-            />
-          </transition-group>
-          <n-empty v-if="!history.filteredItems.length && !history.isLoading" description="还没有保存的剪贴板内容">
-            <template #extra>
-              <n-button size="small" @click="syncSystemClipboard">立即同步</n-button>
-            </template>
-          </n-empty>
+          <div class="history-scroll">
+            <n-virtual-list
+              v-if="history.filteredItems.length"
+              class="history-virtual-list"
+              :items="history.filteredItems"
+              key-field="id"
+              :item-size="178"
+              :show-scrollbar="false"
+            >
+              <template #default="{ item }">
+                <div class="history-row" @contextmenu.prevent="handleContextMenu(item, $event)">
+                  <HistoryItem
+                    :item="item"
+                    @copy="handleCopy"
+                    @pin="handlePin"
+                    @favorite="handleFavorite"
+                    @remove="handleRemove"
+                  />
+                </div>
+              </template>
+            </n-virtual-list>
+            <n-empty v-else-if="!history.isLoading" description="还没有保存的剪贴板内容">
+              <template #extra>
+                <n-button size="small" @click="syncSystemClipboard">立即同步</n-button>
+              </template>
+            </n-empty>
+          </div>
         </section>
       </template>
     </section>
   </div>
+
+  <n-dropdown
+    trigger="manual"
+    :options="contextOptions"
+    :show="contextMenu.show"
+    :x="contextMenu.x"
+    :y="contextMenu.y"
+    @update:show="handleContextVisibility"
+    @select="handleContextSelect"
+  />
+
+  <n-modal
+    v-model:show="aiDialog.visible"
+    preset="card"
+    :title="aiDialogTitle"
+    :mask-closable="!aiDialog.loading"
+    :close-on-esc="!aiDialog.loading"
+    @update:show="handleAiDialogToggle"
+  >
+    <n-spin :show="aiDialog.loading">
+      <div v-if="aiDialog.result" class="ai-result-text">
+        <pre>{{ aiDialog.result }}</pre>
+      </div>
+      <div v-else class="ai-result-placeholder">AI 正在生成中，请稍候…</div>
+    </n-spin>
+    <template #footer>
+      <div class="ai-dialog-actions">
+        <n-button size="small" secondary @click="copyAiResult" :disabled="!aiDialog.result || aiDialog.loading">
+          复制
+        </n-button>
+        <n-button size="small" type="primary" @click="saveAiResult" :disabled="!aiDialog.result || aiDialog.loading">
+          保存到历史
+        </n-button>
+      </div>
+    </template>
+  </n-modal>
 </template>
 
 <style scoped>
@@ -356,6 +556,12 @@ async function handleClear() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
+}
+
+@media (max-width: 1080px) {
+  .top-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .live-card {
@@ -434,17 +640,34 @@ async function handleClear() {
 
 .history-list {
   flex: 1;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
-.history-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 18px;
-  overflow-y: auto;
-  padding-right: 4px;
+.history-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.history-virtual-list {
+  min-height: 100%;
+  padding: 6px 0 20px;
+}
+
+.history-row {
+  padding-bottom: 12px;
+}
+
+.history-row:last-child {
+  padding-bottom: 0;
+}
+
+.history-row :deep(.history-item) {
+  margin: 0;
+  width: 100%;
 }
 
 .history-alert {
@@ -479,5 +702,32 @@ async function handleClear() {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.ai-result-text {
+  max-height: 320px;
+  overflow: auto;
+  background: rgba(12, 27, 56, 0.04);
+  border-radius: var(--vibe-radius-md);
+  padding: 12px 14px;
+  color: var(--vibe-text-primary);
+}
+
+.ai-result-text pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-result-placeholder {
+  color: var(--vibe-text-muted);
+  font-size: 13px;
+  padding: 6px 2px;
+}
+
+.ai-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>

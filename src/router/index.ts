@@ -2,9 +2,28 @@ import type { RouteRecordRaw } from "vue-router";
 
 export const routes: RouteRecordRaw[] = [
   {
-    path: "/panel",
-    name: "panel",
-    component: () => import("../pages/Panel.vue"),
+    path: "/",
+    redirect: "/clipboard",
+  },
+  {
+    path: "/clipboard",
+    name: "clipboard",
+    component: () => import("../pages/Clipboard.vue"),
+  },
+  {
+    path: "/history",
+    name: "history",
+    component: () => import("../pages/History.vue"),
+  },
+  {
+    path: "/favorites",
+    name: "favorites",
+    component: () => import("../pages/Favorites.vue"),
+  },
+  {
+    path: "/ai",
+    name: "ai-tools",
+    component: () => import("../pages/AiTools.vue"),
   },
   {
     path: "/settings",
@@ -12,8 +31,8 @@ export const routes: RouteRecordRaw[] = [
     component: () => import("../pages/Settings.vue"),
   },
   {
-    path: "/",
-    name: "history",
-    component: () => import("../pages/History.vue"),
+    path: "/panel",
+    name: "panel",
+    component: () => import("../pages/Panel.vue"),
   },
 ];

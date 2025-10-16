@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tauri::{AppHandle, Manager};
 
+use crate::hash::compute_content_hash;
+
 #[derive(Debug, Clone)]
 pub struct DbState {
     path: PathBuf,
@@ -46,6 +48,7 @@ impl DbState {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 kind INTEGER NOT NULL,
                 content TEXT NOT NULL,
+                content_hash TEXT,
                 preview TEXT,
                 extra TEXT,
                 is_pinned INTEGER NOT NULL DEFAULT 0,
@@ -55,9 +58,42 @@ impl DbState {
             );
             CREATE INDEX IF NOT EXISTS idx_clips_created_at ON clips(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_clips_favorite ON clips(is_favorite DESC, is_pinned DESC);
+            CREATE INDEX IF NOT EXISTS idx_clips_hash ON clips(content_hash);
             "#,
         )
         .context("failed to run migrations")?;
+        self.ensure_content_hash_column(&conn)?;
+        Ok(())
+    }
+
+    fn ensure_content_hash_column(&self, conn: &Connection) -> anyhow::Result<()> {
+        let mut stmt = conn.prepare("PRAGMA table_info(clips)")?;
+        let has_column = stmt
+            .query_map([], |row| row.get::<_, String>(1))?
+            .filter_map(|res| res.ok())
+            .any(|name| name == "content_hash");
+        if !has_column {
+            conn.execute("ALTER TABLE clips ADD COLUMN content_hash TEXT", [])?;
+        }
+        self.populate_missing_hashes(conn)?;
+        Ok(())
+    }
+
+    fn populate_missing_hashes(&self, conn: &Connection) -> anyhow::Result<()> {
+        let mut stmt = conn.prepare(
+            "SELECT id, kind, content FROM clips WHERE content_hash IS NULL OR content_hash = ''",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, ClipKind>(1)?, row.get::<_, String>(2)?))
+        })?;
+        for row in rows {
+            let (id, kind, content) = row?;
+            let hash = compute_content_hash(kind, &content);
+            conn.execute(
+                "UPDATE clips SET content_hash = ?1 WHERE id = ?2",
+                params![hash, id],
+            )?;
+        }
         Ok(())
     }
 
@@ -69,7 +105,7 @@ impl DbState {
     ) -> anyhow::Result<Vec<ClipItem>> {
         let conn = self.connect()?;
         let mut sql = String::from(
-            "SELECT id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips",
+            "SELECT id, kind, content, content_hash, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips",
         );
         let search_term = query
             .as_ref()
@@ -101,30 +137,63 @@ impl DbState {
         let conn = self.connect()?;
         Ok(conn
             .query_row(
-                "SELECT id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips WHERE id = ?1",
+                "SELECT id, kind, content, content_hash, preview, extra, is_pinned, is_favorite, created_at, updated_at FROM clips WHERE id = ?1",
                 params![id],
                 map_clip_row,
             )
             .optional()?)
     }
 
-    pub fn insert(&self, payload: ClipPayload) -> anyhow::Result<ClipItem> {
-        let conn = self.connect()?;
+    pub fn upsert(&self, payload: ClipPayload) -> anyhow::Result<ClipItem> {
+        let ClipPayload {
+            kind,
+            content,
+            preview,
+            extra,
+            is_pinned,
+            is_favorite,
+            content_hash,
+        } = payload;
+
+        let hash = content_hash.unwrap_or_else(|| compute_content_hash(kind, &content));
         let now = Utc::now();
-        conn.execute(
-            "INSERT INTO clips (kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        let preview_ref = preview.as_deref();
+        let extra_ref = extra.as_deref();
+        let mut conn = self.connect()?;
+        let mut tx = conn.transaction()?;
+        let existing: Option<i64> = tx
+            .query_row(
+                "SELECT id FROM clips WHERE content_hash = ?1 LIMIT 1",
+                params![&hash],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        if let Some(id) = existing {
+            tx.execute(
+                "UPDATE clips SET content = ?1, content_hash = ?2, preview = COALESCE(?3, preview), extra = COALESCE(?4, extra), updated_at = ?5 WHERE id = ?6",
+                params![&content, &hash, preview_ref, extra_ref, datetime_to_timestamp(now), id],
+            )?;
+            tx.commit()?;
+            return self.get(id)?.context("failed to load inserted clip");
+        }
+
+        tx.execute(
+            "INSERT INTO clips (kind, content, content_hash, preview, extra, is_pinned, is_favorite, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
-                i64::from(payload.kind),
-                payload.content,
-                payload.preview,
-                payload.extra,
-                payload.is_pinned as i64,
-                payload.is_favorite as i64,
+                i64::from(kind),
+                &content,
+                &hash,
+                preview_ref,
+                extra_ref,
+                is_pinned as i64,
+                is_favorite as i64,
                 datetime_to_timestamp(now),
                 datetime_to_timestamp(now)
             ],
         )?;
-        let id = conn.last_insert_rowid();
+        let id = tx.last_insert_rowid();
+        tx.commit()?;
         self.get(id)?.context("failed to load inserted clip")
     }
 
@@ -164,9 +233,15 @@ impl DbState {
         preview: Option<String>,
     ) -> anyhow::Result<()> {
         let conn = self.connect()?;
+        let kind: ClipKind = conn.query_row(
+            "SELECT kind FROM clips WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )?;
+        let hash = compute_content_hash(kind, &content);
         conn.execute(
-            "UPDATE clips SET content = ?1, preview = ?2, updated_at = ?3 WHERE id = ?4",
-            params![content, preview, datetime_to_timestamp(Utc::now()), id],
+            "UPDATE clips SET content = ?1, content_hash = ?2, preview = ?3, updated_at = ?4 WHERE id = ?5",
+            params![content, hash, preview, datetime_to_timestamp(Utc::now()), id],
         )?;
         Ok(())
     }
@@ -192,12 +267,18 @@ impl DbState {
         let tx = conn.transaction()?;
         let mut changes = 0usize;
         for item in items {
+            let content_hash = if item.content_hash.is_empty() {
+                compute_content_hash(item.kind, &item.content)
+            } else {
+                item.content_hash.clone()
+            };
             tx.execute(
-                "INSERT INTO clips (id, kind, content, preview, extra, is_pinned, is_favorite, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO clips (id, kind, content, content_hash, preview, extra, is_pinned, is_favorite, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 params![
                     item.id,
                     i64::from(item.kind),
                     item.content,
+                    content_hash,
                     item.preview,
                     item.extra,
                     item.is_pinned as i64,
@@ -255,6 +336,8 @@ pub struct ClipItem {
     pub id: i64,
     pub kind: ClipKind,
     pub content: String,
+    #[serde(default)]
+    pub content_hash: String,
     pub preview: Option<String>,
     pub extra: Option<String>,
     pub is_pinned: bool,
@@ -269,6 +352,8 @@ pub struct ClipPayload {
     pub content: String,
     pub preview: Option<String>,
     pub extra: Option<String>,
+    #[serde(default)]
+    pub content_hash: Option<String>,
     #[serde(default)]
     pub is_pinned: bool,
     #[serde(default)]
@@ -312,16 +397,17 @@ impl ToSql for ClipKind {
 }
 
 fn map_clip_row(row: &Row<'_>) -> rusqlite::Result<ClipItem> {
-    let created_at_ts: i64 = row.get(7)?;
-    let updated_at_ts: i64 = row.get(8)?;
+    let created_at_ts: i64 = row.get(8)?;
+    let updated_at_ts: i64 = row.get(9)?;
     Ok(ClipItem {
         id: row.get(0)?,
         kind: row.get(1)?,
         content: row.get(2)?,
-        preview: row.get(3)?,
-        extra: row.get(4)?,
-        is_pinned: row.get::<_, i64>(5)? == 1,
-        is_favorite: row.get::<_, i64>(6)? == 1,
+        content_hash: row.get(3)?,
+        preview: row.get(4)?,
+        extra: row.get(5)?,
+        is_pinned: row.get::<_, i64>(6)? == 1,
+        is_favorite: row.get::<_, i64>(7)? == 1,
         created_at: timestamp_to_datetime(created_at_ts),
         updated_at: timestamp_to_datetime(updated_at_ts),
     })

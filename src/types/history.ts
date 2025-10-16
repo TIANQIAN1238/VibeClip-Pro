@@ -8,6 +8,7 @@ export interface ClipItem {
   id: number;
   kind: ClipKind;
   content: string;
+  contentHash: string;
   preview?: string | null;
   extra?: string | null;
   isPinned: boolean;

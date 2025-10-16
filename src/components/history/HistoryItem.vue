@@ -104,7 +104,12 @@ function handleRemove() {
     </div>
     <div class="item-body">
       <div v-if="item.kind === ClipKind.Image" class="image-preview">
-        <img :src="`data:image/png;base64,${item.content}`" alt="Clipboard image preview" />
+        <img
+          :src="`data:image/png;base64,${item.content}`"
+          alt="Clipboard image preview"
+          loading="lazy"
+          decoding="async"
+        />
       </div>
       <p v-else class="text-preview">{{ previewText }}</p>
     </div>

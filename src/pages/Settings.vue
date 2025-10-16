@@ -46,7 +46,7 @@ function resetAiSettings() {
 </script>
 
 <template>
-  <div class="settings-page">
+<div class="settings-page">
     <AppSidebar />
     <section class="main">
       <div v-if="booting" class="settings-skeleton">
@@ -156,21 +156,24 @@ function resetAiSettings() {
       </template>
     </section>
   </div>
-</template>
+ </template>
 
 <style scoped>
 .settings-page {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   height: 100%;
+  width: 100%;
 }
 
 .main {
-  flex: 1;
-  padding: 28px 32px;
+  width: min(960px, 100%);
+  padding: 24px clamp(16px, 3vw, 40px);
   display: flex;
   flex-direction: column;
   gap: 24px;
   overflow-y: auto;
+  margin: 0 auto;
 }
 
 .page-header h1 {
@@ -185,8 +188,15 @@ function resetAiSettings() {
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-content: start;
+}
+
+@media (min-width: 1080px) {
+  .settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .radio-grid {
@@ -197,6 +207,7 @@ function resetAiSettings() {
 
 .field-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
@@ -215,7 +226,7 @@ function resetAiSettings() {
 }
 
 .about {
-  padding: 18px 24px;
+  padding: 18px clamp(16px, 3vw, 28px);
   background: rgba(255, 255, 255, 0.45);
   border-radius: var(--vibe-radius-lg);
   border: 1px solid var(--vibe-border-soft);
@@ -226,6 +237,8 @@ function resetAiSettings() {
 }
 
 .about ul {
+  display: grid;
+  gap: 6px;
   margin: 0;
   padding-left: 18px;
   color: var(--vibe-text-muted);
@@ -246,5 +259,16 @@ function resetAiSettings() {
 
 .settings-alert {
   margin-bottom: 16px;
+}
+
+@media (max-width: 840px) {
+  .settings-page {
+    grid-template-columns: 1fr;
+  }
+
+  .main {
+    width: 100%;
+    padding: 20px clamp(14px, 6vw, 28px);
+  }
 }
 </style>

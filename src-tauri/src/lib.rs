@@ -1,6 +1,7 @@
 mod ai_client;
 mod clipboard;
 mod db;
+mod hash;
 mod state;
 mod tray;
 
@@ -40,7 +41,7 @@ async fn insert_clip(
     }
     let payload = draft.into_payload().map_err(|err| err.to_string())?;
     let db_clone = db.clone_for_thread();
-    tauri::async_runtime::spawn_blocking(move || db_clone.insert(payload))
+    tauri::async_runtime::spawn_blocking(move || db_clone.upsert(payload))
         .await
         .map_err(|err| err.to_string())?
         .map_err(|err| err.to_string())
@@ -314,6 +315,7 @@ pub fn run() {
             app.manage(status);
             let db_state = DbState::initialize(&handle)?;
             app.manage(db_state);
+            clipboard_watcher::spawn_clipboard_watcher(&handle);
             tray::create_tray(&handle)?;
 
             #[cfg(debug_assertions)]
