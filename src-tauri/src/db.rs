@@ -87,7 +87,11 @@ impl DbState {
             "SELECT id, kind, content FROM clips WHERE content_hash IS NULL OR content_hash = ''",
         )?;
         let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, ClipKind>(1)?, row.get::<_, String>(2)?))
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, ClipKind>(1)?,
+                row.get::<_, String>(2)?,
+            ))
         })?;
         for row in rows {
             let (id, kind, content) = row?;
@@ -168,7 +172,7 @@ impl DbState {
         let preview_ref = preview.as_deref();
         let extra_ref = extra.as_deref();
         let mut conn = self.connect()?;
-        let mut tx = conn.transaction()?;
+        let tx = conn.transaction()?;
         let existing: Option<i64> = tx
             .query_row(
                 "SELECT id FROM clips WHERE content_hash = ?1 LIMIT 1",
@@ -241,11 +245,10 @@ impl DbState {
         preview: Option<String>,
     ) -> anyhow::Result<()> {
         let conn = self.connect()?;
-        let kind: ClipKind = conn.query_row(
-            "SELECT kind FROM clips WHERE id = ?1",
-            params![id],
-            |row| row.get(0),
-        )?;
+        let kind: ClipKind =
+            conn.query_row("SELECT kind FROM clips WHERE id = ?1", params![id], |row| {
+                row.get(0)
+            })?;
         let hash = compute_content_hash(kind, &content);
         conn.execute(
             "UPDATE clips SET content = ?1, content_hash = ?2, preview = ?3, updated_at = ?4 WHERE id = ?5",

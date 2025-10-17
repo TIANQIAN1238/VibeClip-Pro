@@ -41,7 +41,7 @@
 
 ## PasteMe 对标追踪
 
-`v1.3.2` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
+`v1.3.3` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
 
 - [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)
 
@@ -54,6 +54,8 @@ pnpm tauri dev  # Tauri 桌面端调试
 ```
 
 > **提示**：项目默认使用 `pnpm`。如需生成锁文件，请执行 `pnpm install` 以创建 `pnpm-lock.yaml`。
+
+> **Windows 快速启动**：克隆仓库后执行 `pnpm i && pnpm tauri dev` 即可一次完成依赖安装与桌面端调试。
 
 ## 核心工作流
 
@@ -105,16 +107,16 @@ pnpm tauri build
 
 生成的安装包位于 `src-tauri/target/release/bundle`。发布建议：
 
-1. 创建 `release/v1.3.2` 分支并推送：
+1. 创建 `release/v1.3.3` 分支并推送：
    ```bash
-   git checkout -b release/v1.3.2
-   git push -u origin release/v1.3.2
-   git tag -a v1.3.2 -m "VibeClip Pro v1.3.2"
-   git push origin v1.3.2
+   git checkout -b release/v1.3.3
+   git push -u origin release/v1.3.3
+   git tag -a v1.3.3 -m "VibeClip Pro v1.3.3"
+   git push origin v1.3.3
    ```
 2. 新建 GitHub Release：
-   - **Title**：`VibeClip Pro v1.3.2`
-   - **Highlights**：数据库索引与 VACUUM、历史分页加载、去重/容量/黑名单偏好等。
+   - **Title**：`VibeClip Pro v1.3.3`
+   - **Highlights**：恢复剪贴板监听模块编译、清理 Rust 警告、统一版本号并验证 `pnpm tauri dev`。
    - **Assets**：`*.msi`、`*.dmg`、`latest.json` 等。
    - **Screenshots**：可附上本文档中的 SVG 预览或自行截取界面。
 

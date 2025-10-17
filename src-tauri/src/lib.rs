@@ -1,5 +1,6 @@
 mod ai_client;
 mod clipboard;
+mod clipboard_watcher;
 mod db;
 mod hash;
 mod runtime_config;
@@ -43,7 +44,6 @@ async fn insert_clip(
         return Err("监听已暂停".into());
     }
     let payload = draft.into_payload().map_err(|err| err.to_string())?;
-    let db_clone = db.clone_for_thread();
     let prefs = config.get();
     let db_clone = db.clone_for_thread();
     let result = tauri::async_runtime::spawn_blocking(move || {
@@ -299,12 +299,10 @@ async fn set_value_to_store<R: Runtime>(
 #[tauri::command]
 async fn register_history_shortcut(app: AppHandle, shortcut: Option<String>) -> Result<(), String> {
     let parsed_shortcut = shortcut.unwrap_or_else(|| DEFAULT_SHORTCUT.to_string());
-    let parsed = parsed_shortcut
-        .parse::<Shortcut>()
-        .map_err(|err| {
-            error!("failed to parse shortcut {parsed_shortcut}: {err}");
-            err.to_string()
-        })?;
+    let parsed = parsed_shortcut.parse::<Shortcut>().map_err(|err| {
+        error!("failed to parse shortcut {parsed_shortcut}: {err}");
+        err.to_string()
+    })?;
     if let Err(err) = app.global_shortcut().unregister_all() {
         warn!("unable to unregister previous shortcuts: {err}");
     }
