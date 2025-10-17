@@ -53,7 +53,7 @@ async function close() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
+  padding: 0 12px;
   font-weight: 600;
   letter-spacing: 0.2px;
   color: var(--vibe-text-primary);

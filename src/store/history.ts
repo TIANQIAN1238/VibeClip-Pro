@@ -16,6 +16,7 @@ import type {
 import { ClipKind as ClipKindEnum } from "@/types/history";
 import { useSettingsStore } from "./settings";
 import { safeInvoke, isTauriRuntime, TauriUnavailableError, explainTauriFallback } from "@/libs/tauri";
+import { clipMatchesFilter } from "@/utils/content-inspector";
 
 const HISTORY_LIMIT = 200;
 
@@ -171,22 +172,7 @@ export const useHistoryStore = defineStore("history", () => {
   }
 
   const filteredItems = computed(() => {
-    const base = items.value.filter(item => {
-      switch (filter.value) {
-        case "pinned":
-          return item.isPinned;
-        case "favorites":
-          return item.isFavorite;
-        case "text":
-          return item.kind === ClipKindEnum.Text;
-        case "images":
-          return item.kind === ClipKindEnum.Image;
-        case "files":
-          return item.kind === ClipKindEnum.File;
-        default:
-          return true;
-      }
-    });
+    const base = items.value.filter(item => clipMatchesFilter(item, filter.value));
     if (!searchTerm.value.trim()) {
       return base;
     }

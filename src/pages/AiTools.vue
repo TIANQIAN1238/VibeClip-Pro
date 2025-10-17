@@ -1,21 +1,102 @@
 <script setup lang="ts">
-import { ref, onMounted, onErrorCaptured, watch } from "vue";
+import { onMounted, onErrorCaptured, ref, watch } from "vue";
 import { useMessage } from "naive-ui";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
-import AppSidebar from "@/components/layout/AppSidebar.vue";
 import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
+import { useBridgeStore } from "@/store/bridge";
+import type { ClipboardBridgePayload } from "@/store/bridge";
 import { ClipKind, type AiActionKind } from "@/types/history";
+import { useLocale } from "@/composables/useLocale";
 
 const history = useHistoryStore();
 const settings = useSettingsStore();
+const bridge = useBridgeStore();
 const message = useMessage();
+const { t } = useLocale();
 
 const input = ref("");
 const output = ref("");
 const pageError = ref<string | null>(null);
 const isLoading = ref(false);
+
+const assistantMessages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
+const assistantInput = ref("");
+const assistantLoading = ref(false);
+const clipboardBridge = ref<ClipboardBridgePayload | null>(null);
+
+function ensureAssistantIntro() {
+  if (!assistantMessages.value.length) {
+    assistantMessages.value.push({
+      role: "assistant",
+      content: t("ai.assistantWelcome", "你好！随时向我提问，或输入需要翻译、摘要或润色的文字。"),
+    });
+  }
+}
+
+function applyBridgeSeed(payload: ClipboardBridgePayload) {
+  if (!payload.content?.trim()) {
+    return;
+  }
+  if (payload.kind === ClipKind.Image) {
+    clipboardBridge.value = { ...payload };
+    if (payload.mode === "assistant") {
+      ensureAssistantIntro();
+      assistantInput.value = `请描述这张图片：${payload.content}`;
+    }
+    message.success(t("ai.bridgeImageReady", "已载入剪贴板图片"));
+    return;
+  }
+
+  clipboardBridge.value = null;
+  input.value = payload.content;
+  if (payload.mode === "assistant") {
+    ensureAssistantIntro();
+    assistantInput.value = payload.content;
+  }
+  message.success(t("ai.bridgeLoaded", "已载入剪贴板内容"));
+}
+
+watch(
+  () => bridge.clipboardSeed,
+  payload => {
+    if (!payload) return;
+    applyBridgeSeed(payload);
+    bridge.consumeClipboardSeed();
+  },
+  { immediate: true }
+);
+
+function applyBridgeToInput() {
+  const payload = clipboardBridge.value;
+  if (!payload) return;
+  input.value = payload.content;
+  message.success(t("ai.bridgeApplied", "已填充到输入区"));
+}
+
+function sendBridgeToAssistant() {
+  const payload = clipboardBridge.value;
+  if (payload) {
+    ensureAssistantIntro();
+    assistantInput.value =
+      payload.kind === ClipKind.Image
+        ? `请描述这张图片：${payload.content}`
+        : payload.content;
+    void sendAssistantMessage();
+    clipboardBridge.value = null;
+    return;
+  }
+  if (input.value.trim()) {
+    ensureAssistantIntro();
+    assistantInput.value = input.value;
+    void sendAssistantMessage();
+  }
+}
+
+function clearBridgeSeed() {
+  clipboardBridge.value = null;
+}
 
 function reportError(label: string, error: unknown) {
   console.error(label, error);
@@ -30,7 +111,7 @@ async function handleAiRun(payload: {
   customPrompt?: string;
 }) {
   if (!payload.input.trim()) {
-    message.warning("请先输入需要处理的内容");
+    message.warning(t("ai.placeholder", "输入内容"));
     return;
   }
   if (!settings.apiKey) {
@@ -66,7 +147,7 @@ async function pasteFromClipboard() {
   }
 }
 
-function clearInput() {
+function clearWorkspace() {
   input.value = "";
   output.value = "";
 }
@@ -74,14 +155,11 @@ function clearInput() {
 async function copyResult() {
   if (!output.value) return;
   try {
-    await history.markSelfCapture({
-      kind: ClipKind.Text,
-      content: output.value,
-    });
+    await history.markSelfCapture({ kind: ClipKind.Text, content: output.value });
     await writeText(output.value);
-    message.success("结果已复制");
+    message.success(t("ai.copy", "复制结果"));
   } catch (error) {
-    reportError("复制结果失败", error);
+    reportError(t("ai.copy", "复制结果"), error);
   }
 }
 
@@ -94,32 +172,81 @@ async function saveResult() {
       preview: output.value.slice(0, 120),
       extra: "AI 工具生成",
     });
-    message.success("结果已保存到历史");
+    message.success(t("ai.save", "保存到历史"));
   } catch (error) {
-    reportError("保存结果失败", error);
+    reportError(t("ai.save", "保存到历史"), error);
   }
 }
 
-function retryInit() {
-  pageError.value = null;
-  isLoading.value = false;
+async function sendAssistantMessage() {
+  const question = assistantInput.value.trim();
+  if (!question) return;
+  if (!settings.apiKey) {
+    message.warning("请在设置页配置 OpenAI 兼容接口 Key");
+    return;
+  }
+  ensureAssistantIntro();
+  assistantMessages.value.push({ role: "user", content: question });
+  assistantInput.value = "";
+  assistantLoading.value = true;
+  try {
+    const historySlice = assistantMessages.value
+      .slice(-6)
+      .map(entry => `${entry.role === "user" ? "User" : "Assistant"}: ${entry.content}`)
+      .join("\n");
+    const prompt = `${historySlice}\nAssistant:`;
+    const response = await history.runAiAction(
+      {
+        action: "custom",
+        input: prompt,
+        language: settings.preferredLanguage,
+        customPrompt:
+          "You are VibeClip Pro, an expert productivity assistant. Reply concisely and keep markdown formatting when appropriate.",
+        apiKey: settings.apiKey,
+        baseUrl: settings.apiBaseUrl,
+        model: settings.model,
+        temperature: settings.temperature,
+      },
+      { persist: false, copy: false }
+    );
+    assistantMessages.value.push({ role: "assistant", content: response.result });
+  } catch (error) {
+    reportError("AI 助理失败", error);
+  } finally {
+    assistantLoading.value = false;
+  }
+}
+
+function copyAssistantResponse(entry: { role: "user" | "assistant"; content: string }) {
+  if (entry.role !== "assistant") return;
+  void (async () => {
+    try {
+      await history.markSelfCapture({ kind: ClipKind.Text, content: entry.content });
+      await writeText(entry.content);
+      message.success(t("assistant.copy", "复制回答"));
+    } catch (error) {
+      reportError(t("assistant.copy", "复制回答"), error);
+    }
+  })();
 }
 
 onMounted(async () => {
   isLoading.value = true;
+  ensureAssistantIntro();
   try {
-    // 等待 settings store 加载完成
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       if (settings.hydrated) {
         resolve();
       } else {
-        const unwatch = watch(() => settings.hydrated, (hydrated) => {
-          if (hydrated) {
-            unwatch();
-            resolve();
+        const unwatch = watch(
+          () => settings.hydrated,
+          hydrated => {
+            if (hydrated) {
+              unwatch();
+              resolve();
+            }
           }
-        });
-        // 超时保护
+        );
         setTimeout(() => {
           unwatch();
           resolve();
@@ -127,85 +254,146 @@ onMounted(async () => {
       }
     });
   } catch (error) {
-    console.error("[AiTools] Mount error:", error);
     pageError.value = error instanceof Error ? error.message : "页面初始化失败";
   } finally {
     isLoading.value = false;
   }
 });
 
-// 捕获子组件错误
 onErrorCaptured((err, _instance, info) => {
   console.error("[AiTools] Error captured:", err, info);
-  pageError.value = err.message || "组件渲染错误";
-  return false; // 阻止错误继续传播
+  pageError.value = err instanceof Error ? err.message : "组件渲染错误";
+  return false;
 });
 </script>
 
 <template>
   <div class="ai-tools-page">
-    <AppSidebar />
     <section class="main">
-      <!-- 错误提示 -->
       <n-alert v-if="pageError" type="error" title="页面加载失败" closable @close="pageError = null">
         {{ pageError }}
-        <template #action>
-          <n-button size="small" @click="retryInit">重试</n-button>
-        </template>
       </n-alert>
 
-      <!-- 加载中骨架屏 -->
       <div v-if="isLoading" class="loading-skeleton">
         <n-skeleton height="60px" :sharp="false" />
-        <n-skeleton height="400px" :sharp="false" style="margin-top: 24px;" />
+        <n-skeleton height="400px" :sharp="false" style="margin-top: 16px;" />
       </div>
 
       <template v-else>
         <header class="page-header">
-        <div>
-          <h1>AI 工具集</h1>
-          <p>选择合适的动作处理文本，结果可复制或保存到历史</p>
-        </div>
-        <div class="header-actions">
-          <n-button size="small" secondary @click="pasteFromClipboard">粘贴剪贴板</n-button>
-          <n-button size="small" quaternary @click="clearInput">清空</n-button>
-        </div>
-      </header>
-
-      <div class="workspace">
-        <section class="input-card">
-          <h2>输入内容</h2>
-          <n-input
-            v-model:value="input"
-            type="textarea"
-            :autosize="{ minRows: 8, maxRows: 12 }"
-            placeholder="在此输入需要处理的文本，或点击上方按钮同步系统剪贴板"
-          />
-        </section>
-
-        <AiQuickActions
-          class="actions-card"
-          :loading="history.aiBusy"
-          :source-text="input"
-          :on-run="handleAiRun"
-        />
-
-        <section class="result-card">
-          <div class="result-header">
-            <h2>AI 输出</h2>
-            <div class="result-actions">
-              <n-button size="tiny" secondary :disabled="!output" @click="copyResult">复制结果</n-button>
-              <n-button size="tiny" type="primary" :disabled="!output" @click="saveResult">保存到历史</n-button>
-            </div>
+          <div>
+            <h1>{{ t("ai.title", "AI 工具集") }}</h1>
+            <p>{{ t("ai.subtitle", "选择合适的动作处理文本，结果可复制或保存到历史") }}</p>
           </div>
-          <n-spin :show="history.aiBusy">
-            <div v-if="output" class="result-body">
-              <pre>{{ output }}</pre>
+          <div class="header-actions">
+            <n-button size="tiny" secondary @click="pasteFromClipboard">
+              {{ t("ai.paste", "粘贴剪贴板") }}
+            </n-button>
+            <n-button size="tiny" quaternary @click="clearWorkspace">
+              {{ t("ai.clear", "清空") }}
+            </n-button>
+          </div>
+        </header>
+
+        <div class="content-scroll thin-scrollbar">
+          <section v-if="clipboardBridge" class="card bridge-card">
+            <header class="bridge-header">
+              <div>
+                <h2>{{ clipboardBridge.title ?? t("ai.bridgeTitle", "来自剪贴板") }}</h2>
+                <p>{{ t("ai.bridgeSubtitle", "快速继续处理或发送给 AI 助理") }}</p>
+              </div>
+            </header>
+            <div class="bridge-body">
+              <img
+                v-if="clipboardBridge.kind === ClipKind.Image"
+                :src="clipboardBridge.content"
+                alt="clipboard preview"
+                class="bridge-image"
+              />
+              <p v-else class="bridge-text">{{ clipboardBridge.content }}</p>
             </div>
-            <p v-else class="result-placeholder">运行 AI 动作后，生成结果将展示在此处。</p>
-          </n-spin>
-        </section>
-      </div>
+            <footer class="bridge-actions">
+              <n-button size="tiny" tertiary @click="applyBridgeToInput">
+                {{ t("ai.bridgeApply", "填充到输入区") }}
+              </n-button>
+              <n-button size="tiny" type="primary" @click="sendBridgeToAssistant">
+                {{ t("ai.bridgeSend", "发送给助手") }}
+              </n-button>
+              <n-button size="tiny" quaternary @click="clearBridgeSeed">
+                {{ t("ai.bridgeClear", "清除") }}
+              </n-button>
+            </footer>
+          </section>
+
+          <section class="card input-card">
+            <h2>{{ t("ai.input", "输入内容") }}</h2>
+            <n-input
+              v-model:value="input"
+              type="textarea"
+              :autosize="{ minRows: 6, maxRows: 10 }"
+              :placeholder="t('ai.placeholder', '在此输入需要处理的文本，或点击上方按钮同步系统剪贴板')"
+            />
+          </section>
+
+          <AiQuickActions
+            class="card ai-card"
+            :loading="history.aiBusy"
+            :source-text="input"
+            :on-run="handleAiRun"
+          />
+
+          <section class="card result-card">
+            <div class="result-header">
+              <h2>{{ t("ai.output", "AI 输出") }}</h2>
+              <div class="result-actions">
+                <n-button size="tiny" secondary :disabled="!output" @click="copyResult">
+                  {{ t("ai.copy", "复制结果") }}
+                </n-button>
+                <n-button size="tiny" type="primary" :disabled="!output" @click="saveResult">
+                  {{ t("ai.save", "保存到历史") }}
+                </n-button>
+              </div>
+            </div>
+            <div class="result-body">
+              <pre v-if="output">{{ output }}</pre>
+              <p v-else class="placeholder">{{ t("ai.placeholder", "在此输入需要处理的文本，或点击上方按钮同步系统剪贴板") }}</p>
+            </div>
+          </section>
+
+          <section class="card assistant-card">
+            <header class="assistant-header">
+              <div>
+                <h2>{{ t("ai.assistantTitle", "AI 助理") }}</h2>
+                <p>{{ t("ai.assistantSubtitle", "自由提问或让 AI 帮助翻译、摘要与润色") }}</p>
+              </div>
+            </header>
+            <div class="assistant-messages thin-scrollbar">
+              <template v-if="assistantMessages.length">
+                <div
+                  v-for="(message, index) in assistantMessages"
+                  :key="index"
+                  :class="['assistant-message', message.role]"
+                  @dblclick="copyAssistantResponse(message)"
+                >
+                  <p>{{ message.content }}</p>
+                </div>
+              </template>
+              <p v-else class="placeholder">{{ t("assistant.empty", "还没有对话，开始输入吧。") }}</p>
+            </div>
+            <div class="assistant-input">
+              <n-input
+                v-model:value="assistantInput"
+                type="textarea"
+                :autosize="{ minRows: 2, maxRows: 4 }"
+                :placeholder="t('ai.assistantPlaceholder', '输入想要询问或处理的内容')"
+                @keyup.enter.exact.prevent="sendAssistantMessage"
+              />
+              <n-button type="primary" size="tiny" :loading="assistantLoading" @click="sendAssistantMessage">
+                {{ t("ai.assistantSend", "发送") }}
+              </n-button>
+            </div>
+          </section>
+        </div>
       </template>
     </section>
   </div>
@@ -214,74 +402,112 @@ onErrorCaptured((err, _instance, info) => {
 <style scoped>
 .ai-tools-page {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
   height: 100%;
+  overflow: hidden;
 }
 
 .main {
   flex: 1;
-  padding: 28px 32px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  overflow: hidden;
+  gap: 12px;
 }
 
 .page-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 20px;
 }
 
 .page-header p {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
+  font-size: 12px;
   color: var(--vibe-text-muted);
 }
 
 .header-actions {
   display: flex;
+  gap: 8px;
+}
+
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.workspace {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1.2fr);
-  gap: 20px;
-  min-height: 0;
-}
-
-.input-card,
-.result-card {
-  background: var(--vibe-bg-surface);
+.card {
   border-radius: var(--vibe-radius-lg);
-  border: 1px solid var(--vibe-border-soft);
-  padding: 18px 20px;
+  background: var(--vibe-panel-surface);
+  border: 1px solid var(--vibe-panel-border);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.actions-card {
-  height: 100%;
+.bridge-card {
+  gap: 10px;
 }
 
-.input-card h2,
-.result-card h2 {
+.bridge-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
+}
+
+.bridge-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--vibe-text-muted);
+}
+
+.bridge-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bridge-image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: var(--vibe-radius-md);
+  border: 1px solid var(--vibe-panel-border);
+}
+
+.bridge-text {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vibe-text-secondary);
+  word-break: break-word;
+}
+
+.bridge-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .result-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.result-header h2 {
+  margin: 0;
+  font-size: 16px;
 }
 
 .result-actions {
@@ -290,32 +516,82 @@ onErrorCaptured((err, _instance, info) => {
 }
 
 .result-body {
-  background: rgba(12, 27, 56, 0.04);
-  border-radius: var(--vibe-radius-md);
-  padding: 14px 16px;
-  max-height: 320px;
-  overflow: auto;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .result-body pre {
   margin: 0;
   white-space: pre-wrap;
-  word-break: break-word;
 }
 
-.result-placeholder {
+.assistant-card {
+  gap: 10px;
+}
+
+.assistant-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.assistant-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--vibe-text-muted);
+}
+
+.assistant-messages {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assistant-message {
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.assistant-message.assistant {
+  background: rgba(81, 97, 255, 0.12);
+  color: var(--vibe-text-primary);
+}
+
+.assistant-message.user {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.assistant-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.placeholder {
   margin: 0;
   color: var(--vibe-text-muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
-@media (max-width: 1280px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr);
+.loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 12px;
   }
 
-  .actions-card {
-    order: 3;
+  .assistant-message.assistant {
+    background: rgba(122, 209, 245, 0.18);
   }
 }
 </style>

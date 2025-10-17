@@ -34,7 +34,11 @@ export type HistoryFilter =
   | "favorites"
   | "text"
   | "images"
-  | "files";
+  | "files"
+  | "links"
+  | "code"
+  | "commands"
+  | "json";
 
 export type AiActionKind =
   | "translate"
