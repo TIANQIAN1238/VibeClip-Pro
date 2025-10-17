@@ -38,7 +38,7 @@ const themeOverrides = computed(() => settings.naiveThemeOverrides);
               <div class="app-content">
                 <RouterView v-slot="{ Component }">
                   <Transition name="fade" mode="out-in">
-                    <component :is="Component" />
+                    <component :is="Component" class="app-route-view" />
                   </Transition>
                 </RouterView>
               </div>
