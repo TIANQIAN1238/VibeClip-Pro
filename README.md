@@ -30,13 +30,20 @@
 
 ## 功能亮点
 
-- **连续剪贴板捕获**：全新后台监听器以 250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径到 SQLite，带时间戳与内容哈希去重。
-- **历史体验升级**：内置筛选（全部 / 文本 / 图像 / 文件）、关键字搜索、虚拟滚动与图片懒加载，长列表依旧顺滑。
-- **AI 右键菜单**：历史文本右键即可翻译 / 摘要 / 润色，结果支持复制或写回历史，未配置 API Key 时提示跳转设置。
+- **连续剪贴板捕获**：后台监听器以 250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径，并支持来源黑名单过滤与内容哈希去重。
+- **历史体验升级**：内置筛选（全部 / 文本 / 图像 / 文件）、关键字前缀搜索、虚拟滚动与分页「加载更多」，图片仍保持懒加载，长列表依旧顺滑。
+- **AI 右键菜单**：历史文本右键即可翻译 / 摘要 / 润色，结果支持复制或写回历史，未配置 API Key 时提示跳转设置且不阻塞其他操作。
 - **多入口导航**：全新侧栏整合「剪贴板 / 历史记录 / 收藏 / AI 工具 / 设置」，与窗口拖拽、托盘操作保持连贯。
+- **运行偏好自定义**：设置页提供去重开关、容量与保留天数、来源黑名单、日志等级（info/debug）与 VACUUM 清理。
 - **两种主题 / 自定义行距**：220 px 渐变侧栏 + 卡片化主界面，浅色与深色自动切换，字体、圆角、过渡统一调性。
-- **系统级控制**：默认全局快捷键 `Ctrl+Shift+V`，托盘可一键显示/隐藏、暂停监听或切换离线模式。
+- **系统级控制**：默认全局快捷键 `Ctrl+Shift+V`，托盘可一键显示/隐藏、暂停监听或切换离线模式，关于页展示运行时版本号。
 - **导入导出**：JSON 备份/恢复历史，保留 `id`、`kind`、`timestamp` 信息，便于跨设备迁移。
+
+## PasteMe 对标追踪
+
+`v1.3.1` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
+
+- [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)
 
 ## 快速开始
 
@@ -54,7 +61,7 @@ pnpm tauri dev  # Tauri 桌面端调试
 
 - 面板自动记录新内容；在暂停模式下仍可手动保存当前系统剪贴板。
 - 列表支持 `全部 / 置顶 / 收藏 / 文本 / 图像 / 文件` 六种筛选。
-- 每项提供复制、粘贴、置顶、收藏与删除动作，图像项以 DataURL 方式回显。
+- 每项提供复制、粘贴、置顶、收藏与删除动作，图像项以 DataURL 方式回显；底部支持分页「加载更多」。
 
 ### AI 快捷操作
 
@@ -67,7 +74,7 @@ pnpm tauri dev  # Tauri 桌面端调试
 
 - 托盘菜单：显示/隐藏窗口、暂停监听、开启离线模式、退出。
 - 自动启动：调用 Tauri Autostart 插件（macOS LaunchAgent、Windows Registry）。
-- 键盘：`Ctrl+Shift+V` 呼出面板；`Esc` 关闭浮动窗。
+- 键盘：`Ctrl+Shift+V` 呼出面板；`Esc` 关闭浮动窗；`F12` 调试工具。
 
 ## 技术栈 & 体积优化
 
@@ -98,16 +105,16 @@ pnpm tauri build
 
 生成的安装包位于 `src-tauri/target/release/bundle`。发布建议：
 
-1. 创建 `release/v1.3.0` 分支并推送：
+1. 创建 `release/v1.3.1` 分支并推送：
    ```bash
-   git checkout -b release/v1.3.0
-   git push -u origin release/v1.3.0
-   git tag -a v1.3.0 -m "VibeClip Pro v1.3.0"
-   git push origin v1.3.0
+   git checkout -b release/v1.3.1
+   git push -u origin release/v1.3.1
+   git tag -a v1.3.1 -m "VibeClip Pro v1.3.1"
+   git push origin v1.3.1
    ```
 2. 新建 GitHub Release：
-   - **Title**：`VibeClip Pro v1.3.0`
-   - **Highlights**：多类型剪贴板监听、AI 右键菜单、历史虚拟滚动与筛选等。
+   - **Title**：`VibeClip Pro v1.3.1`
+   - **Highlights**：数据库索引与 VACUUM、历史分页加载、去重/容量/黑名单偏好等。
    - **Assets**：`*.msi`、`*.dmg`、`latest.json` 等。
    - **Screenshots**：可附上本文档中的 SVG 预览或自行截取界面。
 

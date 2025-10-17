@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use rusqlite::{named_params, params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use tauri::{AppHandle, Manager};
 
 use crate::hash::compute_content_hash;
+use crate::runtime_config::RuntimePreferences;
 
 #[derive(Debug, Clone)]
 pub struct DbState {
@@ -59,6 +60,8 @@ impl DbState {
             CREATE INDEX IF NOT EXISTS idx_clips_created_at ON clips(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_clips_favorite ON clips(is_favorite DESC, is_pinned DESC);
             CREATE INDEX IF NOT EXISTS idx_clips_hash ON clips(content_hash);
+            CREATE INDEX IF NOT EXISTS idx_clips_kind ON clips(kind, updated_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_clips_pinned ON clips(is_pinned DESC, updated_at DESC);
             "#,
         )
         .context("failed to run migrations")?;
@@ -101,6 +104,7 @@ impl DbState {
         &self,
         query: Option<String>,
         limit: Option<u32>,
+        offset: u32,
         include_favorites_first: bool,
     ) -> anyhow::Result<Vec<ClipItem>> {
         let conn = self.connect()?;
@@ -111,9 +115,9 @@ impl DbState {
             .as_ref()
             .map(|value| value.trim())
             .filter(|value| !value.is_empty())
-            .map(|value| format!("%{}%", value));
+            .map(|value| value.to_string());
         if search_term.is_some() {
-            sql.push_str(" WHERE content LIKE :q OR COALESCE(preview, '') LIKE :q");
+            sql.push_str(" WHERE content LIKE :prefix OR COALESCE(preview, '') LIKE :prefix");
         }
         if include_favorites_first {
             sql.push_str(" ORDER BY is_favorite DESC, is_pinned DESC, updated_at DESC");
@@ -123,9 +127,13 @@ impl DbState {
         if let Some(l) = limit {
             sql.push_str(&format!(" LIMIT {}", l));
         }
+        if offset > 0 {
+            sql.push_str(&format!(" OFFSET {}", offset));
+        }
         let mut statement = conn.prepare(&sql)?;
         let rows = if let Some(ref value) = search_term {
-            statement.query_map(named_params! {":q": value.as_str()}, map_clip_row)?
+            let pattern = format!("{}%", value);
+            statement.query_map(named_params! {":prefix": pattern.as_str()}, map_clip_row)?
         } else {
             statement.query_map([], map_clip_row)?
         };
@@ -258,8 +266,14 @@ impl DbState {
         Ok(())
     }
 
+    pub fn vacuum(&self) -> anyhow::Result<()> {
+        let conn = self.connect()?;
+        conn.execute_batch("VACUUM")?;
+        Ok(())
+    }
+
     pub fn export_all(&self) -> anyhow::Result<Vec<ClipItem>> {
-        self.list(None, None, true)
+        self.list(None, None, 0, true)
     }
 
     pub fn import_many(&self, items: Vec<ClipItem>) -> anyhow::Result<usize> {
@@ -314,6 +328,33 @@ impl DbState {
         } else {
             Ok(0)
         }
+    }
+
+    pub fn prune_older_than_days(&self, max_age_days: u32) -> anyhow::Result<usize> {
+        if max_age_days == 0 {
+            return Ok(0);
+        }
+        let conn = self.connect()?;
+        let threshold = Utc::now() - Duration::days(max_age_days as i64);
+        let deleted = conn.execute(
+            "DELETE FROM clips WHERE created_at < ?1",
+            params![datetime_to_timestamp(threshold)],
+        )?;
+        Ok(deleted as usize)
+    }
+
+    pub fn apply_retention(&self, prefs: &RuntimePreferences) -> anyhow::Result<()> {
+        if let Some(max_entries) = prefs.retention.max_entries {
+            if max_entries > 0 {
+                let _ = self.prune_older_than(max_entries);
+            }
+        }
+        if let Some(days) = prefs.retention.max_age_days {
+            if days > 0 {
+                let _ = self.prune_older_than_days(days);
+            }
+        }
+        Ok(())
     }
 }
 

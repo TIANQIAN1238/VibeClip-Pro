@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
@@ -61,6 +61,8 @@ export const useHistoryStore = defineStore("history", () => {
   const aiBusy = ref(false);
   const initialized = ref(false);
   const lastError = ref<string | null>(null);
+  const hasMore = ref(false);
+  const nextOffset = ref(0);
 let fetchTimer: number | null = null;
 let clipboardUnlisten: UnlistenFn | null = null;
 
@@ -115,22 +117,39 @@ let clipboardUnlisten: UnlistenFn | null = null;
     }
     fetchTimer = window.setTimeout(() => {
       fetchTimer = null;
+      nextOffset.value = 0;
       void refresh().catch(() => undefined);
     }, 280);
   }
 
-  async function refresh() {
+  const effectiveLimit = computed(() => {
+    const configured = settings.historyLimit || HISTORY_LIMIT;
+    return Math.max(50, Math.min(configured, 500));
+  });
+
+  async function fetchPage(options: { append: boolean }) {
     isLoading.value = true;
     try {
       const payload = await invoke<ClipItem[]>("fetch_clips", {
         query: searchTerm.value.trim() || null,
         favoritesFirst: filter.value === "favorites" || filter.value === "pinned",
-        limit: HISTORY_LIMIT,
+        limit: effectiveLimit.value,
+        offset: options.append ? nextOffset.value : 0,
       });
-      items.value = (payload || []).map(normalizeClip);
+      const batch = (payload || []).map(normalizeClip);
+      if (options.append && items.value.length) {
+        const existingIds = new Set(items.value.map(item => item.id));
+        const merged = batch.filter(item => !existingIds.has(item.id));
+        items.value = [...items.value, ...merged];
+      } else {
+        items.value = batch;
+        nextOffset.value = 0;
+      }
       if (items.value.length > 0) {
         latest.value = items.value[0];
       }
+      hasMore.value = batch.length >= effectiveLimit.value;
+      nextOffset.value = items.value.length;
     } catch (error) {
       raise("无法加载剪贴板历史", error);
     } finally {
@@ -139,6 +158,28 @@ let clipboardUnlisten: UnlistenFn | null = null;
     }
   }
 
+  async function refresh() {
+    nextOffset.value = 0;
+    await fetchPage({ append: false });
+  }
+
+  async function loadMore() {
+    if (!hasMore.value || isLoading.value) {
+      return;
+    }
+    await fetchPage({ append: true });
+  }
+
+  watch(
+    () => settings.historyLimit,
+    () => {
+      nextOffset.value = 0;
+      if (initialized.value) {
+        void refresh();
+      }
+    }
+  );
+
   async function ensureClipboardListener() {
     if (clipboardUnlisten) {
       return;
@@ -146,7 +187,11 @@ let clipboardUnlisten: UnlistenFn | null = null;
     try {
       clipboardUnlisten = await listen<ClipItem>("clipboard://captured", event => {
         const clip = normalizeClip(event.payload);
-        items.value = [clip, ...items.value.filter(entry => entry.id !== clip.id)].slice(0, HISTORY_LIMIT);
+        const limit = settings.historyLimit || HISTORY_LIMIT;
+        items.value = [
+          clip,
+          ...items.value.filter(entry => entry.id !== clip.id),
+        ].slice(0, limit);
         latest.value = clip;
       });
     } catch (error) {
@@ -177,16 +222,20 @@ let clipboardUnlisten: UnlistenFn | null = null;
 
   async function insertClip(draft: ClipboardDraftPayload) {
     if (!listening.value) {
-      return;
+      return null;
     }
     try {
       const payload = await invoke<ClipItem>("insert_clip", { draft });
       const clip = normalizeClip(payload);
-      items.value = [clip, ...items.value].slice(0, HISTORY_LIMIT);
+      const limit = settings.historyLimit || HISTORY_LIMIT;
+      items.value = [clip, ...items.value].slice(0, limit);
+      nextOffset.value = items.value.length;
       latest.value = clip;
+      return clip;
     } catch (error) {
       raise("保存剪贴板内容失败", error);
     }
+    return null;
   }
 
   async function updateFlags(id: number, data: { pinned?: boolean; favorite?: boolean }) {
@@ -214,6 +263,10 @@ let clipboardUnlisten: UnlistenFn | null = null;
     try {
       await invoke("remove_clip", { id });
       items.value = items.value.filter(item => item.id !== id);
+      nextOffset.value = items.value.length;
+      if (items.value.length < effectiveLimit.value) {
+        hasMore.value = false;
+      }
     } catch (error) {
       raise("删除剪贴板记录失败", error);
     }
@@ -224,6 +277,8 @@ let clipboardUnlisten: UnlistenFn | null = null;
       await invoke("clear_history");
       items.value = [];
       latest.value = null;
+      hasMore.value = false;
+      nextOffset.value = 0;
     } catch (error) {
       raise("清空历史记录失败", error);
     }
@@ -275,8 +330,9 @@ let clipboardUnlisten: UnlistenFn | null = null;
       const response = await invoke<AiActionResponse>("perform_ai_action", { request });
       const persist = options?.persist ?? true;
       const copy = options?.copy ?? true;
+      let persisted: ClipItem | null = null;
       if (persist) {
-        await insertClip({
+        persisted = await insertClip({
           kind: ClipKindEnum.Text,
           text: response.result,
           preview: response.result.slice(0, 96),
@@ -284,6 +340,18 @@ let clipboardUnlisten: UnlistenFn | null = null;
         });
       }
       if (copy) {
+        if (persisted) {
+          await markSelfCapture({
+            hash: persisted.contentHash,
+            kind: persisted.kind,
+            content: persisted.content,
+          });
+        } else {
+          await markSelfCapture({
+            kind: ClipKindEnum.Text,
+            content: response.result,
+          });
+        }
         await writeText(response.result);
       }
       return response;
@@ -297,9 +365,19 @@ let clipboardUnlisten: UnlistenFn | null = null;
   async function copyClip(item: ClipItem) {
     try {
       if (item.kind === ClipKindEnum.Text || item.kind === ClipKindEnum.File) {
+        await markSelfCapture({
+          hash: item.contentHash,
+          kind: item.kind,
+          content: item.content,
+        });
         await writeText(item.content);
       } else if (item.kind === ClipKindEnum.Image) {
-        await writeText("[Image copied]");
+        const placeholder = "[Image copied]";
+        await markSelfCapture({
+          kind: ClipKindEnum.Text,
+          content: placeholder,
+        });
+        await writeText(placeholder);
       }
     } catch (error) {
       raise("复制到系统剪贴板失败", error);
@@ -308,15 +386,41 @@ let clipboardUnlisten: UnlistenFn | null = null;
 
   async function captureText(text: string, options?: Partial<ClipboardDraftPayload>) {
     try {
-      await insertClip({
+      const clip = await insertClip({
         kind: ClipKindEnum.Text,
         text,
         preview: text.slice(0, 120),
         ...options,
       });
+      await markSelfCapture({
+        hash: clip?.contentHash ?? null,
+        kind: ClipKindEnum.Text,
+        content: text,
+      });
       await writeText(text);
     } catch (error) {
       raise("保存文本失败", error);
+    }
+  }
+
+  async function markSelfCapture(options: {
+    hash?: string | null;
+    kind?: ClipKind;
+    content?: string | null;
+  }) {
+    try {
+      await invoke("ignore_next_clipboard_capture", {
+        hash: options.hash ?? null,
+        kind:
+          typeof options.kind === "number"
+            ? (options.kind as number)
+            : options.kind !== undefined
+              ? Number(options.kind)
+              : null,
+        content: options.content ?? null,
+      });
+    } catch (error) {
+      console.warn("无法标记应用复制来源", error);
     }
   }
 
@@ -332,7 +436,9 @@ let clipboardUnlisten: UnlistenFn | null = null;
     aiBusy,
     initialized,
     lastError,
+    hasMore,
     refresh,
+    loadMore,
     scheduleFetch,
     ensureClipboardListener,
     setListening,
@@ -346,5 +452,6 @@ let clipboardUnlisten: UnlistenFn | null = null;
     runAiAction,
     copyClip,
     captureText,
+    markSelfCapture,
   };
 });
