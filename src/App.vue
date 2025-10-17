@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
 import { computed, onMounted } from "vue";
-import { darkTheme, dateZhCN, zhCN } from "naive-ui";
+import { darkTheme, dateZhCN, zhCN, enUS, dateEnUS } from "naive-ui";
 import { useSettingsStore } from "./store/settings";
 import AppEventBridge from "@/components/system/AppEventBridge.vue";
 import AppWindowBar from "@/components/layout/AppWindowBar.vue";
+import AppSidebar from "@/components/layout/AppSidebar.vue";
 
 const settings = useSettingsStore();
 
@@ -20,12 +21,20 @@ const theme = computed(() => {
 });
 
 const themeOverrides = computed(() => settings.naiveThemeOverrides);
+
+const naiveLocale = computed(() =>
+  settings.uiLanguage === "en-US" ? enUS : zhCN
+);
+
+const naiveDateLocale = computed(() =>
+  settings.uiLanguage === "en-US" ? dateEnUS : dateZhCN
+);
 </script>
 
 <template>
   <n-config-provider
-    :locale="zhCN"
-    :date-locale="dateZhCN"
+    :locale="naiveLocale"
+    :date-locale="naiveDateLocale"
     :theme="theme"
     :theme-overrides="themeOverrides"
   >
@@ -33,14 +42,20 @@ const themeOverrides = computed(() => settings.naiveThemeOverrides);
       <n-dialog-provider>
         <n-message-provider placement="bottom-right" :duration="2500">
           <AppEventBridge>
-            <div class="app-shell" :class="settings.themeClass">
+            <div
+              class="app-shell"
+              :class="[settings.themeClass, settings.themePresetClass]"
+            >
               <AppWindowBar />
-              <div class="app-content">
-                <RouterView v-slot="{ Component }">
-                  <Transition name="fade" mode="out-in">
-                    <component :is="Component" class="app-route-view" />
-                  </Transition>
-                </RouterView>
+              <div class="app-body">
+                <AppSidebar class="app-sidebar" />
+                <div class="app-content">
+                  <RouterView v-slot="{ Component }">
+                    <Transition name="page-slide" mode="out-in">
+                      <component :is="Component" class="app-route-view" />
+                    </Transition>
+                  </RouterView>
+                </div>
               </div>
             </div>
           </AppEventBridge>

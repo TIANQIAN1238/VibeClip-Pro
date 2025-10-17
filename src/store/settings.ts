@@ -8,8 +8,11 @@ import { safeInvoke, isTauriRuntime, explainTauriFallback, TauriUnavailableError
 const STORAGE_KEY = "vibeclip.settings";
 const LOCAL_STORAGE_KEY = "vibeclip.settings.preview";
 
+export type ThemePreset = "aurora" | "sunset" | "midnight" | "forest";
+
 interface PersistedSettings {
   themeMode: "light" | "dark" | "system";
+  themePreset: ThemePreset;
   accentColor: string;
   lineHeight: number;
   globalShortcut: string;
@@ -20,6 +23,7 @@ interface PersistedSettings {
   offlineMode: boolean;
   autoLaunch: boolean;
   preferredLanguage: string;
+  uiLanguage: "zh-CN" | "en-US";
   historyLimit: number;
   historyRetentionDays: number | null;
   dedupeEnabled: boolean;
@@ -28,8 +32,19 @@ interface PersistedSettings {
   logLevel: "info" | "debug";
 }
 
+const THEME_PRESET_ACCENTS: Record<ThemePreset, string> = {
+  aurora: "#5161ff",
+  sunset: "#ff7a6a",
+  midnight: "#6bd6b1",
+  forest: "#5bb861",
+};
+
+const THEME_PRESETS = Object.keys(THEME_PRESET_ACCENTS) as ThemePreset[];
+const THEME_PRESET_CLASSES = THEME_PRESETS.map(preset => `theme-${preset}`);
+
 const DEFAULT_SETTINGS: PersistedSettings = {
   themeMode: "light",
+  themePreset: "aurora",
   accentColor: "#5161ff",
   lineHeight: 1.5,
   globalShortcut: "CmdOrControl+Shift+V",
@@ -40,6 +55,7 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   offlineMode: false,
   autoLaunch: false,
   preferredLanguage: "zh-CN",
+  uiLanguage: "zh-CN",
   historyLimit: 500,
   historyRetentionDays: null,
   dedupeEnabled: true,
@@ -103,8 +119,22 @@ export const useSettingsStore = defineStore("settings", () => {
       : ""
   );
 
+  const themePresetClass = computed(
+    () => `theme-${stateRefs.themePreset.value ?? DEFAULT_SETTINGS.themePreset}`
+  );
+
+  const activeAccent = computed(() => {
+    const custom = stateRefs.accentColor.value?.trim();
+    if (custom) {
+      return custom;
+    }
+    return (
+      THEME_PRESET_ACCENTS[stateRefs.themePreset.value] ?? DEFAULT_SETTINGS.accentColor
+    );
+  });
+
   const naiveThemeOverrides = computed<GlobalThemeOverrides>(() => {
-    const accent = stateRefs.accentColor.value || DEFAULT_SETTINGS.accentColor;
+    const accent = activeAccent.value || DEFAULT_SETTINGS.accentColor;
     const hover = blend(accent, "#ffffff", 0.2);
     const pressed = blend(accent, "#000000", 0.18);
     return {
@@ -138,10 +168,19 @@ export const useSettingsStore = defineStore("settings", () => {
   });
 
   function applyThemeClass() {
-    document.documentElement.classList.toggle(
-      "dark",
-      themeClass.value === "dark"
-    );
+    if (typeof document === "undefined") {
+      return;
+    }
+    const root = document.documentElement;
+    root.classList.toggle("dark", themeClass.value === "dark");
+    root.classList.remove(...THEME_PRESET_CLASSES);
+    const presetClass = themePresetClass.value;
+    if (presetClass) {
+      root.classList.add(presetClass);
+    }
+    if (typeof document.body !== "undefined") {
+      document.body.dataset.themePreset = stateRefs.themePreset.value;
+    }
   }
 
   function schedulePersist() {
@@ -208,7 +247,11 @@ export const useSettingsStore = defineStore("settings", () => {
   }
 
   watch(
-    () => [stateRefs.themeMode.value, stateRefs.accentColor.value],
+    () => [
+      stateRefs.themeMode.value,
+      stateRefs.themePreset.value,
+      stateRefs.accentColor.value,
+    ],
     () => {
       applyThemeClass();
       if (hydrated.value) {
@@ -227,6 +270,7 @@ export const useSettingsStore = defineStore("settings", () => {
       stateRefs.model.value,
       stateRefs.temperature.value,
       stateRefs.preferredLanguage.value,
+      stateRefs.uiLanguage.value,
       stateRefs.autoLaunch.value,
       stateRefs.historyLimit.value,
       stateRefs.historyRetentionDays.value,
@@ -240,6 +284,16 @@ export const useSettingsStore = defineStore("settings", () => {
       }
     },
     { deep: true }
+  );
+
+  watch(
+    () => stateRefs.uiLanguage.value,
+    value => {
+      if (typeof document !== "undefined") {
+        document.documentElement.lang = value;
+      }
+    },
+    { immediate: true }
   );
 
   watch(
@@ -407,10 +461,29 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   }
 
+  function setThemePreset(preset: ThemePreset) {
+    if (!THEME_PRESETS.includes(preset)) {
+      return;
+    }
+    const previousPreset = stateRefs.themePreset.value;
+    const previousAccent = THEME_PRESET_ACCENTS[previousPreset];
+    const nextAccent = THEME_PRESET_ACCENTS[preset];
+    stateRefs.themePreset.value = preset;
+    if (stateRefs.accentColor.value === previousAccent) {
+      stateRefs.accentColor.value = nextAccent;
+    }
+    applyThemeClass();
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
   return {
     ...stateRefs,
     themeMode: stateRefs.themeMode,
     themeClass,
+    themePresetClass,
+    activeAccent,
     naiveThemeOverrides,
     isDarkPreferred,
     initialized,
@@ -421,5 +494,6 @@ export const useSettingsStore = defineStore("settings", () => {
     setOfflineLocal,
     toggleAutoLaunch,
     pushRuntimePreferences,
+    setThemePreset,
   };
 });

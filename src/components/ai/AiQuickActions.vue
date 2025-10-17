@@ -144,14 +144,10 @@ function openSettings() {
 
 <style scoped>
 .ai-card {
-  background: var(--vibe-bg-surface);
-  border: 1px solid var(--vibe-border-soft);
-  border-radius: var(--vibe-radius-lg);
-  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  width: 100%;
 }
 
 .ai-header {

@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, onErrorCaptured, ref, watch } from "vue";
-import AppSidebar from "@/components/layout/AppSidebar.vue";
-import { useSettingsStore } from "@/store/settings";
+import { useSettingsStore, type ThemePreset } from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
 import { useMessage } from "naive-ui";
 import AppInfo from "@/AppInfo";
 import { safeInvoke, isTauriRuntime } from "@/libs/tauri";
+import { useLocale } from "@/composables/useLocale";
 
 const settings = useSettingsStore();
 const history = useHistoryStore();
 const message = useMessage();
+const { t, languageOptions, format } = useLocale();
+
 const pageError = ref<string | null>(null);
 const isInitializing = ref(false);
+const runtimeSummary = ref<{ appVersion: string; tauriVersion: string; rustcChannel: string } | null>(null);
 
 const booting = computed(() => !settings.hydrated);
+
 const historyLimitValue = computed({
   get: () => settings.historyLimit,
   set: value => {
@@ -21,6 +25,7 @@ const historyLimitValue = computed({
     settings.historyLimit = Math.min(Math.max(normalized, 50), 2000);
   },
 });
+
 const retentionDaysValue = computed({
   get: () => settings.historyRetentionDays ?? 0,
   set: value => {
@@ -28,6 +33,37 @@ const retentionDaysValue = computed({
     settings.historyRetentionDays = normalized > 0 ? Math.round(normalized) : null;
   },
 });
+
+const themePresetValue = computed<ThemePreset>({
+  get: () => settings.themePreset as ThemePreset,
+  set: value => {
+    settings.setThemePreset(value);
+  },
+});
+
+const themePresetOptions = computed(() => [
+  {
+    value: "aurora" as ThemePreset,
+    label: t("settings.presetAurora", "极光蓝"),
+    preview: "linear-gradient(135deg, #5161ff 0%, #7ad1f5 100%)",
+  },
+  {
+    value: "sunset" as ThemePreset,
+    label: t("settings.presetSunset", "暮光橙"),
+    preview: "linear-gradient(135deg, #ff7a6a 0%, #ffd86b 100%)",
+  },
+  {
+    value: "midnight" as ThemePreset,
+    label: t("settings.presetMidnight", "薄荷夜"),
+    preview: "linear-gradient(135deg, #2b5876 0%, #4ecca3 100%)",
+  },
+  {
+    value: "forest" as ThemePreset,
+    label: t("settings.presetForest", "森野绿"),
+    preview: "linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)",
+  },
+]);
+
 const ignoredSourcesText = computed({
   get: () => settings.ignoredSources.join("\n"),
   set: value => {
@@ -37,11 +73,10 @@ const ignoredSourcesText = computed({
       .filter(entry => entry.length > 0);
   },
 });
-const logOptions = [
-  { label: "信息 (info)", value: "info" },
-  { label: "调试 (debug)", value: "debug" },
-] as const;
-const runtimeSummary = ref<{ appVersion: string; tauriVersion: string; rustcChannel: string } | null>(null);
+
+const historyCountLabel = computed(() =>
+  format("settings.historyCount", "剪贴板条目 {count}", { count: history.items.length })
+);
 
 function reportError(label: string, error: unknown) {
   console.error(label, error);
@@ -91,26 +126,26 @@ async function runVacuum() {
 onMounted(async () => {
   isInitializing.value = true;
   try {
-    // 等待 settings store 加载完成
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       if (settings.hydrated) {
         resolve();
       } else {
-        const unwatch = watch(() => settings.hydrated, (hydrated) => {
-          if (hydrated) {
-            unwatch();
-            resolve();
+        const unwatch = watch(
+          () => settings.hydrated,
+          hydrated => {
+            if (hydrated) {
+              unwatch();
+              resolve();
+            }
           }
-        });
-        // 超时保护
+        );
         setTimeout(() => {
           unwatch();
           resolve();
         }, 3000);
       }
     });
-    
-    // 获取运行时信息
+
     try {
       if (isTauriRuntime()) {
         runtimeSummary.value = await safeInvoke("get_runtime_summary");
@@ -132,19 +167,16 @@ onMounted(async () => {
   }
 });
 
-// 捕获子组件错误
 onErrorCaptured((err, _instance, info) => {
   console.error("[Settings] Error captured:", err, info);
-  pageError.value = err.message || "组件渲染错误";
-  return false; // 阻止错误继续传播
+  pageError.value = err instanceof Error ? err.message : "组件渲染错误";
+  return false;
 });
 </script>
 
 <template>
   <div class="settings-page">
-    <AppSidebar />
     <section class="main">
-      <!-- 错误提示 -->
       <n-alert v-if="pageError" type="error" title="页面错误" closable @close="pageError = null">
         {{ pageError }}
       </n-alert>
@@ -152,15 +184,14 @@ onErrorCaptured((err, _instance, info) => {
       <div v-if="booting || isInitializing" class="settings-skeleton">
         <n-skeleton height="36px" :sharp="false" />
         <div class="settings-skeleton-grid">
-          <n-skeleton v-for="i in 3" :key="i" height="220px" :sharp="false" />
+          <n-skeleton v-for="i in 3" :key="i" height="180px" :sharp="false" />
         </div>
-        <n-skeleton height="100px" :sharp="false" />
       </div>
       <template v-else>
         <header class="page-header">
           <div>
-            <h1>设置</h1>
-            <p>自定义主题、快捷键与 AI 服务连接</p>
+            <h1>{{ t("settings.title", "设置") }}</h1>
+            <p>{{ t("settings.subtitle", "自定义主题、快捷键与 AI 服务连接") }}</p>
           </div>
         </header>
 
@@ -168,130 +199,130 @@ onErrorCaptured((err, _instance, info) => {
           {{ settings.lastError }}
         </n-alert>
 
-        <div class="settings-grid">
-          <n-card title="主题与显示" size="small" embedded>
+        <div class="content-scroll thin-scrollbar">
+          <section class="card">
+            <h2>{{ t("settings.theme", "主题与显示") }}</h2>
             <n-radio-group v-model:value="settings.themeMode" name="theme">
               <div class="radio-grid">
-                <n-radio value="light">浅色</n-radio>
-                <n-radio value="dark">深色</n-radio>
-                <n-radio value="system">跟随系统</n-radio>
+                <n-radio value="light">{{ t("settings.themeOptions.light", "浅色") }}</n-radio>
+                <n-radio value="dark">{{ t("settings.themeOptions.dark", "深色") }}</n-radio>
+                <n-radio value="system">{{ t("settings.themeOptions.system", "跟随系统") }}</n-radio>
               </div>
             </n-radio-group>
-            <div class="field-row">
-              <label>内容行高</label>
-              <n-slider
-                v-model:value="settings.lineHeight"
-                :step="0.1"
-                :min="1.2"
-                :max="2"
-                style="width: 200px;"
-              />
-              <span>{{ settings.lineHeight.toFixed(1) }}</span>
+            <div class="preset-grid">
+              <button
+                v-for="option in themePresetOptions"
+                :key="option.value"
+                type="button"
+                class="preset-chip"
+                :class="{ active: themePresetValue === option.value }"
+                @click="themePresetValue = option.value"
+              >
+                <span class="preset-swatch" :style="{ background: option.preview }" />
+                <span>{{ option.label }}</span>
+              </button>
             </div>
             <div class="field-row">
-              <label>强调颜色</label>
+              <label>{{ t("settings.lineHeight", "内容行高") }}</label>
+              <n-slider v-model:value="settings.lineHeight" :step="0.1" :min="1.2" :max="2" style="flex: 1;" />
+              <span class="field-value">{{ settings.lineHeight.toFixed(1) }}</span>
+            </div>
+            <div class="field-row">
+              <label>{{ t("settings.accent", "强调颜色") }}</label>
               <n-color-picker v-model:value="settings.accentColor" size="small" />
             </div>
             <div class="field-row">
-              <label>全局快捷键</label>
-              <n-input v-model:value="settings.globalShortcut" placeholder="例如 CmdOrControl+Shift+V" />
+              <label>{{ t("settings.uiLanguage", "界面语言") }}</label>
+              <n-select v-model:value="settings.uiLanguage" size="small" :options="languageOptions" />
             </div>
-          </n-card>
+            <div class="field-row">
+              <label>{{ t("settings.shortcut", "全局快捷键") }}</label>
+              <n-input v-model:value="settings.globalShortcut" placeholder="CmdOrControl+Shift+V" />
+            </div>
+          </section>
 
-          <n-card title="AI 服务" size="small" embedded>
-            <n-form label-placement="top" :model="settings">
-              <n-form-item label="Base URL">
-                <n-input v-model:value="settings.apiBaseUrl" placeholder="https://api.freekey.site" />
-              </n-form-item>
-              <n-form-item label="API Key">
-                <n-input v-model:value="settings.apiKey" type="password" show-password-on="click" placeholder="sk-" />
-              </n-form-item>
-              <div class="field-row">
-                <n-form-item label="模型">
-                  <n-input v-model:value="settings.model" placeholder="gpt-4o-mini" />
-                </n-form-item>
-                <n-form-item label="温度">
-                  <n-slider
-                    v-model:value="settings.temperature"
-                    :step="0.1"
-                    :min="0"
-                    :max="1"
-                    style="width: 200px;"
-                  />
-                </n-form-item>
-              </div>
-            </n-form>
-            <n-button quaternary size="tiny" @click="resetAiSettings">恢复默认</n-button>
-          </n-card>
-
-          <n-card title="历史记录" size="small" embedded>
+          <section class="card">
+            <h2>{{ t("settings.clipboard", "剪贴板与历史") }}</h2>
             <div class="field-row">
-              <label>开启去重</label>
-              <n-switch v-model:value="settings.dedupeEnabled" />
+              <label>{{ t("settings.historyLimit", "历史条目上限") }}</label>
+              <n-input-number v-model:value="historyLimitValue" :min="50" :max="2000" size="small" />
             </div>
             <div class="field-row">
-              <label>忽略应用复制</label>
-              <n-switch v-model:value="settings.ignoreSelfCopies" />
+              <label>{{ t("settings.retention", "保留天数 (0 表示无限)") }}</label>
+              <n-input-number v-model:value="retentionDaysValue" :min="0" :max="365" size="small" />
             </div>
-            <div class="field-row">
-              <label>容量上限</label>
-              <n-input-number v-model:value="historyLimitValue" :min="50" :max="2000" :step="50" />
-              <span class="muted">条</span>
+            <div class="switch-row">
+              <span>{{ t("settings.dedupe", "启用去重") }}</span>
+              <n-switch v-model:value="settings.dedupeEnabled" size="small" />
             </div>
-            <div class="field-row">
-              <label>保留天数</label>
-              <n-input-number v-model:value="retentionDaysValue" :min="0" :max="365" />
-              <span class="muted">0 表示不限制</span>
+            <div class="switch-row">
+              <span>{{ t("settings.ignoreSelf", "忽略自复制") }}</span>
+              <n-switch v-model:value="settings.ignoreSelfCopies" size="small" />
             </div>
-            <n-form-item label="来源黑名单" label-placement="top">
+            <div class="field-column">
+              <label>{{ t("settings.ignoredSources", "忽略的来源关键字") }}</label>
               <n-input
                 v-model:value="ignoredSourcesText"
                 type="textarea"
-                placeholder="每行一个关键字或域名"
-                :autosize="{ minRows: 2, maxRows: 5 }"
+                :autosize="{ minRows: 3, maxRows: 6 }"
+                placeholder="每行一个关键词"
               />
-            </n-form-item>
-            <div class="field-row">
-              <label>日志级别</label>
-              <n-select v-model:value="settings.logLevel" :options="logOptions" size="small" style="width: 180px" />
             </div>
-            <div class="history-actions">
-              <n-button secondary size="small" @click="settings.pushRuntimePreferences">同步运行偏好</n-button>
-              <n-button tertiary size="small" @click="runVacuum">VACUUM</n-button>
-            </div>
-          </n-card>
+          </section>
 
-          <n-card title="系统" size="small" embedded>
+          <section class="card">
+            <h2>{{ t("settings.ai", "AI 服务") }}</h2>
             <div class="field-row">
-              <label>开机自启</label>
-              <n-switch :value="settings.autoLaunch" @update:value="handleAutoLaunchChange" />
+              <label>{{ t("settings.apiBase", "接口地址") }}</label>
+              <n-input v-model:value="settings.apiBaseUrl" placeholder="https://" />
             </div>
             <div class="field-row">
-              <label>离线模式</label>
-              <n-switch v-model:value="settings.offlineMode" />
+              <label>{{ t("settings.apiKey", "API Key") }}</label>
+              <n-input v-model:value="settings.apiKey" type="password" show-password-on="click" />
             </div>
-            <n-divider />
             <div class="field-row">
-              <div>
-                <strong>缓存历史</strong>
-                <p class="muted">当前共有 {{ history.items.length }} 条历史记录</p>
-              </div>
-              <n-button tertiary type="error" size="small" @click="clearHistory">清理</n-button>
+              <label>{{ t("settings.model", "模型") }}</label>
+              <n-input v-model:value="settings.model" placeholder="gemini-2.5-flash" />
             </div>
-          </n-card>
+            <div class="field-row">
+              <label>{{ t("settings.temperature", "温度") }}</label>
+              <n-slider v-model:value="settings.temperature" :step="0.1" :min="0" :max="1" />
+            </div>
+            <n-button size="tiny" tertiary @click="resetAiSettings">{{ t("settings.resetAi", "重置 AI 配置") }}</n-button>
+          </section>
+
+          <section class="card">
+            <h2>{{ t("settings.historyActions", "历史维护") }}</h2>
+            <div class="switch-row">
+              <span>{{ t("settings.autoLaunch", "开机自启") }}</span>
+              <n-switch :value="settings.autoLaunch" size="small" @update:value="handleAutoLaunchChange" />
+            </div>
+            <div class="switch-row">
+              <span>{{ t("settings.offline", "离线模式") }}</span>
+              <n-switch v-model:value="settings.offlineMode" size="small" />
+            </div>
+            <div class="field-row">
+              <label>{{ t("settings.languagePreference", "AI 输出语言") }}</label>
+              <n-input v-model:value="settings.preferredLanguage" placeholder="zh-CN" />
+            </div>
+            <div class="button-grid">
+              <n-button size="tiny" secondary @click="history.exportHistory">{{ t("settings.export", "导出历史") }}</n-button>
+              <n-button size="tiny" secondary @click="history.importHistory">{{ t("settings.import", "导入历史") }}</n-button>
+              <n-button size="tiny" secondary @click="runVacuum">{{ t("settings.vacuum", "整理数据库") }}</n-button>
+              <n-button size="tiny" secondary @click="clearHistory">{{ t("settings.clearCache", "清除缓存") }}</n-button>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>{{ t("settings.version", "版本") }}</h2>
+            <ul class="runtime-list">
+              <li>{{ t("settings.version", "版本") }}：{{ AppInfo.version.value }}</li>
+              <li v-if="runtimeSummary">Tauri：{{ runtimeSummary.tauriVersion }}</li>
+              <li v-if="runtimeSummary">Rust：{{ runtimeSummary.rustcChannel }}</li>
+              <li>{{ historyCountLabel }}</li>
+            </ul>
+          </section>
         </div>
-
-        <footer class="about">
-          <h3>关于 VibeClip Pro</h3>
-          <ul>
-            <li>应用版本：{{ AppInfo.version }}</li>
-            <li v-if="runtimeSummary">Tauri {{ runtimeSummary.tauriVersion }} · Rust {{ runtimeSummary.rustcChannel }}</li>
-            <li>默认全局快捷键：{{ settings.globalShortcut }}</li>
-            <li>
-              <a href="https://github.com/TIANQIAN1238/VibeClip/issues" target="_blank">问题反馈 &amp; 建议</a>
-            </li>
-          </ul>
-        </footer>
       </template>
     </section>
   </div>
@@ -299,134 +330,171 @@ onErrorCaptured((err, _instance, info) => {
 
 <style scoped>
 .settings-page {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   height: 100%;
-  width: 100%;
+  overflow: hidden;
 }
 
 .main {
-  width: min(960px, 100%);
-  padding: 24px clamp(16px, 3vw, 40px);
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  overflow-y: auto;
-  margin: 0 auto;
+  gap: 12px;
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 20px;
 }
 
 .page-header p {
-  margin: 6px 0 0;
-  color: var(--vibe-text-muted);
-}
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
-  align-content: start;
-}
-
-@media (min-width: 1080px) {
-  .settings-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.radio-grid {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.field-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  color: var(--vibe-text-primary);
-}
-
-.field-row label {
-  min-width: 80px;
-  font-weight: 600;
-}
-
-.muted {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--vibe-text-muted);
 }
 
-.history-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.history-actions :deep(.n-button) {
-  flex: 1;
-}
-
-.about {
-  padding: 18px clamp(16px, 3vw, 28px);
-  background: rgba(255, 255, 255, 0.45);
+.settings-alert {
   border-radius: var(--vibe-radius-lg);
-  border: 1px solid var(--vibe-border-soft);
 }
 
-.about h3 {
-  margin: 0 0 8px;
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.about ul {
-  display: grid;
-  gap: 6px;
+.card {
+  border-radius: var(--vibe-radius-lg);
+  background: var(--vibe-panel-surface);
+  border: 1px solid var(--vibe-panel-border);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card h2 {
   margin: 0;
-  padding-left: 18px;
+  font-size: 16px;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.field-row label {
+  width: 110px;
+  font-size: 13px;
   color: var(--vibe-text-muted);
 }
 
-.about a {
-  color: var(--vibe-primary-color);
-  text-decoration: none;
+.field-value {
+  min-width: 40px;
+  text-align: right;
+  font-size: 13px;
 }
 
-.about a:hover {
-  text-decoration: underline;
+.field-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.radio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.preset-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.preset-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--vibe-panel-border);
+  background: var(--vibe-panel-surface);
+  border-radius: var(--vibe-radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.preset-chip.active {
+  border-color: var(--vibe-accent);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.preset-chip span:last-child {
+  font-weight: 600;
+}
+
+.preset-swatch {
+  width: 32px;
+  height: 24px;
+  border-radius: var(--vibe-radius-sm);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.runtime-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--vibe-text-muted);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .settings-skeleton {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-top: 12px;
+  gap: 12px;
 }
 
 .settings-skeleton-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 18px;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
-.settings-alert {
-  margin-bottom: 16px;
-}
-
-@media (max-width: 840px) {
-  .settings-page {
-    grid-template-columns: 1fr;
+@media (max-width: 520px) {
+  .card {
+    padding: 12px;
   }
 
-  .main {
-    width: 100%;
-    padding: 20px clamp(14px, 6vw, 28px);
+  .field-row label {
+    width: 90px;
+  }
+
+  .button-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 }
 </style>
