@@ -1,16 +1,45 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
 import { useSettingsStore } from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
 import { useMessage } from "naive-ui";
 import AppInfo from "@/AppInfo";
+import { invoke } from "@tauri-apps/api/core";
 
 const settings = useSettingsStore();
 const history = useHistoryStore();
 const message = useMessage();
 
 const booting = computed(() => !settings.hydrated);
+const historyLimitValue = computed({
+  get: () => settings.historyLimit,
+  set: value => {
+    const normalized = Number.isFinite(value) ? Number(value) : 200;
+    settings.historyLimit = Math.min(Math.max(normalized, 50), 2000);
+  },
+});
+const retentionDaysValue = computed({
+  get: () => settings.historyRetentionDays ?? 0,
+  set: value => {
+    const normalized = Number.isFinite(value) ? Number(value) : 0;
+    settings.historyRetentionDays = normalized > 0 ? Math.round(normalized) : null;
+  },
+});
+const ignoredSourcesText = computed({
+  get: () => settings.ignoredSources.join("\n"),
+  set: value => {
+    settings.ignoredSources = value
+      .split(/\r?\n/)
+      .map(entry => entry.trim())
+      .filter(entry => entry.length > 0);
+  },
+});
+const logOptions = [
+  { label: "信息 (info)", value: "info" },
+  { label: "调试 (debug)", value: "debug" },
+] as const;
+const runtimeSummary = ref<{ appVersion: string; tauriVersion: string; rustcChannel: string } | null>(null);
 
 function reportError(label: string, error: unknown) {
   console.error(label, error);
@@ -43,6 +72,25 @@ function resetAiSettings() {
   settings.temperature = 0.3;
   message.success("AI 配置已重置");
 }
+
+async function runVacuum() {
+  try {
+    await invoke("vacuum_database");
+    message.success("数据库已整理");
+  } catch (error) {
+    reportError("整理数据库失败", error);
+  }
+}
+
+onMounted(() => {
+  void (async () => {
+    try {
+      runtimeSummary.value = await invoke("get_runtime_summary");
+    } catch (error) {
+      console.warn("无法获取运行时信息", error);
+    }
+  })();
+});
 </script>
 
 <template>
@@ -124,6 +172,43 @@ function resetAiSettings() {
             <n-button quaternary size="tiny" @click="resetAiSettings">恢复默认</n-button>
           </n-card>
 
+          <n-card title="历史记录" size="small" embedded>
+            <div class="field-row">
+              <label>开启去重</label>
+              <n-switch v-model:value="settings.dedupeEnabled" />
+            </div>
+            <div class="field-row">
+              <label>忽略应用复制</label>
+              <n-switch v-model:value="settings.ignoreSelfCopies" />
+            </div>
+            <div class="field-row">
+              <label>容量上限</label>
+              <n-input-number v-model:value="historyLimitValue" :min="50" :max="2000" :step="50" />
+              <span class="muted">条</span>
+            </div>
+            <div class="field-row">
+              <label>保留天数</label>
+              <n-input-number v-model:value="retentionDaysValue" :min="0" :max="365" />
+              <span class="muted">0 表示不限制</span>
+            </div>
+            <n-form-item label="来源黑名单" label-placement="top">
+              <n-input
+                v-model:value="ignoredSourcesText"
+                type="textarea"
+                placeholder="每行一个关键字或域名"
+                :autosize="{ minRows: 2, maxRows: 5 }"
+              />
+            </n-form-item>
+            <div class="field-row">
+              <label>日志级别</label>
+              <n-select v-model:value="settings.logLevel" :options="logOptions" size="small" style="width: 180px" />
+            </div>
+            <div class="history-actions">
+              <n-button secondary size="small" @click="settings.pushRuntimePreferences">同步运行偏好</n-button>
+              <n-button tertiary size="small" @click="runVacuum">VACUUM</n-button>
+            </div>
+          </n-card>
+
           <n-card title="系统" size="small" embedded>
             <div class="field-row">
               <label>开机自启</label>
@@ -147,10 +232,12 @@ function resetAiSettings() {
         <footer class="about">
           <h3>关于 VibeClip Pro</h3>
           <ul>
-            <li>版本 {{ AppInfo.version }}</li>
+            <li>应用版本：{{ AppInfo.version }}</li>
+            <li v-if="runtimeSummary">Tauri {{ runtimeSummary.tauriVersion }} · Rust {{ runtimeSummary.rustcChannel }}</li>
             <li>默认全局快捷键：{{ settings.globalShortcut }}</li>
-            <li>数据保存在应用数据目录中的 SQLite 数据库</li>
-            <li>导出 JSON 格式可用于备份和跨设备迁移</li>
+            <li>
+              <a href="https://github.com/TIANQIAN1238/VibeClip/issues" target="_blank">问题反馈 &amp; 建议</a>
+            </li>
           </ul>
         </footer>
       </template>
@@ -225,6 +312,16 @@ function resetAiSettings() {
   color: var(--vibe-text-muted);
 }
 
+.history-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.history-actions :deep(.n-button) {
+  flex: 1;
+}
+
 .about {
   padding: 18px clamp(16px, 3vw, 28px);
   background: rgba(255, 255, 255, 0.45);
@@ -242,6 +339,15 @@ function resetAiSettings() {
   margin: 0;
   padding-left: 18px;
   color: var(--vibe-text-muted);
+}
+
+.about a {
+  color: var(--vibe-primary-color);
+  text-decoration: none;
+}
+
+.about a:hover {
+  text-decoration: underline;
 }
 
 .settings-skeleton {

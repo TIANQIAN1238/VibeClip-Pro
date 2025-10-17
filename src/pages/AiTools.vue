@@ -72,6 +72,10 @@ function clearInput() {
 async function copyResult() {
   if (!output.value) return;
   try {
+    await history.markSelfCapture({
+      kind: ClipKind.Text,
+      content: output.value,
+    });
     await writeText(output.value);
     message.success("结果已复制");
   } catch (error) {

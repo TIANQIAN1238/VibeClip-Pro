@@ -11,16 +11,17 @@ use tracing::error;
 
 use crate::clipboard::ClipboardDraft;
 use crate::db::{ClipItem, ClipKind, DbState};
+use crate::runtime_config::{RuntimeConfigState, RuntimePreferences};
 use crate::state::AppStatus;
-
-const POLL_INTERVAL: Duration = Duration::from_millis(320);
 
 pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
     let app_handle = app.clone();
     let db_state = app.state::<DbState>().clone();
+    let config_state = app.state::<RuntimeConfigState>().clone();
 
     tauri::async_runtime::spawn(async move {
         let mut last_hash: Option<String> = None;
+        let mut consecutive_failures = 0u32;
 
         loop {
             let status = app_handle.state::<AppStatus>();
@@ -28,25 +29,37 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
             drop(status);
 
             if !listening {
-                tauri::async_runtime::sleep(POLL_INTERVAL).await;
+                tauri::async_runtime::sleep(Duration::from_millis(320)).await;
                 continue;
             }
 
+            let prefs = config_state.get();
+            let poll_interval = Duration::from_millis(prefs.debounce_interval_ms.clamp(200, 800));
             let result = tauri::async_runtime::spawn_blocking({
                 let app_handle = app_handle.clone();
                 let db_state = db_state.clone();
                 let previous_hash = last_hash.clone();
+                let prefs_snapshot = prefs.clone();
                 move || -> Result<Option<(ClipItem, String)>> {
-                    if let Some(draft) = capture_clipboard(&app_handle)? {
+                    if let Some(draft) = capture_clipboard(&app_handle, &prefs_snapshot)? {
                         let payload = draft.into_payload()?;
                         let hash = payload
                             .content_hash
                             .clone()
                             .unwrap_or_else(|| crate::hash::compute_content_hash(payload.kind, &payload.content));
-                        if previous_hash.as_ref() == Some(&hash) {
+                        if prefs_snapshot.ignore_self_copies {
+                            let status = app_handle.state::<AppStatus>();
+                            if status.consume_self_copy(&hash) {
+                                return Ok(None);
+                            }
+                        }
+
+                        let is_duplicate = previous_hash.as_ref() == Some(&hash);
+                        if prefs_snapshot.dedupe_enabled && is_duplicate {
                             return Ok(None);
                         }
                         let clip = db_state.upsert(payload)?;
+                        db_state.apply_retention(&prefs_snapshot)?;
                         Ok(Some((clip, hash)))
                     } else {
                         Ok(None)
@@ -59,22 +72,38 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
                 Ok(Ok(Some((clip, hash)))) => {
                     let _ = app_handle.emit_all("clipboard://captured", &clip);
                     last_hash = Some(hash);
+                    consecutive_failures = 0;
                 }
-                Ok(Ok(None)) => {}
+                Ok(Ok(None)) => {
+                    consecutive_failures = 0;
+                }
                 Ok(Err(err)) => {
                     error!("clipboard watcher error: {err:?}");
+                    consecutive_failures = consecutive_failures.saturating_add(1);
                 }
                 Err(join_err) => {
                     error!("clipboard watcher join error: {join_err:?}");
+                    consecutive_failures = consecutive_failures.saturating_add(1);
                 }
             }
 
-            tauri::async_runtime::sleep(POLL_INTERVAL).await;
+            let backoff = if consecutive_failures == 0 {
+                poll_interval
+            } else {
+                poll_interval
+                    .checked_mul(consecutive_failures.min(5) as u32 + 1)
+                    .unwrap_or(poll_interval)
+                    .min(Duration::from_secs(3))
+            };
+            tauri::async_runtime::sleep(backoff).await;
         }
     });
 }
 
-fn capture_clipboard<R: Runtime>(app: &AppHandle<R>) -> Result<Option<ClipboardDraft>> {
+fn capture_clipboard<R: Runtime>(
+    app: &AppHandle<R>,
+    prefs: &RuntimePreferences,
+) -> Result<Option<ClipboardDraft>> {
     let clipboard = app.clipboard();
 
     if let Ok(image) = clipboard.read_image() {
@@ -90,6 +119,9 @@ fn capture_clipboard<R: Runtime>(app: &AppHandle<R>) -> Result<Option<ClipboardD
         }
 
         if let Some((content, preview, extra)) = try_build_file_payload(&sanitized) {
+            if should_ignore(&content, prefs) {
+                return Ok(None);
+            }
             return Ok(Some(ClipboardDraft {
                 kind: ClipKind::File,
                 text: None,
@@ -100,6 +132,10 @@ fn capture_clipboard<R: Runtime>(app: &AppHandle<R>) -> Result<Option<ClipboardD
                 is_pinned: false,
                 is_favorite: false,
             }));
+        }
+
+        if should_ignore(&sanitized, prefs) {
+            return Ok(None);
         }
 
         let preview = sanitized.chars().take(120).collect::<String>();
@@ -116,6 +152,19 @@ fn capture_clipboard<R: Runtime>(app: &AppHandle<R>) -> Result<Option<ClipboardD
     }
 
     Ok(None)
+}
+
+fn should_ignore(content: &str, prefs: &RuntimePreferences) -> bool {
+    if prefs.ignored_keywords.is_empty() {
+        return false;
+    }
+    let lower = content.to_lowercase();
+    prefs
+        .ignored_keywords
+        .iter()
+        .filter(|keyword| !keyword.trim().is_empty())
+        .map(|keyword| keyword.trim().to_lowercase())
+        .any(|needle| lower.contains(&needle))
 }
 
 fn build_image_payload(image: &tauri::image::Image<'_>) -> Result<ClipboardDraft> {

@@ -168,6 +168,15 @@ function handleRemove() {
 .item-actions {
   display: flex;
   gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--vibe-transition);
+}
+
+.history-item:hover .item-actions,
+.history-item:focus-within .item-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .text-preview {
