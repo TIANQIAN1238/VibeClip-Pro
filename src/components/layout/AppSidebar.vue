@@ -6,6 +6,7 @@ import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
 import AppInfo from "@/AppInfo";
 import { useLocale } from "@/composables/useLocale";
+import { prefetchRoute, type RoutePrefetchKey } from "@/utils/routePrefetch";
 import MdiHistory from "~icons/mdi/history";
 import MdiCogOutline from "~icons/mdi/cog-outline";
 import MdiClipboardTextOutline from "~icons/mdi/clipboard-text-outline";
@@ -47,7 +48,13 @@ const rawNavItems = [
     icon: MdiCogOutline,
     path: "/settings",
   },
-] as const;
+] as const satisfies ReadonlyArray<{
+  key: string;
+  labelKey: string;
+  fallback: string;
+  icon: any;
+  path: RoutePrefetchKey;
+}>;
 
 const navItems = computed(() =>
   rawNavItems.map(item => ({
@@ -64,6 +71,10 @@ function navigate(path: string) {
       console.error("导航失败", error);
     });
   }
+}
+
+function warmRoute(path: RoutePrefetchKey) {
+  prefetchRoute(path);
 }
 
 async function updateListening(value: boolean) {
@@ -138,7 +149,11 @@ const historyCountLabel = computed(() =>
         type="button"
         class="nav-item"
         :class="{ active: activeKey === item.key }"
+        :data-active="activeKey === item.key"
+        :aria-current="activeKey === item.key ? 'page' : undefined"
         @click="navigate(item.path)"
+        @mouseenter="warmRoute(item.path)"
+        @focus="warmRoute(item.path)"
       >
         <n-icon size="18" :component="item.icon" />
         <span>{{ item.label }}</span>
@@ -270,19 +285,58 @@ const historyCountLabel = computed(() =>
   background: var(--vibe-control-bg);
   color: var(--vibe-text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 180ms var(--vibe-transition),
+    box-shadow 220ms var(--vibe-transition),
+    color 160ms ease,
+    background 200ms ease;
   -webkit-app-region: no-drag;
+}
+
+.nav-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 120% at 50% 50%, rgba(81, 97, 255, 0.18), transparent 65%);
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity 220ms var(--vibe-transition),
+    transform 220ms var(--vibe-transition);
+  z-index: -1;
 }
 
 .nav-item:hover {
   background: var(--vibe-control-hover);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+
+.nav-item:hover::after,
+.nav-item:focus-visible::after {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .nav-item.active {
   background: linear-gradient(135deg, var(--vibe-accent), var(--vibe-accent-strong));
   color: var(--vibe-nav-text-active);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+  animation: nav-activate 420ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--vibe-accent) 58%, transparent);
+  outline-offset: 2px;
+}
+
+.nav-item:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .nav-item span {
@@ -306,6 +360,17 @@ const historyCountLabel = computed(() =>
   background: var(--vibe-panel-surface-strong);
   border: 1px solid var(--vibe-panel-border);
   -webkit-app-region: no-drag;
+  transition:
+    transform 200ms var(--vibe-transition),
+    box-shadow 240ms var(--vibe-transition),
+    border-color 180ms ease;
+}
+
+.control-card:hover,
+.control-card:focus-within {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.12);
+  border-color: color-mix(in srgb, var(--vibe-accent) 28%, transparent);
 }
 
 .control-text {
@@ -363,6 +428,33 @@ const historyCountLabel = computed(() =>
 @media (min-width: 460px) {
   .nav {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@keyframes nav-activate {
+  0% {
+    transform: translateY(4px) scale(0.96);
+  }
+
+  60% {
+    transform: translateY(-4px) scale(1.02);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item,
+  .nav-item::after,
+  .control-card,
+  .control-card:hover,
+  .control-card:focus-within {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    transform: none !important;
+    box-shadow: none !important;
   }
 }
 </style>

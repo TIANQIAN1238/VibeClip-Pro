@@ -257,7 +257,7 @@ onErrorCaptured((err, _instance, info) => {
                 <n-color-picker
                   :value="customThemePreview.background"
                   size="small"
-                  @update:value="handleCustomColorChange('background')"
+                  @update:value="handleCustomColorChange('background')($event)"
                 />
               </div>
               <div class="field-column">
@@ -265,7 +265,7 @@ onErrorCaptured((err, _instance, info) => {
                 <n-color-picker
                   :value="customThemePreview.surface"
                   size="small"
-                  @update:value="handleCustomColorChange('surface')"
+                  @update:value="handleCustomColorChange('surface')($event)"
                 />
               </div>
               <div class="field-column">
@@ -273,7 +273,7 @@ onErrorCaptured((err, _instance, info) => {
                 <n-color-picker
                   :value="customThemePreview.surfaceStrong"
                   size="small"
-                  @update:value="handleCustomColorChange('surfaceStrong')"
+                  @update:value="handleCustomColorChange('surfaceStrong')($event)"
                 />
               </div>
               <div class="field-column">
@@ -281,7 +281,7 @@ onErrorCaptured((err, _instance, info) => {
                 <n-color-picker
                   :value="customThemePreview.border"
                   size="small"
-                  @update:value="handleCustomColorChange('border')"
+                  @update:value="handleCustomColorChange('border')($event)"
                 />
               </div>
               <div class="field-column">
@@ -289,7 +289,7 @@ onErrorCaptured((err, _instance, info) => {
                 <n-color-picker
                   :value="customThemePreview.textPrimary"
                   size="small"
-                  @update:value="handleCustomColorChange('textPrimary')"
+                  @update:value="handleCustomColorChange('textPrimary')($event)"
                 />
               </div>
               <div class="field-column">
@@ -297,7 +297,7 @@ onErrorCaptured((err, _instance, info) => {
                 <n-color-picker
                   :value="customThemePreview.textSecondary"
                   size="small"
-                  @update:value="handleCustomColorChange('textSecondary')"
+                  @update:value="handleCustomColorChange('textSecondary')($event)"
                 />
               </div>
               <div class="field-column">
@@ -305,7 +305,7 @@ onErrorCaptured((err, _instance, info) => {
                 <n-color-picker
                   :value="customThemePreview.textMuted"
                   size="small"
-                  @update:value="handleCustomColorChange('textMuted')"
+                  @update:value="handleCustomColorChange('textMuted')($event)"
                 />
               </div>
             </div>
