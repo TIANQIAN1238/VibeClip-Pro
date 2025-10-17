@@ -691,7 +691,7 @@ onMounted(async () => {
 
 .filter-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 6px;
 }
 
@@ -707,6 +707,16 @@ onMounted(async () => {
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
+.filter-tab:hover {
+  background: var(--vibe-control-hover);
+  transform: translateY(-1px);
+}
+
+.filter-tab:focus-visible {
+  outline: 2px solid var(--vibe-accent);
+  outline-offset: 1px;
+}
+
 .filter-tab.active {
   background: linear-gradient(135deg, rgba(81, 97, 255, 0.9), rgba(122, 209, 245, 0.85));
   color: #fff;
@@ -717,6 +727,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .muted {

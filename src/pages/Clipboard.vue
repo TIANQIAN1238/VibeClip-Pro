@@ -11,7 +11,11 @@ import { useSettingsStore } from "@/store/settings";
 import { useBridgeStore } from "@/store/bridge";
 import type { AiActionKind } from "@/types/history";
 import { ClipKind } from "@/types/history";
-import { buildClipboardSuggestions, type ClipboardSuggestion } from "@/utils/content-inspector";
+import {
+  buildClipboardSuggestions,
+  type ClipboardSuggestion,
+  isLikelyFilePath as isClipboardFilePath,
+} from "@/utils/content-inspector";
 import { useLocale } from "@/composables/useLocale";
 import type { Image as TauriImage } from "@tauri-apps/api/image";
 
@@ -24,9 +28,6 @@ interface ClipboardSnapshot {
   imageDataUrl: string | null;
   imageSize: { width: number; height: number } | null;
 }
-
-const FILE_PATH_REGEX = /^(?:[a-zA-Z]:\\\\|~\/|\/).+/;
-const URL_PREFIX_REGEX = /^https?:\/\//i;
 
 const router = useRouter();
 const history = useHistoryStore();
@@ -110,14 +111,6 @@ function resetSnapshot() {
   snapshot.imageSize = null;
 }
 
-function isLikelyFilePath(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  if (URL_PREFIX_REGEX.test(trimmed.toLowerCase())) return false;
-  if (trimmed.startsWith("file://")) return true;
-  return FILE_PATH_REGEX.test(trimmed);
-}
-
 async function convertImageToDataUrl(image: TauriImage) {
   if (typeof document === "undefined") {
     return null;
@@ -171,7 +164,7 @@ async function syncClipboard() {
       snapshot.filePath = null;
       snapshot.imageDataUrl = null;
       snapshot.imageSize = null;
-      snapshot.kind = isLikelyFilePath(normalized) ? "file" : "text";
+      snapshot.kind = isClipboardFilePath(normalized) ? "file" : "text";
       if (snapshot.kind === "file") {
         snapshot.filePath = normalized;
       }
@@ -574,7 +567,7 @@ onMounted(async () => {
             <p>{{ t("nav.tagline", "AI 快捷操作") }}</p>
           </div>
         </header>
-        <div v-if="suggestions.length" class="suggestion-list">
+        <TransitionGroup v-if="suggestions.length" name="fade-list" tag="div" class="suggestion-list">
           <button
             v-for="item in suggestions"
             :key="item.key"
@@ -585,7 +578,7 @@ onMounted(async () => {
             <span>{{ t(item.labelKey, item.fallback) }}</span>
             <span class="chevron">›</span>
           </button>
-        </div>
+        </TransitionGroup>
         <p v-else class="placeholder">{{ recentPlaceholder }}</p>
       </section>
 
@@ -611,15 +604,17 @@ onMounted(async () => {
           </template>
         </n-empty>
         <n-scrollbar v-else class="recent-scroll thin-scrollbar">
-          <HistoryItem
-            v-for="item in recentItems"
-            :key="item.id"
-            :item="item"
-            @copy="handleCopy"
-            @pin="handlePin"
-            @favorite="handleFavorite"
-            @remove="handleRemove"
-          />
+          <TransitionGroup name="recent-fade" tag="div" class="recent-list">
+            <HistoryItem
+              v-for="item in recentItems"
+              :key="item.id"
+              :item="item"
+              @copy="handleCopy"
+              @pin="handlePin"
+              @favorite="handleFavorite"
+              @remove="handleRemove"
+            />
+          </TransitionGroup>
         </n-scrollbar>
       </section>
     </n-scrollbar>
@@ -640,6 +635,7 @@ onMounted(async () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .headline h1 {
@@ -656,6 +652,26 @@ onMounted(async () => {
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.header-actions :deep(.n-button),
+.quick-actions :deep(.n-button) {
+  transition: transform 0.18s var(--vibe-transition), box-shadow 0.18s var(--vibe-transition);
+  will-change: transform;
+}
+
+.header-actions :deep(.n-button:hover:not(:disabled)),
+.quick-actions :deep(.n-button:hover:not(:disabled)) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 107, 255, 0.18);
+}
+
+.header-actions :deep(.n-button:active:not(:disabled)),
+.quick-actions :deep(.n-button:active:not(:disabled)) {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .content-scroll {
@@ -789,6 +805,12 @@ onMounted(async () => {
   flex-direction: column;
   gap: 8px;
   padding-right: 6px;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .muted {

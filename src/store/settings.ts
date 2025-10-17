@@ -8,12 +8,30 @@ import { safeInvoke, isTauriRuntime, explainTauriFallback, TauriUnavailableError
 const STORAGE_KEY = "vibeclip.settings";
 const LOCAL_STORAGE_KEY = "vibeclip.settings.preview";
 
-export type ThemePreset = "aurora" | "sunset" | "midnight" | "forest";
+export type ThemePreset =
+  | "aurora"
+  | "sunset"
+  | "midnight"
+  | "forest"
+  | "nebula"
+  | "ember"
+  | "custom";
+
+export interface CustomThemePalette {
+  background: string;
+  surface: string;
+  surfaceStrong: string;
+  border: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+}
 
 interface PersistedSettings {
   themeMode: "light" | "dark" | "system";
   themePreset: ThemePreset;
   accentColor: string;
+  customTheme: CustomThemePalette;
   lineHeight: number;
   globalShortcut: string;
   apiBaseUrl: string;
@@ -32,20 +50,44 @@ interface PersistedSettings {
   logLevel: "info" | "debug";
 }
 
-const THEME_PRESET_ACCENTS: Record<ThemePreset, string> = {
+const THEME_PRESET_ACCENTS: Record<Exclude<ThemePreset, "custom">, string> = {
   aurora: "#5161ff",
   sunset: "#ff7a6a",
   midnight: "#6bd6b1",
   forest: "#5bb861",
+  nebula: "#a86bff",
+  ember: "#ff9f4d",
 };
 
-const THEME_PRESETS = Object.keys(THEME_PRESET_ACCENTS) as ThemePreset[];
-const THEME_PRESET_CLASSES = THEME_PRESETS.map(preset => `theme-${preset}`);
+const DEFAULT_CUSTOM_THEME: CustomThemePalette = {
+  background: "#f5f1ff",
+  surface: "rgba(255, 255, 255, 0.88)",
+  surfaceStrong: "rgba(255, 255, 255, 0.94)",
+  border: "rgba(120, 85, 255, 0.16)",
+  textPrimary: "#241432",
+  textSecondary: "rgba(36, 20, 50, 0.72)",
+  textMuted: "rgba(36, 20, 50, 0.45)",
+};
+
+const THEME_PRESETS = [
+  "aurora",
+  "sunset",
+  "midnight",
+  "forest",
+  "nebula",
+  "ember",
+  "custom",
+] as ThemePreset[];
+
+const THEME_PRESET_CLASSES = THEME_PRESETS
+  .filter(preset => preset !== "custom")
+  .map(preset => `theme-${preset}`);
 
 const DEFAULT_SETTINGS: PersistedSettings = {
   themeMode: "light",
-  themePreset: "aurora",
-  accentColor: "#5161ff",
+  themePreset: "nebula",
+  accentColor: "#a86bff",
+  customTheme: { ...DEFAULT_CUSTOM_THEME },
   lineHeight: 1.5,
   globalShortcut: "CmdOrControl+Shift+V",
   apiBaseUrl: "https://api.freekey.site",
@@ -123,14 +165,21 @@ export const useSettingsStore = defineStore("settings", () => {
     () => `theme-${stateRefs.themePreset.value ?? DEFAULT_SETTINGS.themePreset}`
   );
 
+  const customThemePalette = computed(() => ({
+    ...DEFAULT_CUSTOM_THEME,
+    ...stateRefs.customTheme.value,
+  }));
+
   const activeAccent = computed(() => {
     const custom = stateRefs.accentColor.value?.trim();
     if (custom) {
       return custom;
     }
-    return (
-      THEME_PRESET_ACCENTS[stateRefs.themePreset.value] ?? DEFAULT_SETTINGS.accentColor
-    );
+    const preset = stateRefs.themePreset.value;
+    if (preset && preset !== "custom") {
+      return THEME_PRESET_ACCENTS[preset] ?? DEFAULT_SETTINGS.accentColor;
+    }
+    return DEFAULT_SETTINGS.accentColor;
   });
 
   const naiveThemeOverrides = computed<GlobalThemeOverrides>(() => {
@@ -174,13 +223,44 @@ export const useSettingsStore = defineStore("settings", () => {
     const root = document.documentElement;
     root.classList.toggle("dark", themeClass.value === "dark");
     root.classList.remove(...THEME_PRESET_CLASSES);
-    const presetClass = themePresetClass.value;
+    const preset = stateRefs.themePreset.value;
+    const presetClass = preset !== "custom" ? themePresetClass.value : "";
     if (presetClass) {
       root.classList.add(presetClass);
     }
     if (typeof document.body !== "undefined") {
       document.body.dataset.themePreset = stateRefs.themePreset.value;
     }
+    const accent = activeAccent.value || DEFAULT_SETTINGS.accentColor;
+    const accentStrong = blend(accent, "#000000", 0.2);
+    root.style.setProperty("--vibe-accent", accent);
+    root.style.setProperty("--vibe-accent-strong", accentStrong);
+    applyCustomThemeVariables();
+  }
+
+  function applyCustomThemeVariables() {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const root = document.documentElement;
+    const shouldApply = stateRefs.themePreset.value === "custom";
+    const palette = customThemePalette.value;
+    const entries: [string, string][] = [
+      ["--vibe-bg-app", palette.background],
+      ["--vibe-panel-surface", palette.surface],
+      ["--vibe-panel-surface-strong", palette.surfaceStrong],
+      ["--vibe-panel-border", palette.border],
+      ["--vibe-text-primary", palette.textPrimary],
+      ["--vibe-text-secondary", palette.textSecondary],
+      ["--vibe-text-muted", palette.textMuted],
+    ];
+    entries.forEach(([key, value]) => {
+      if (shouldApply) {
+        root.style.setProperty(key, value);
+      } else {
+        root.style.removeProperty(key);
+      }
+    });
   }
 
   function schedulePersist() {
@@ -254,6 +334,17 @@ export const useSettingsStore = defineStore("settings", () => {
     ],
     () => {
       applyThemeClass();
+      if (hydrated.value) {
+        schedulePersist();
+      }
+    },
+    { deep: true }
+  );
+
+  watch(
+    () => stateRefs.customTheme.value,
+    () => {
+      applyCustomThemeVariables();
       if (hydrated.value) {
         schedulePersist();
       }
@@ -466,13 +557,29 @@ export const useSettingsStore = defineStore("settings", () => {
       return;
     }
     const previousPreset = stateRefs.themePreset.value;
-    const previousAccent = THEME_PRESET_ACCENTS[previousPreset];
-    const nextAccent = THEME_PRESET_ACCENTS[preset];
     stateRefs.themePreset.value = preset;
-    if (stateRefs.accentColor.value === previousAccent) {
-      stateRefs.accentColor.value = nextAccent;
+    if (preset !== "custom") {
+      const previousAccent =
+        previousPreset && previousPreset !== "custom"
+          ? THEME_PRESET_ACCENTS[previousPreset]
+          : stateRefs.accentColor.value;
+      const nextAccent = THEME_PRESET_ACCENTS[preset];
+      if (stateRefs.accentColor.value === previousAccent) {
+        stateRefs.accentColor.value = nextAccent;
+      }
     }
     applyThemeClass();
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
+  function updateCustomTheme(patch: Partial<CustomThemePalette>) {
+    stateRefs.customTheme.value = {
+      ...customThemePalette.value,
+      ...patch,
+    };
+    applyCustomThemeVariables();
     if (hydrated.value) {
       schedulePersist();
     }
@@ -484,6 +591,7 @@ export const useSettingsStore = defineStore("settings", () => {
     themeClass,
     themePresetClass,
     activeAccent,
+    customThemePalette,
     naiveThemeOverrides,
     isDarkPreferred,
     initialized,
@@ -495,5 +603,6 @@ export const useSettingsStore = defineStore("settings", () => {
     toggleAutoLaunch,
     pushRuntimePreferences,
     setThemePreset,
+    updateCustomTheme,
   };
 });

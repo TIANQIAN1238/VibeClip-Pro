@@ -23,8 +23,49 @@ export interface ClipboardSuggestion {
 
 const URL_REGEX = /https?:\/\/[^\s]+/i;
 const COMMAND_REGEX = /^(?:sudo|git|npm|pnpm|yarn|bun|docker|kubectl|python|node|go|cargo|pip|brew|ssh|scp|rsync|ls|cd|rm|mv|cp|mkdir|curl|wget|tar|zip|unzip)\b/i;
-const FILE_PATH_REGEX = /^(?:[a-zA-Z]:\\|~\/|\/.+\/).+/;
+const URL_PREFIX_REGEX = /^[a-z][a-z0-9+.-]*:\/\//i;
+const WINDOWS_DRIVE_PATH_REGEX = /^[a-zA-Z]:[\\\/]/;
+const WINDOWS_UNC_PATH_REGEX = /^\\\\[^\\\/?%*:|"<>]+\\[^\\\/?%*:|"<>]+/;
+const POSIX_PATH_REGEX = /^\/(?!\/)/;
+const HOME_PATH_REGEX = /^~[\\\/]/;
 const JSON_START_REGEX = /^[\[{].*[\]}]$/s;
+
+export function isLikelyFilePath(value: string): boolean {
+  const text = value.trim();
+  if (!text) return false;
+
+  if (text.startsWith("file://")) {
+    return true;
+  }
+
+  if (URL_PREFIX_REGEX.test(text)) {
+    return false;
+  }
+
+  if (text.startsWith("./") || text.startsWith("../")) {
+    return text.length > 2;
+  }
+
+  if (HOME_PATH_REGEX.test(text)) {
+    return text.length > 2;
+  }
+
+  if (WINDOWS_DRIVE_PATH_REGEX.test(text)) {
+    const remainder = text.slice(3);
+    return remainder.trim().length > 0;
+  }
+
+  if (WINDOWS_UNC_PATH_REGEX.test(text)) {
+    const segments = text.replace(/^\\\\/, "").split(/\\+/);
+    return segments.length >= 2 && segments[0].length > 0 && segments[1].length > 0;
+  }
+
+  if (POSIX_PATH_REGEX.test(text)) {
+    return text.length > 1 && text.includes("/");
+  }
+
+  return false;
+}
 const CODE_KEYWORDS = [
   "function",
   "const",
@@ -51,7 +92,7 @@ function detectFeaturesFromText(content: string): Set<ContentFeature> {
     features.add("url");
   }
 
-  if (FILE_PATH_REGEX.test(text)) {
+  if (isLikelyFilePath(text)) {
     features.add("file-path");
   }
 

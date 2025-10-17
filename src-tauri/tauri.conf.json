@@ -14,7 +14,7 @@
       {
         "label": "main",
         "title": "VibeClip Pro",
-        "width": 480,
+        "width": 420,
         "height": 700,
         "decorations": false,
         "resizable": false,
@@ -25,7 +25,7 @@
       {
         "label": "context",
         "title": "VibeClip Pro Panel",
-        "width": 420,
+        "width": 360,
         "height": 520,
         "url": "/panel",
         "visible": false,
