@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onErrorCaptured, watch } from "vue";
 import { useMessage } from "naive-ui";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
@@ -14,6 +14,8 @@ const message = useMessage();
 
 const input = ref("");
 const output = ref("");
+const pageError = ref<string | null>(null);
+const isLoading = ref(false);
 
 function reportError(label: string, error: unknown) {
   console.error(label, error);
@@ -97,13 +99,69 @@ async function saveResult() {
     reportError("保存结果失败", error);
   }
 }
+
+function retryInit() {
+  pageError.value = null;
+  isLoading.value = false;
+}
+
+onMounted(async () => {
+  isLoading.value = true;
+  try {
+    // 等待 settings store 加载完成
+    await new Promise<void>((resolve) => {
+      if (settings.hydrated) {
+        resolve();
+      } else {
+        const unwatch = watch(() => settings.hydrated, (hydrated) => {
+          if (hydrated) {
+            unwatch();
+            resolve();
+          }
+        });
+        // 超时保护
+        setTimeout(() => {
+          unwatch();
+          resolve();
+        }, 3000);
+      }
+    });
+  } catch (error) {
+    console.error("[AiTools] Mount error:", error);
+    pageError.value = error instanceof Error ? error.message : "页面初始化失败";
+  } finally {
+    isLoading.value = false;
+  }
+});
+
+// 捕获子组件错误
+onErrorCaptured((err, _instance, info) => {
+  console.error("[AiTools] Error captured:", err, info);
+  pageError.value = err.message || "组件渲染错误";
+  return false; // 阻止错误继续传播
+});
 </script>
 
 <template>
   <div class="ai-tools-page">
     <AppSidebar />
     <section class="main">
-      <header class="page-header">
+      <!-- 错误提示 -->
+      <n-alert v-if="pageError" type="error" title="页面加载失败" closable @close="pageError = null">
+        {{ pageError }}
+        <template #action>
+          <n-button size="small" @click="retryInit">重试</n-button>
+        </template>
+      </n-alert>
+
+      <!-- 加载中骨架屏 -->
+      <div v-if="isLoading" class="loading-skeleton">
+        <n-skeleton height="60px" :sharp="false" />
+        <n-skeleton height="400px" :sharp="false" style="margin-top: 24px;" />
+      </div>
+
+      <template v-else>
+        <header class="page-header">
         <div>
           <h1>AI 工具集</h1>
           <p>选择合适的动作处理文本，结果可复制或保存到历史</p>
@@ -148,6 +206,7 @@ async function saveResult() {
           </n-spin>
         </section>
       </div>
+      </template>
     </section>
   </div>
 </template>

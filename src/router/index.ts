@@ -16,11 +16,6 @@ export const routes: RouteRecordRaw[] = [
     component: () => import("../pages/History.vue"),
   },
   {
-    path: "/favorites",
-    name: "favorites",
-    component: () => import("../pages/Favorites.vue"),
-  },
-  {
     path: "/ai",
     name: "ai-tools",
     component: () => import("../pages/AiTools.vue"),

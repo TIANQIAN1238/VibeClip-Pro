@@ -1,6 +1,6 @@
 [package]
 name = "vibeclip_pro"
-version = "1.3.6"
+version = "1.3.7"
 description = "VibeClip Pro desktop clipboard companion"
 authors = ["VibeClip Contributors"]
 edition = "2021"

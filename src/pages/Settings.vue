@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onErrorCaptured, ref, watch } from "vue";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
 import { useSettingsStore } from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
@@ -10,6 +10,8 @@ import { invoke } from "@tauri-apps/api/core";
 const settings = useSettingsStore();
 const history = useHistoryStore();
 const message = useMessage();
+const pageError = ref<string | null>(null);
+const isInitializing = ref(false);
 
 const booting = computed(() => !settings.hydrated);
 const historyLimitValue = computed({
@@ -82,22 +84,60 @@ async function runVacuum() {
   }
 }
 
-onMounted(() => {
-  void (async () => {
+onMounted(async () => {
+  isInitializing.value = true;
+  try {
+    // 等待 settings store 加载完成
+    await new Promise<void>((resolve) => {
+      if (settings.hydrated) {
+        resolve();
+      } else {
+        const unwatch = watch(() => settings.hydrated, (hydrated) => {
+          if (hydrated) {
+            unwatch();
+            resolve();
+          }
+        });
+        // 超时保护
+        setTimeout(() => {
+          unwatch();
+          resolve();
+        }, 3000);
+      }
+    });
+    
+    // 获取运行时信息
     try {
       runtimeSummary.value = await invoke("get_runtime_summary");
     } catch (error) {
-      console.warn("无法获取运行时信息", error);
+      console.warn("[Settings] 无法获取运行时信息", error);
     }
-  })();
+  } catch (error) {
+    console.error("[Settings] Mount error:", error);
+    pageError.value = error instanceof Error ? error.message : "页面初始化失败";
+  } finally {
+    isInitializing.value = false;
+  }
+});
+
+// 捕获子组件错误
+onErrorCaptured((err, _instance, info) => {
+  console.error("[Settings] Error captured:", err, info);
+  pageError.value = err.message || "组件渲染错误";
+  return false; // 阻止错误继续传播
 });
 </script>
 
 <template>
-<div class="settings-page">
+  <div class="settings-page">
     <AppSidebar />
     <section class="main">
-      <div v-if="booting" class="settings-skeleton">
+      <!-- 错误提示 -->
+      <n-alert v-if="pageError" type="error" title="页面错误" closable @close="pageError = null">
+        {{ pageError }}
+      </n-alert>
+
+      <div v-if="booting || isInitializing" class="settings-skeleton">
         <n-skeleton height="36px" :sharp="false" />
         <div class="settings-skeleton-grid">
           <n-skeleton v-for="i in 3" :key="i" height="220px" :sharp="false" />
@@ -243,7 +283,7 @@ onMounted(() => {
       </template>
     </section>
   </div>
- </template>
+</template>
 
 <style scoped>
 .settings-page {

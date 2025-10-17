@@ -90,17 +90,17 @@ function openSettings() {
           <n-icon :component="MdiSparkle" size="20" />
           <div>
             <h3>AI 快捷操作</h3>
-          <p>翻译、摘要、润色或快速 JSON 化</p>
+            <p>翻译、摘要、润色或快速 JSON 化</p>
+          </div>
         </div>
-      </div>
-      <n-select
-        v-model:value="state.language"
-        class="language-select"
-        size="small"
-        :options="languageOptions"
-        :render-label="renderLanguageLabel"
-      />
-    </header>
+        <n-select
+          v-model:value="state.language"
+          class="language-select"
+          size="small"
+          :options="languageOptions"
+          :render-label="renderLanguageLabel"
+        />
+      </header>
     <div class="action-tabs">
       <n-button
         v-for="item in actions"

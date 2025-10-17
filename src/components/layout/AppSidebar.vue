@@ -7,7 +7,6 @@ import AppInfo from "@/AppInfo";
 import MdiHistory from "~icons/mdi/history";
 import MdiCogOutline from "~icons/mdi/cog-outline";
 import MdiClipboardTextOutline from "~icons/mdi/clipboard-text-outline";
-import MdiStarOutline from "~icons/mdi/star-outline";
 import MdiRobotOutline from "~icons/mdi/robot-outline";
 import MdiPauseCircleOutline from "~icons/mdi/pause-circle-outline";
 import MdiPlayCircleOutline from "~icons/mdi/play-circle-outline";
@@ -22,7 +21,6 @@ const settings = useSettingsStore();
 const navItems = [
   { key: "clipboard", label: "剪贴板", icon: MdiClipboardTextOutline, path: "/clipboard" },
   { key: "history", label: "历史记录", icon: MdiHistory, path: "/history" },
-  { key: "favorites", label: "收藏 / 置顶", icon: MdiStarOutline, path: "/favorites" },
   { key: "ai-tools", label: "AI 工具", icon: MdiRobotOutline, path: "/ai" },
   { key: "settings", label: "设置 / 关于", icon: MdiCogOutline, path: "/settings" },
 ];

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { useMessage, type DropdownOption } from "naive-ui";
+import { useMessage, useDialog, type DropdownOption } from "naive-ui";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
 import HistoryItem from "@/components/history/HistoryItem.vue";
@@ -13,6 +13,7 @@ import { useRouter } from "vue-router";
 const history = useHistoryStore();
 const settings = useSettingsStore();
 const message = useMessage();
+const dialog = useDialog();
 const router = useRouter();
 
 const searchValue = computed({
@@ -151,8 +152,15 @@ async function handleContextSelect(key: string | number) {
 
 async function runContextAction(item: ClipItem, action: AiActionKind) {
   if (!settings.apiKey) {
-    message.warning("请先在设置中配置 OpenAI 兼容接口 Key");
-    router.push("/settings");
+    dialog.warning({
+      title: "未配置 API Key",
+      content: "使用 AI 功能需要先配置 OpenAI 兼容接口的 API Key。是否现在前往设置页面进行配置？",
+      positiveText: "前往设置",
+      negativeText: "取消",
+      onPositiveClick: () => {
+        router.push("/settings");
+      },
+    });
     return;
   }
   aiDialog.visible = true;
@@ -451,16 +459,17 @@ async function handleClear() {
         </div>
 
         <section class="filters">
-          <n-radio-group
-            :value="history.filter"
-            size="small"
-            class="filter-group"
-            @update:value="handleFilterChange"
-          >
-            <n-radio-button v-for="option in filterOptions" :key="option.value" :value="option.value">
+          <div class="filter-tabs">
+            <button
+              v-for="option in filterOptions"
+              :key="option.value"
+              class="filter-tab"
+              :class="{ active: history.filter === option.value }"
+              @click="handleFilterChange(option.value)"
+            >
               {{ option.label }}
-            </n-radio-button>
-          </n-radio-group>
+            </button>
+          </div>
           <span class="result-count">共 {{ history.filteredItems.length }} 条记录</span>
         </section>
 
@@ -644,20 +653,51 @@ async function handleClear() {
   gap: 16px;
 }
 
-.filter-group {
-  display: flex;
+.filter-tabs {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(12, 27, 56, 0.04);
+  border-radius: 12px;
+  border: 1px solid var(--vibe-border-soft);
 }
 
-.filter-group :deep(.n-radio-button__content) {
-  padding: 0 12px;
-  min-width: 64px;
-  text-align: center;
+.filter-tab {
+  position: relative;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vibe-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.filter-tab:hover {
+  color: var(--vibe-text-primary);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.filter-tab.active {
+  color: var(--vibe-primary-color, #5161ff);
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+              0 1px 2px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.filter-tab:active {
+  transform: translateY(0);
 }
 
 .result-count {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--vibe-text-muted);
 }
 

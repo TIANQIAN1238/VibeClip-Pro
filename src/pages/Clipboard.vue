@@ -4,15 +4,19 @@ import { useMessage } from "naive-ui";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
 import HistoryItem from "@/components/history/HistoryItem.vue";
+import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import { useHistoryStore } from "@/store/history";
+import { useSettingsStore } from "@/store/settings";
+import type { AiActionKind } from "@/types/history";
 
 const history = useHistoryStore();
+const settings = useSettingsStore();
 const message = useMessage();
 
 const clipboardPreview = ref("");
 const capturing = ref(false);
 
-const recentItems = computed(() => history.items.slice(0, 12));
+const recentItems = computed(() => history.items.slice(0, 8));
 
 function reportError(label: string, error: unknown) {
   console.error(label, error);
@@ -78,6 +82,33 @@ async function handleRemove(item: (typeof history.items)[number]) {
   }
 }
 
+async function handleAiRun(payload: {
+  action: AiActionKind;
+  input: string;
+  language: string;
+  customPrompt?: string;
+}) {
+  if (!settings.apiKey) {
+    message.error("请先在设置中配置 OpenAI 兼容接口 Key");
+    return;
+  }
+  try {
+    await history.runAiAction({
+      action: payload.action,
+      input: payload.input,
+      language: payload.language,
+      customPrompt: payload.customPrompt,
+      apiKey: settings.apiKey,
+      baseUrl: settings.apiBaseUrl,
+      model: settings.model,
+      temperature: settings.temperature,
+    });
+    message.success("AI 操作已完成并写入剪贴板");
+  } catch (error) {
+    reportError("AI 操作失败", error);
+  }
+}
+
 onMounted(async () => {
   if (!history.items.length) {
     try {
@@ -119,6 +150,13 @@ onMounted(async () => {
             <n-button quaternary size="small" @click="syncClipboard">重新同步</n-button>
           </footer>
         </article>
+
+        <AiQuickActions
+          class="ai-actions-card"
+          :loading="history.aiBusy"
+          :source-text="clipboardPreview"
+          :on-run="handleAiRun"
+        />
 
         <aside class="recent-card">
           <div class="recent-header">
@@ -181,9 +219,13 @@ onMounted(async () => {
 
 .clipboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 20px;
   min-height: 0;
+}
+
+.ai-actions-card {
+  height: 100%;
 }
 
 .clipboard-card {
@@ -268,9 +310,17 @@ onMounted(async () => {
   margin-bottom: 0;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1280px) {
   .clipboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ai-actions-card {
+    order: 2;
+  }
+
+  .recent-card {
+    order: 3;
   }
 
   .recent-scroll {
