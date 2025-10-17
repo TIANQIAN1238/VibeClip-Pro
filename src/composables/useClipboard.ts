@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
-import { invoke } from '@tauri-apps/api/core';
+import { isTauriRuntime, safeInvoke } from '@/libs/tauri';
 import { ClipKind } from '@/types/history';
 
 export function useClipboard() {
@@ -13,20 +13,30 @@ export function useClipboard() {
     );
 
     const refresh = async () => {
-        content.value = await readText();
+        if (isTauriRuntime()) {
+            content.value = await readText();
+            return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+            content.value = await navigator.clipboard.readText();
+        }
     };
 
     const update = async (text: string) => {
         try {
-            await invoke('ignore_next_clipboard_capture', {
-                hash: null,
-                kind: ClipKind.Text,
-                content: text,
-            });
+            if (isTauriRuntime()) {
+                await safeInvoke('ignore_next_clipboard_capture', {
+                    hash: null,
+                    kind: ClipKind.Text,
+                    content: text,
+                });
+                await writeText(text);
+            } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+            }
         } catch (error) {
             console.warn('无法标记应用复制来源', error);
         }
-        await writeText(text);
         content.value = text;
     };
 
