@@ -1,126 +1,124 @@
 # VibeClip Pro
 
-> VibeClip Pro 是一款面向创作者与效率爱好者的跨平台剪贴板控制台，整合本地历史、AI 快捷操作与深色/浅色视觉体系，让 "复制 → 处理 → 粘贴" 变成一次呼吸间的流程。
+> VibeClip Pro 是一款面向创作者与效率爱好者的跨平台剪贴板控制台，整合本地历史、AI 快捷操作与深色/浅色视觉体系，让“复制 → 处理 → 粘贴”变成一次呼吸间的流程。
+
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Built with Tauri](https://img.shields.io/badge/Desktop-Tauri%202-blue.svg)](https://tauri.app)
+[![Vue 3](https://img.shields.io/badge/Web-Vue%203-42b983.svg)](https://vuejs.org)
 
 <div align="center">
-<svg width="520" height="240" viewBox="0 0 520 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop stop-color="#f6f8ff" offset="0%"/>
-      <stop stop-color="#e7fbff" offset="55%"/>
-      <stop stop-color="#f1f4ff" offset="100%"/>
-    </linearGradient>
-    <linearGradient id="card" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop stop-color="#ffffff" stop-opacity="0.92" offset="0%"/>
-      <stop stop-color="#f3f6ff" stop-opacity="0.95" offset="100%"/>
-    </linearGradient>
-  </defs>
-  <rect width="520" height="240" rx="28" fill="url(#bg)"/>
-  <rect x="32" y="36" width="140" height="168" rx="22" fill="#4c6ef5" fill-opacity="0.92"/>
-  <text x="52" y="86" font-family="Inter, sans-serif" font-size="18" fill="#ffffff">VibeClip</text>
-  <text x="52" y="112" font-family="Inter, sans-serif" font-size="12" fill="#d7e0ff">Pro · History</text>
-  <rect x="196" y="48" width="280" height="68" rx="18" fill="url(#card)" stroke="#dfe3ff" stroke-opacity="0.5"/>
-  <text x="218" y="78" font-family="Inter, sans-serif" font-size="14" fill="#1c2340">系统剪贴板 · 文本</text>
-  <text x="218" y="96" font-family="Inter, sans-serif" font-size="11" fill="#6470a3">按一次即可保存到历史</text>
-  <rect x="196" y="136" width="280" height="68" rx="18" fill="url(#card)" stroke="#dfe3ff" stroke-opacity="0.5"/>
-  <text x="218" y="166" font-family="Inter, sans-serif" font-size="14" fill="#1c2340">AI 快捷操作 · 翻译 / 摘要 / JSON 化</text>
-  <text x="218" y="184" font-family="Inter, sans-serif" font-size="11" fill="#6470a3">Ctrl+Shift+V 呼出 · 支持离线模式切换</text>
-</svg>
+  <svg width="520" height="240" viewBox="0 0 520 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+        <stop stop-color="#f6f8ff" offset="0%"/>
+        <stop stop-color="#e7fbff" offset="55%"/>
+        <stop stop-color="#f1f4ff" offset="100%"/>
+      </linearGradient>
+      <linearGradient id="card" x1="0%" x2="100%" y1="0%" y2="100%">
+        <stop stop-color="#ffffff" stop-opacity="0.92" offset="0%"/>
+        <stop stop-color="#f3f6ff" stop-opacity="0.95" offset="100%"/>
+      </linearGradient>
+    </defs>
+    <rect width="520" height="240" rx="28" fill="url(#bg)"/>
+    <rect x="32" y="36" width="140" height="168" rx="22" fill="#4c6ef5" fill-opacity="0.92"/>
+    <text x="52" y="86" font-family="Inter, sans-serif" font-size="18" fill="#ffffff">VibeClip</text>
+    <text x="52" y="112" font-family="Inter, sans-serif" font-size="12" fill="#d7e0ff">Pro · History</text>
+    <rect x="196" y="48" width="280" height="68" rx="18" fill="url(#card)" stroke="#dfe3ff" stroke-opacity="0.5"/>
+    <text x="218" y="78" font-family="Inter, sans-serif" font-size="14" fill="#1c2340">系统剪贴板 · 文本</text>
+    <text x="218" y="96" font-family="Inter, sans-serif" font-size="11" fill="#6470a3">按一次即可保存到历史</text>
+    <rect x="196" y="136" width="280" height="68" rx="18" fill="url(#card)" stroke="#dfe3ff" stroke-opacity="0.5"/>
+    <text x="218" y="166" font-family="Inter, sans-serif" font-size="14" fill="#1c2340">AI 快捷操作 · 翻译 / 摘要 / JSON 化</text>
+    <text x="218" y="184" font-family="Inter, sans-serif" font-size="11" fill="#6470a3">Ctrl+Shift+V 呼出 · 支持离线模式切换</text>
+  </svg>
 </div>
 
-## 功能亮点
+## 目录
 
-- **连续剪贴板捕获**：后台监听器以 250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径，并支持来源黑名单过滤与内容哈希去重。
-- **历史体验升级**：内置筛选（全部 / 文本 / 图像 / 文件）、关键字前缀搜索、虚拟滚动与分页「加载更多」，图片仍保持懒加载，长列表依旧顺滑。
-- **AI 右键菜单**：历史文本右键即可翻译 / 摘要 / 润色，结果支持复制或写回历史，未配置 API Key 时提示跳转设置且不阻塞其他操作。
-- **多入口导航**：全新侧栏整合「剪贴板 / 历史记录 / 收藏 / AI 工具 / 设置」，与窗口拖拽、托盘操作保持连贯。
-- **运行偏好自定义**：设置页提供去重开关、容量与保留天数、来源黑名单、日志等级（info/debug）与 VACUUM 清理。
-- **两种主题 / 自定义行距**：220 px 渐变侧栏 + 卡片化主界面，浅色与深色自动切换，字体、圆角、过渡统一调性。
-- **系统级控制**：默认全局快捷键 `Ctrl+Shift+V`，托盘可一键显示/隐藏、暂停监听或切换离线模式，关于页展示运行时版本号。
-- **导入导出**：JSON 备份/恢复历史，保留 `id`、`kind`、`timestamp` 信息，便于跨设备迁移。
+- [✨ 主要特性](#-主要特性)
+- [🚀 快速开始](#-快速开始)
+- [🖥️ 菜单与界面概览](#️-菜单与界面概览)
+- [🤖 AI 快速处理指南](#-ai-快速处理指南)
+- [🛠️ 开发者常用命令](#️-开发者常用命令)
+- [📦 发布流程（v1.4.1 准备）](#-发布流程v141-准备)
+- [📚 额外资料](#-额外资料)
+- [📄 许可](#-许可)
 
-## PasteMe 对标追踪
+## ✨ 主要特性
 
-`v1.3.4` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
+- **连续剪贴板捕获**：后台监听器以 250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径，并支持来源黑名单过滤、内容哈希去重。
+- **四大核心页面**：首页总览、实时剪贴板、历史记录与 AI 工具，侧边栏快捷切换，搭配毛玻璃卡片化视觉。
+- **AI 快捷操作**：内置翻译、摘要、润色与 JSON 化能力，支持自定义 Prompt；结果可复制、写回历史或同步到系统剪贴板。
+- **运行偏好自定义**：去重、容量与保留天数、来源黑名单、日志等级、离线模式、开机自启等设置一应俱全。
+- **系统级控制**：默认全局快捷键 `Ctrl+Shift+V` 呼出浮动面板，托盘菜单支持显示/隐藏、暂停监听、切换离线模式。
+- **跨平台桌面应用**：基于 Tauri 2 + Vue 3，Rust 端封装数据库与系统能力，前端调用 `invoke` 即可完成交互。
 
-- [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)
-
-## 快速开始
+## 🚀 快速开始
 
 ```bash
-pnpm install
-pnpm dev        # Vite 前端调试（自动复用 pnpm exec）
-pnpm tauri dev  # Tauri 桌面端调试
+pnpm install                # 安装依赖
+pnpm dev                    # 启动 Vite 开发服务器
+pnpm tauri dev              # 启动桌面端调试（会同时跑前端）
 ```
 
-> **提示**：项目默认使用 `pnpm`。如需生成锁文件，请执行 `pnpm install` 以创建 `pnpm-lock.yaml`。
+> **提示**：项目使用 `pnpm` 进行包管理，如需生成锁文件请执行 `pnpm install`。Windows 用户可直接运行 `pnpm i && pnpm tauri dev` 完成安装与桌面调试。
 
-> **Windows 快速启动**：克隆仓库后执行 `pnpm i && pnpm tauri dev` 即可一次完成依赖安装与桌面端调试。
+## 🖥️ 菜单与界面概览
 
-## 核心工作流
+| 菜单 | 说明 |
+| --- | --- |
+| **首页** | 欢迎横幅、系统状态和最近历史的概览，提供入口快速跳转到四大功能。 |
+| **剪贴板** | 实时展示最新捕获内容，可一键保存、置顶、收藏或执行 AI 快捷操作。 |
+| **历史记录** | 支持类型筛选、关键字搜索、分页加载，文本/图像/文件均有对应操作与预览。 |
+| **AI 工具** | 集成输入区、AI 快捷操作卡片与输出结果区，支持复制、保存与粘贴回系统。 |
+| **设置** | 覆盖主题、快捷键、AI 接口配置、运行参数、导入导出等项目级偏好。 |
 
-### 剪贴板历史
+界面遵循统一的渐变与毛玻璃风格，卡片圆角、阴影与留白在 4 个页面之间保持一致，可在深浅色主题间自动切换。
 
-- 面板自动记录新内容；在暂停模式下仍可手动保存当前系统剪贴板。
-- 列表支持 `全部 / 置顶 / 收藏 / 文本 / 图像 / 文件` 六种筛选。
-- 每项提供复制、粘贴、置顶、收藏与删除动作，图像项以 DataURL 方式回显；底部支持分页「加载更多」。
+## 🤖 AI 快速处理指南
 
-### AI 快捷操作
+1. 在 **设置** 菜单配置 OpenAI 兼容的 `API Base URL` 与 `API Key`，可选择任意兼容的免费/自建接口。
+2. 返回 **AI 工具** 页面，在输入区粘贴文本或使用“粘贴剪贴板”按钮快速导入当前剪贴板内容。
+3. 在右侧 **AI 快捷操作** 卡片选择动作（翻译、摘要、润色、JSON、自定义）与目标语言/Prompt。
+4. 点击“执行”后，结果会显示在输出区域，并可一键复制或保存到历史列表。
+5. 若未配置 API Key，系统会引导跳转到设置页；离线模式下会阻止调用并给出提示。
 
-1. 在首页卡片或浮动面板粘贴内容；
-2. 选择动作（翻译/摘要/润色/JSON/自定义）；
-3. 配置语言与 Prompt；
-4. 结果自动写入历史与系统剪贴板。
+以上逻辑已在 v1.4.1 版本中完整梳理，后续只需替换为您的 API Key 便可体验 AI 功能。
 
-### 系统集成
-
-- 托盘菜单：显示/隐藏窗口、暂停监听、开启离线模式、退出。
-- 自动启动：调用 Tauri Autostart 插件（macOS LaunchAgent、Windows Registry）。
-- 键盘：`Ctrl+Shift+V` 呼出面板；`Esc` 关闭浮动窗；`F12` 调试工具。
-
-## 技术栈 & 体积优化
-
-- **前端**：Vue 3 + Pinia + Vue Router + Naive UI（按需加载）+ Iconify（自动导入）。
-- **桌面**：Tauri 2 + Rust（rusqlite、reqwest、tracing），SQLite WAL 模式保障并发。
-- **优化策略**：
-  - 仅在需要时调用 AI；离线模式直接短路。
-  - 所有图像以 Base64 文本存储，避免额外文件读写。
-  - `vite.config.ts` 配置 alias `@` 指向 `src`，保证按需构建。
-  - Rust 端集中封装数据库命令，前端调用 `invoke` 即可；`reqwest` 使用 `rustls` 禁用系统 OpenSSL 依赖。
-
-## 开发命令
+## 🛠️ 开发者常用命令
 
 | 场景 | 命令 |
-|------|------|
+| --- | --- |
 | 安装依赖 | `pnpm install` |
 | 前端热更新 | `pnpm dev` |
 | 桌面调试 | `pnpm tauri dev` |
 | 类型检查 | `pnpm lint` |
 | 生产构建 | `pnpm build` |
 
-## 发布流程
+Rust 端命令位于 `src-tauri/`，例如 `cargo check`、`cargo fmt` 等；数据库、托盘、剪贴板等系统能力均封装在 `src-tauri/src` 内的模块中。
 
-```bash
-pnpm build
-pnpm tauri build
-```
+## 📦 发布流程（v1.4.1 准备）
 
-生成的安装包位于 `src-tauri/target/release/bundle`。发布建议：
-
-1. 创建 `release/v1.3.4` 分支并推送：
+1. 更新版本号（本次已同步 `package.json`、Tauri 配置与 Rust Cargo 元数据至 **1.4.1**）。
+2. 构建产物：
    ```bash
-   git checkout -b release/v1.3.4
-   git push -u origin release/v1.3.4
-   git tag -a v1.3.4 -m "VibeClip Pro v1.3.4"
-   git push origin v1.3.4
+   pnpm build
+   pnpm tauri build
    ```
-2. 新建 GitHub Release：
-   - **Title**：`VibeClip Pro v1.3.4`
-   - **Highlights**：恢复剪贴板监听模块编译、清理 Rust 警告、统一版本号并验证 `pnpm tauri dev`。
-   - **Assets**：`*.msi`、`*.dmg`、`latest.json` 等。
-   - **Screenshots**：可附上本文档中的 SVG 预览或自行截取界面。
+   安装包将输出至 `src-tauri/target/release/bundle`。
+3. 创建发布分支与标签：
+   ```bash
+   git checkout -b release/v1.4.1
+   git push -u origin release/v1.4.1
+   git tag -a v1.4.1 -m "VibeClip Pro v1.4.1"
+   git push origin v1.4.1
+   ```
+4. 在 GitHub Release 页面撰写更新摘要（建议突出 UI 检查、AI 功能确认、README 调整等要点），并上传 `.msi`/`.dmg`/`.AppImage` 等桌面包以及 `latest.json`。
 
-## 许可
+## 📚 额外资料
+
+- [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)：追踪与 PasteMe 功能差异的对照表。
+
+## 📄 许可
 
 - 代码遵循 [MIT License](LICENSE)。
-- 第三方服务（例如 OpenAI）请遵守各自使用条款。
+- 集成的第三方服务（如 OpenAI 或兼容接口）请遵守各自的使用条款。
