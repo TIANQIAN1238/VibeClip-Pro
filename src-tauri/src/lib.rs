@@ -2,12 +2,14 @@ mod ai_client;
 mod clipboard;
 mod db;
 mod hash;
+mod runtime_config;
 mod state;
 mod tray;
 
 use ai_client::{AiActionRequest, AiActionResponse};
 use clipboard::ClipboardDraft;
-use db::{ClipItem, DbState};
+use db::{ClipItem, ClipKind, DbState};
+use runtime_config::{RuntimeConfigState, RuntimePreferences};
 use state::AppStatus;
 
 use chrono::Utc;
@@ -18,7 +20,10 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_store::StoreExt;
 use tracing::{error, info, warn};
-use tracing_subscriber::EnvFilter;
+use once_cell::sync::OnceCell;
+use tracing_subscriber::{fmt, layer::SubscriberExt, reload, util::SubscriberInitExt, EnvFilter};
+
+static LOG_RELOAD_HANDLE: OnceCell<reload::Handle<EnvFilter, fmt::Subscriber>> = OnceCell::new();
 
 const DEFAULT_SHORTCUT: &str = "CmdOrControl+Shift+V";
 const HISTORY_LIMIT: u32 = 200;
@@ -33,6 +38,7 @@ struct HistoryExportPayload {
 async fn insert_clip(
     status: State<'_, AppStatus>,
     db: State<'_, DbState>,
+    config: State<'_, RuntimeConfigState>,
     draft: ClipboardDraft,
 ) -> Result<ClipItem, String> {
     info!("insert_clip invoked");
@@ -41,10 +47,17 @@ async fn insert_clip(
     }
     let payload = draft.into_payload().map_err(|err| err.to_string())?;
     let db_clone = db.clone_for_thread();
-    tauri::async_runtime::spawn_blocking(move || db_clone.upsert(payload))
-        .await
-        .map_err(|err| err.to_string())?
-        .map_err(|err| err.to_string())
+    let prefs = config.get();
+    let db_clone = db.clone_for_thread();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let item = db_clone.upsert(payload)?;
+        db_clone.apply_retention(&prefs)?;
+        Ok::<_, anyhow::Error>(item)
+    })
+    .await
+    .map_err(|err| err.to_string())?
+    .map_err(|err| err.to_string())?;
+    Ok(result)
 }
 
 #[tauri::command]
@@ -69,6 +82,7 @@ async fn fetch_clips(
     query: Option<String>,
     favorites_first: Option<bool>,
     limit: Option<u32>,
+    offset: Option<u32>,
 ) -> Result<Vec<ClipItem>, String> {
     info!(
         "fetch_clips query={:?} favorites_first={:?} limit={:?}",
@@ -80,6 +94,7 @@ async fn fetch_clips(
         db_clone.list(
             query_clone,
             limit.or(Some(HISTORY_LIMIT)),
+            offset.unwrap_or_default(),
             favorites_first.unwrap_or(true),
         )
     })
@@ -152,6 +167,15 @@ async fn prune_history(db: State<'_, DbState>, keep_latest: usize) -> Result<usi
 }
 
 #[tauri::command]
+async fn vacuum_database(db: State<'_, DbState>) -> Result<(), String> {
+    let db_clone = db.clone_for_thread();
+    tauri::async_runtime::spawn_blocking(move || db_clone.vacuum())
+        .await
+        .map_err(|err| err.to_string())?
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 async fn perform_ai_action(
     app: AppHandle,
     status: State<'_, AppStatus>,
@@ -191,6 +215,56 @@ async fn set_listening(status: State<'_, AppStatus>, listening: bool) -> Result<
 #[tauri::command]
 async fn set_offline(status: State<'_, AppStatus>, offline: bool) -> Result<(), String> {
     status.set_offline(offline);
+    Ok(())
+}
+
+#[tauri::command]
+async fn ignore_next_clipboard_capture(
+    status: State<'_, AppStatus>,
+    hash: Option<String>,
+    kind: Option<u8>,
+    content: Option<String>,
+) -> Result<(), String> {
+    if let Some(hash) = hash.filter(|value| !value.is_empty()) {
+        status.mark_self_copy(hash);
+        return Ok(());
+    }
+
+    if let (Some(kind), Some(content)) = (kind, content) {
+        let clip_kind = match kind {
+            1 => ClipKind::Text,
+            2 => ClipKind::Image,
+            3 => ClipKind::File,
+            other => return Err(format!("未知的剪贴板类型: {other}")),
+        };
+        let hash = crate::hash::compute_content_hash(clip_kind, &content);
+        status.mark_self_copy(hash);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_runtime_preferences(
+    config: State<'_, RuntimeConfigState>,
+    preferences: RuntimePreferences,
+) -> Result<(), String> {
+    reload_log_filter(&preferences.log_level)?;
+    config.update(preferences);
+    Ok(())
+}
+
+fn reload_log_filter(level: &str) -> Result<(), String> {
+    let normalized = match level.to_lowercase().as_str() {
+        "debug" => "debug",
+        _ => "info",
+    };
+    if let Some(handle) = LOG_RELOAD_HANDLE.get() {
+        let filter = EnvFilter::new(normalized);
+        handle
+            .reload(filter)
+            .map_err(|err| format!("无法更新日志级别: {err}"))?;
+    }
     Ok(())
 }
 
@@ -273,13 +347,31 @@ struct AppStatusSnapshot {
     offline: bool,
 }
 
+#[derive(Debug, Serialize)]
+struct RuntimeSummary {
+    app_version: &'static str,
+    tauri_version: &'static str,
+    rustc_channel: &'static str,
+}
+
+#[tauri::command]
+async fn get_runtime_summary() -> Result<RuntimeSummary, String> {
+    Ok(RuntimeSummary {
+        app_version: env!("CARGO_PKG_VERSION"),
+        tauri_version: tauri::VERSION,
+        rustc_channel: option_env!("RUSTC_CHANNEL").unwrap_or("stable"),
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .try_init();
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let (reload_handle, reload_layer) = reload::Layer::new(filter);
+    let subscriber = tracing_subscriber::registry()
+        .with(reload_layer)
+        .with(fmt::layer());
+    let _ = subscriber.try_init();
+    let _ = LOG_RELOAD_HANDLE.set(reload_handle);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -313,6 +405,8 @@ pub fn run() {
                 }
             }
             app.manage(status);
+            let config_state = RuntimeConfigState::default();
+            app.manage(config_state.clone());
             let db_state = DbState::initialize(&handle)?;
             app.manage(db_state);
             clipboard_watcher::spawn_clipboard_watcher(&handle);
@@ -330,6 +424,14 @@ pub fn run() {
                 if let Some(window) = handle.get_webview_window("main") {
                     let _ = window.show();
                 }
+            }
+            let db_handle = handle.state::<DbState>().clone();
+            let prefs = config_state.get();
+            if prefs.retention.vacuum_on_start {
+                let db_clone = db_handle.clone_for_thread();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let _ = db_clone.vacuum();
+                });
             }
             info!("application setup complete");
             let app_handle = handle.clone();
@@ -358,7 +460,11 @@ pub fn run() {
             simulate_paste,
             get_value_from_store,
             set_value_to_store,
-            register_history_shortcut
+            register_history_shortcut,
+            vacuum_database,
+            update_runtime_preferences,
+            ignore_next_clipboard_capture,
+            get_runtime_summary
         ])
         .run(tauri::generate_context!())
         .expect("error while running VibeClip Pro");

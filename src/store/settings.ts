@@ -19,6 +19,12 @@ interface PersistedSettings {
   offlineMode: boolean;
   autoLaunch: boolean;
   preferredLanguage: string;
+  historyLimit: number;
+  historyRetentionDays: number | null;
+  dedupeEnabled: boolean;
+  ignoreSelfCopies: boolean;
+  ignoredSources: string[];
+  logLevel: "info" | "debug";
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
@@ -33,6 +39,12 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   offlineMode: false,
   autoLaunch: false,
   preferredLanguage: "zh-CN",
+  historyLimit: 500,
+  historyRetentionDays: null,
+  dedupeEnabled: true,
+  ignoreSelfCopies: true,
+  ignoredSources: [],
+  logLevel: "info",
 };
 
 function blend(color: string, target: string, ratio: number) {
@@ -188,11 +200,70 @@ export const useSettingsStore = defineStore("settings", () => {
       stateRefs.temperature.value,
       stateRefs.preferredLanguage.value,
       stateRefs.autoLaunch.value,
+      stateRefs.historyLimit.value,
+      stateRefs.historyRetentionDays.value,
+      stateRefs.dedupeEnabled.value,
+      stateRefs.ignoreSelfCopies.value,
+      stateRefs.logLevel.value,
     ],
     () => {
       if (hydrated.value) {
         schedulePersist();
       }
+    },
+    { deep: true }
+  );
+
+  watch(
+    () => stateRefs.ignoredSources.value,
+    () => {
+      if (hydrated.value) {
+        schedulePersist();
+      }
+    },
+    { deep: true }
+  );
+
+  async function pushRuntimePreferences() {
+    if (!hydrated.value) return;
+    const ignored = stateRefs.ignoredSources.value
+      .map(value => value.trim())
+      .filter(value => value.length > 0);
+    const retentionDays = stateRefs.historyRetentionDays.value;
+    try {
+      await invoke("update_runtime_preferences", {
+        preferences: {
+          dedupeEnabled: stateRefs.dedupeEnabled.value,
+          debounceIntervalMs: 320,
+          ignoreSelfCopies: stateRefs.ignoreSelfCopies.value,
+          ignoredKeywords: ignored,
+          logLevel: stateRefs.logLevel.value,
+          retention: {
+            maxEntries: stateRefs.historyLimit.value > 0 ? stateRefs.historyLimit.value : null,
+            maxAgeDays:
+              typeof retentionDays === "number" && retentionDays > 0
+                ? Math.trunc(retentionDays)
+                : null,
+            vacuumOnStart: true,
+          },
+        },
+      });
+    } catch (error) {
+      recordError("同步运行偏好失败", error, true);
+    }
+  }
+
+  watch(
+    () => [
+      stateRefs.historyLimit.value,
+      stateRefs.historyRetentionDays.value,
+      stateRefs.dedupeEnabled.value,
+      stateRefs.ignoreSelfCopies.value,
+      stateRefs.logLevel.value,
+      stateRefs.ignoredSources.value,
+    ],
+    () => {
+      void pushRuntimePreferences();
     },
     { deep: true }
   );
@@ -272,6 +343,7 @@ export const useSettingsStore = defineStore("settings", () => {
       }
 
       hydrated.value = true;
+      await pushRuntimePreferences();
     })();
   }
 
@@ -307,5 +379,6 @@ export const useSettingsStore = defineStore("settings", () => {
     schedulePersist,
     setOfflineLocal,
     toggleAutoLaunch,
+    pushRuntimePreferences,
   };
 });

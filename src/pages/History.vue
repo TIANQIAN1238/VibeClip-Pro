@@ -206,6 +206,10 @@ function handleAiDialogToggle(value: boolean) {
 async function copyAiResult() {
   if (!aiDialog.result) return;
   try {
+    await history.markSelfCapture({
+      kind: ClipKind.Text,
+      content: aiDialog.result,
+    });
     await writeText(aiDialog.result);
     message.success("已复制到剪贴板");
   } catch (error) {
@@ -342,6 +346,14 @@ async function handleRefresh() {
   }
 }
 
+async function handleLoadMore() {
+  try {
+    await history.loadMore();
+  } catch (error) {
+    reportError("加载更多历史失败", error);
+  }
+}
+
 async function handleImport() {
   try {
     await history.importHistory();
@@ -472,6 +484,11 @@ async function handleClear() {
                 </div>
               </template>
             </n-virtual-list>
+            <div v-if="history.hasMore" class="load-more">
+              <n-button tertiary block :loading="history.isLoading" @click="handleLoadMore">
+                加载更多
+              </n-button>
+            </div>
             <n-empty v-else-if="!history.isLoading" description="还没有保存的剪贴板内容">
               <template #extra>
                 <n-button size="small" @click="syncSystemClipboard">立即同步</n-button>
@@ -655,6 +672,10 @@ async function handleClear() {
 .history-virtual-list {
   min-height: 100%;
   padding: 6px 0 20px;
+}
+
+.load-more {
+  padding: 12px 0 24px;
 }
 
 .history-row {
