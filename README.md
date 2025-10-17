@@ -41,7 +41,7 @@
 
 ## PasteMe 对标追踪
 
-`v1.3.1` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
+`v1.3.2` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
 
 - [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)
 
@@ -105,15 +105,15 @@ pnpm tauri build
 
 生成的安装包位于 `src-tauri/target/release/bundle`。发布建议：
 
-1. 创建 `release/v1.3.1` 分支并推送：
+1. 创建 `release/v1.3.2` 分支并推送：
    ```bash
-   git checkout -b release/v1.3.1
-   git push -u origin release/v1.3.1
-   git tag -a v1.3.1 -m "VibeClip Pro v1.3.1"
-   git push origin v1.3.1
+   git checkout -b release/v1.3.2
+   git push -u origin release/v1.3.2
+   git tag -a v1.3.2 -m "VibeClip Pro v1.3.2"
+   git push origin v1.3.2
    ```
 2. 新建 GitHub Release：
-   - **Title**：`VibeClip Pro v1.3.1`
+   - **Title**：`VibeClip Pro v1.3.2`
    - **Highlights**：数据库索引与 VACUUM、历史分页加载、去重/容量/黑名单偏好等。
    - **Assets**：`*.msi`、`*.dmg`、`latest.json` 等。
    - **Screenshots**：可附上本文档中的 SVG 预览或自行截取界面。
