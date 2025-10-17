@@ -58,11 +58,121 @@ const debouncedSaveConfig = debounce(saveConfig, 500);
 watch(
     () => config.value,
     () => {
-        console.log('save', unref(config));
         debouncedSaveConfig();
     },
     { deep: true }
 );
+
+const snippetTotal = computed(() => config.value.snippets?.length ?? 0);
+
+const toggleSummary = computed(() => {
+    const toggles = [
+        { label: '直接粘贴', value: config.value.common?.enablePaste ?? false },
+        { label: '统计', value: config.value.common?.enableCalc ?? false },
+        { label: '编辑', value: config.value.common?.enableEdit ?? false },
+        { label: '转纯文本', value: config.value.common?.enableToText ?? false },
+        { label: '识别', value: config.value.detect?.enabled ?? false },
+        { label: '识别链接', value: config.value.detect?.detectUrl ?? false },
+    ];
+    return {
+        enabled: toggles.filter(item => item.value).length,
+        total: toggles.length,
+        enabledLabels: toggles.filter(item => item.value).map(item => item.label),
+    };
+});
+
+const featureProgress = computed(() => {
+    const total = toggleSummary.value.total;
+    return total === 0
+        ? 0
+        : Math.round((toggleSummary.value.enabled / total) * 100);
+});
+
+const aiStatusTag = computed(() =>
+    config.value.ai?.enabled ? 'success' : 'warning'
+);
+
+const aiStatusLabel = computed(() =>
+    config.value.ai?.enabled ? 'AI 功能已启用' : 'AI 功能未启用'
+);
+
+const aiProviderLabel = computed(() => {
+    const endpoint = config.value.ai?.endpoint?.trim();
+    if (!endpoint) return '默认 OpenAI 兼容端点';
+    try {
+        const url = new URL(endpoint);
+        return url.hostname;
+    } catch (error) {
+        console.debug('无法解析 AI 端点', error);
+        return endpoint;
+    }
+});
+
+const aiModelLabel = computed(
+    () => config.value.ai?.model?.trim() || '未设置模型'
+);
+
+const snippetMeta = computed(() => {
+    if (!config.value.ai?.enableAISnipets) {
+        return '前往“AI 设置”启用快速片段';
+    }
+    if (snippetTotal.value === 0) {
+        return '点击右上角即可创建第一个片段';
+    }
+    return '常用提示词已准备就绪';
+});
+
+const toggleMeta = computed(() => {
+    const labels = toggleSummary.value.enabledLabels;
+    return labels.length > 0
+        ? `已启用：${labels.join('、')}`
+        : '还未启用增强功能';
+});
+
+const autoStartTagType = computed(() => (autoStart.value ? 'success' : 'warning'));
+
+const autoStartLabel = computed(() =>
+    autoStart.value ? '自动启动已打开' : '自动启动未开启'
+);
+
+const overviewCards = computed(() => {
+    const update = updateState.value;
+    const updateMeta = update.haveUpdate
+        ? update.latestVersion
+            ? `发现版本 ${update.latestVersion}`
+            : '发现新版本'
+        : '暂无可用更新';
+    return [
+        {
+            title: 'AI 服务',
+            value: config.value.ai?.enabled ? aiModelLabel.value : '未启用',
+            meta: aiProviderLabel.value,
+            tone: config.value.ai?.enabled ? 'positive' : 'warning',
+        },
+        {
+            title: '快速片段',
+            value: snippetTotal.value.toString(),
+            meta: snippetMeta.value,
+        },
+        {
+            title: '功能开关',
+            value: `${toggleSummary.value.enabled}/${toggleSummary.value.total}`,
+            meta: toggleMeta.value,
+            progress: featureProgress.value,
+        },
+        {
+            title: '版本状态',
+            value: update.haveUpdate ? '可更新' : '最新',
+            meta: updateMeta,
+            tone: update.haveUpdate ? 'warning' : 'success',
+        },
+    ];
+});
+
+const tabPaneStyle = computed(() => ({
+    padding: '0',
+    height: '100%',
+}));
 
 const cleanupFns: Array<() => Promise<void> | void> = [];
 
@@ -206,32 +316,95 @@ function upgradeSnippet() {
 </script>
 
 <template>
-    <div
-        class="text-black p-5 align-left relative select-none bg-white/95 dark:bg-transparent dark:text-white"
-    >
-        <div
-            data-tauri-drag-region
-            class="absolute top-0 right-0 h-10 w-full flex flex-row justify-end items-start"
-        >
-            <div
-                class="w-12 h-8 py-2 px-3.5 hover:bg-black/50"
-                @click="minimizeApp"
-            >
-                <QlementineIconsWindowsMinimize16 />
+    <div class="home-shell">
+        <section class="home-hero">
+            <div class="home-hero__info">
+                <div class="home-hero__title">
+                    <img class="home-hero__logo" :src="ClipAIIcon" alt="ClipAI 标志" />
+                    <div>
+                        <h1>Paste Me!</h1>
+                        <p>一个简易的剪贴板增强工具，聚焦丝滑工作流体验。</p>
+                    </div>
+                </div>
+                <div class="home-hero__meta">
+                    <n-tag round size="small" type="primary">v{{ AppInfo.version }}</n-tag>
+                    <n-tag round size="small" :type="aiStatusTag">{{ aiStatusLabel }}</n-tag>
+                    <n-tag round size="small" :type="autoStartTagType">{{ autoStartLabel }}</n-tag>
+                    <span class="home-hero__meta-text">{{ aiProviderLabel }}</span>
+                </div>
             </div>
-            <div
-                class="w-12 h-8 py-2 px-3.5 hover:bg-red-500/50"
-                @click="openCloseConfirm"
-            >
-                <QlementineIconsWindowsClose16 />
+            <div class="home-hero__actions">
+                <n-button tertiary size="small" @click="openProjectPage">项目主页</n-button>
+                <n-button tertiary size="small" @click="openFeedbackPage">反馈</n-button>
+                <n-button
+                    quaternary
+                    circle
+                    size="small"
+                    @click="minimizeApp"
+                    aria-label="最小化"
+                >
+                    <template #icon>
+                        <QlementineIconsWindowsMinimize16 />
+                    </template>
+                </n-button>
+                <n-button
+                    quaternary
+                    circle
+                    size="small"
+                    @click="openCloseConfirm"
+                    aria-label="退出"
+                >
+                    <template #icon>
+                        <QlementineIconsWindowsClose16 />
+                    </template>
+                </n-button>
+                <n-button
+                    strong
+                    secondary
+                    size="small"
+                    :type="updateState.type"
+                    :loading="updateState.working"
+                    :disabled="updateState.working"
+                    @click="checkUpdate"
+                >
+                    <template #icon>
+                        <n-icon>
+                            <component :is="currentIcon" />
+                        </n-icon>
+                    </template>
+                    {{ updateState.btn }}
+                </n-button>
             </div>
-        </div>
-        <div class="text-3xl">
-            <img class="inline size-12" :src="ClipAIIcon" /> Paste Me!
-        </div>
-        <div class="text-gray-400">一个简易的剪贴板增强工具</div>
-        <div class="w-full h-[490px] mt-3 flex flex-col">
-            <n-tabs type="line" animated placement="left" class="size-full">
+        </section>
+        <section class="home-stats-grid">
+            <div
+                v-for="card in overviewCards"
+                :key="card.title"
+                class="home-stat-card"
+                :class="card.tone ? `home-stat-card--${card.tone}` : ''"
+            >
+                <div class="home-stat-card__title">{{ card.title }}</div>
+                <div class="home-stat-card__value">{{ card.value }}</div>
+                <div class="home-stat-card__meta">{{ card.meta }}</div>
+                <n-progress
+                    v-if="card.progress !== undefined"
+                    class="home-stat-card__progress"
+                    type="line"
+                    :percentage="card.progress"
+                    :show-indicator="false"
+                    size="small"
+                />
+            </div>
+        </section>
+        <div class="home-content">
+            <div class="home-tabs-card">
+                <n-tabs
+                    type="line"
+                    animated
+                    placement="left"
+                    class="home-tabs"
+                    :pane-style="tabPaneStyle"
+                >
                 <n-tab-pane name="welcome" tab="欢迎使用">
                     <n-list
                         class="!bg-transparent !px-2 size-full overflow-y-auto thin-scrollbar animate-fade-up animate-once animate-duration-500 animate-ease-out"
@@ -710,7 +883,7 @@ function upgradeSnippet() {
                             </template>
                         </n-thing>
                         <div
-                            class="w-full h-[445px] p-2 animate-fade-up animate-once animate-duration-500 animate-ease-out"
+                            class="home-pane-scroll animate-fade-up animate-once animate-duration-500 animate-ease-out"
                         >
                             <n-list
                                 class="!bg-transparent size-full overflow-y-auto thin-scrollbar"
@@ -838,7 +1011,7 @@ function upgradeSnippet() {
                             </template>
 
                             <div
-                                class="flex flex-col gap-2 thin-scrollbar overflow-y-auto h-[440px]"
+                                class="home-pane-form thin-scrollbar"
                             >
                                 <div>
                                     <span>名称</span>
@@ -1008,6 +1181,8 @@ function upgradeSnippet() {
             </n-tabs>
         </div>
 
+        </div>
+
         <n-modal
             v-model:show="closeConfirm"
             preset="dialog"
@@ -1023,6 +1198,252 @@ function upgradeSnippet() {
 </template>
 
 <style scoped>
+.home-shell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 28px 32px 32px;
+    color: var(--vibe-text-primary);
+    overflow: hidden;
+}
+
+.home-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    padding: 24px 32px;
+    border-radius: var(--vibe-radius-xl);
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.92), rgba(236, 244, 255, 0.86));
+    border: 1px solid var(--vibe-border-soft);
+    box-shadow: var(--vibe-shadow-soft);
+}
+
+:global(.dark) .home-hero {
+    background: linear-gradient(140deg, rgba(33, 40, 63, 0.92), rgba(26, 34, 54, 0.9));
+    border-color: var(--vibe-border-strong);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+}
+
+.home-hero__info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 60%;
+}
+
+.home-hero__title {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.home-hero__logo {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    box-shadow: 0 18px 38px rgba(79, 107, 255, 0.25);
+}
+
+.home-hero__title h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.home-hero__title p {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--vibe-text-secondary);
+}
+
+.home-hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.home-hero__meta-text {
+    font-size: 12px;
+    color: var(--vibe-text-secondary);
+    letter-spacing: 0.4px;
+}
+
+.home-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+}
+
+.home-stats-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.home-stat-card {
+    background: var(--vibe-bg-elevated);
+    border-radius: var(--vibe-radius-lg);
+    border: 1px solid var(--vibe-border-soft);
+    box-shadow: var(--vibe-shadow-soft);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform var(--vibe-transition), box-shadow var(--vibe-transition);
+}
+
+.home-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(49, 70, 255, 0.18);
+}
+
+.home-stat-card__title {
+    font-size: 13px;
+    color: var(--vibe-text-muted);
+    letter-spacing: 0.3px;
+}
+
+.home-stat-card__value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--vibe-text-primary);
+}
+
+.home-stat-card__meta {
+    font-size: 12px;
+    color: var(--vibe-text-secondary);
+    line-height: 1.4;
+}
+
+.home-stat-card__progress {
+    margin-top: auto;
+}
+
+.home-stat-card--positive {
+    border-color: rgba(82, 196, 26, 0.32);
+}
+
+.home-stat-card--success {
+    border-color: rgba(82, 196, 26, 0.3);
+}
+
+.home-stat-card--warning {
+    border-color: rgba(250, 173, 20, 0.4);
+}
+
+.home-content {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.home-tabs-card {
+    flex: 1;
+    display: flex;
+    padding: 12px;
+    border-radius: var(--vibe-radius-xl);
+    border: 1px solid var(--vibe-border-soft);
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: var(--vibe-shadow-soft);
+    overflow: hidden;
+}
+
+:global(.dark) .home-tabs-card {
+    background: rgba(28, 31, 48, 0.82);
+}
+
+.home-tabs {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.home-tabs :deep(.n-tabs-pane-wrapper) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.home-tabs :deep(.n-tab-pane) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+}
+
+.home-tabs :deep(.n-tabs-nav) {
+    width: 220px;
+    padding: 16px 12px;
+    border-right: 1px solid var(--vibe-border-soft);
+    background: transparent;
+}
+
+.home-tabs :deep(.n-tabs-nav)::after {
+    display: none;
+}
+
+.home-tabs :deep(.n-tabs-tab) {
+    border-radius: var(--vibe-radius-md);
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    transition: background var(--vibe-transition), color var(--vibe-transition);
+}
+
+.home-tabs :deep(.n-tabs-tab:hover) {
+    background: rgba(79, 107, 255, 0.12);
+}
+
+.home-tabs :deep(.n-tabs-tab.n-tabs-tab--active) {
+    background: linear-gradient(120deg, rgba(79, 107, 255, 0.18), rgba(79, 107, 255, 0.32));
+    color: var(--vibe-accent-strong);
+}
+
+.home-tabs :deep(.n-tabs-tab__label) {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.home-tabs :deep(.n-tabs-content) {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    padding: 16px 20px 16px 24px;
+}
+
+.home-pane-scroll {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    padding: 12px;
+    border-radius: var(--vibe-radius-lg);
+    border: 1px solid var(--vibe-border-soft);
+    background: rgba(255, 255, 255, 0.78);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+}
+
+:global(.dark) .home-pane-scroll {
+    background: rgba(28, 31, 48, 0.78);
+}
+
+.home-pane-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+    padding-right: 4px;
+    max-height: 100%;
+}
+
 ul {
     list-style-type: disc;
     padding-left: 20px;
