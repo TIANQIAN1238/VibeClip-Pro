@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onErrorCaptured, ref, watch } from "vue";
-import { useSettingsStore, type ThemePreset } from "@/store/settings";
+import {
+  useSettingsStore,
+  type ThemePreset,
+  type CustomThemePalette,
+} from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
 import { useMessage } from "naive-ui";
 import AppInfo from "@/AppInfo";
@@ -62,7 +66,32 @@ const themePresetOptions = computed(() => [
     label: t("settings.presetForest", "森野绿"),
     preview: "linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)",
   },
+  {
+    value: "nebula" as ThemePreset,
+    label: t("settings.presetNebula", "星云紫"),
+    preview: "linear-gradient(135deg, #9b6bff 0%, #f7a8ff 100%)",
+  },
+  {
+    value: "ember" as ThemePreset,
+    label: t("settings.presetEmber", "炽焰金"),
+    preview: "linear-gradient(135deg, #ff9f4d 0%, #ffc76b 100%)",
+  },
+  {
+    value: "custom" as ThemePreset,
+    label: t("settings.presetCustom", "自定义"),
+    preview: "linear-gradient(135deg, var(--vibe-accent) 0%, rgba(255, 255, 255, 0.8) 100%)",
+  },
 ]);
+
+const customThemePreview = computed(() => settings.customThemePalette);
+
+function updateCustomTheme<K extends keyof CustomThemePalette>(key: K, value: string) {
+  settings.updateCustomTheme({ [key]: value } as Pick<CustomThemePalette, K>);
+}
+
+const handleCustomColorChange = (key: keyof CustomThemePalette) => (value: string) => {
+  updateCustomTheme(key, value);
+};
 
 const ignoredSourcesText = computed({
   get: () => settings.ignoredSources.join("\n"),
@@ -221,6 +250,64 @@ onErrorCaptured((err, _instance, info) => {
                 <span class="preset-swatch" :style="{ background: option.preview }" />
                 <span>{{ option.label }}</span>
               </button>
+            </div>
+            <div v-if="themePresetValue === 'custom'" class="custom-theme-grid">
+              <div class="field-column">
+                <label>{{ t("settings.customBackground", "背景色") }}</label>
+                <n-color-picker
+                  :value="customThemePreview.background"
+                  size="small"
+                  @update:value="handleCustomColorChange('background')"
+                />
+              </div>
+              <div class="field-column">
+                <label>{{ t("settings.customSurface", "面板色") }}</label>
+                <n-color-picker
+                  :value="customThemePreview.surface"
+                  size="small"
+                  @update:value="handleCustomColorChange('surface')"
+                />
+              </div>
+              <div class="field-column">
+                <label>{{ t("settings.customSurfaceStrong", "高亮面板") }}</label>
+                <n-color-picker
+                  :value="customThemePreview.surfaceStrong"
+                  size="small"
+                  @update:value="handleCustomColorChange('surfaceStrong')"
+                />
+              </div>
+              <div class="field-column">
+                <label>{{ t("settings.customBorder", "边框色") }}</label>
+                <n-color-picker
+                  :value="customThemePreview.border"
+                  size="small"
+                  @update:value="handleCustomColorChange('border')"
+                />
+              </div>
+              <div class="field-column">
+                <label>{{ t("settings.customTextPrimary", "主文本") }}</label>
+                <n-color-picker
+                  :value="customThemePreview.textPrimary"
+                  size="small"
+                  @update:value="handleCustomColorChange('textPrimary')"
+                />
+              </div>
+              <div class="field-column">
+                <label>{{ t("settings.customTextSecondary", "次文本") }}</label>
+                <n-color-picker
+                  :value="customThemePreview.textSecondary"
+                  size="small"
+                  @update:value="handleCustomColorChange('textSecondary')"
+                />
+              </div>
+              <div class="field-column">
+                <label>{{ t("settings.customTextMuted", "弱文本") }}</label>
+                <n-color-picker
+                  :value="customThemePreview.textMuted"
+                  size="small"
+                  @update:value="handleCustomColorChange('textMuted')"
+                />
+              </div>
             </div>
             <div class="field-row">
               <label>{{ t("settings.lineHeight", "内容行高") }}</label>
@@ -431,6 +518,22 @@ onErrorCaptured((err, _instance, info) => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.custom-theme-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.custom-theme-grid label {
+  font-size: 12px;
+  color: var(--vibe-text-muted);
+}
+
+.custom-theme-grid :deep(.n-color-picker) {
+  width: 100%;
 }
 
 .preset-chip {

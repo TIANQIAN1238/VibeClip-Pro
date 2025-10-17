@@ -420,6 +420,7 @@ onErrorCaptured((err, _instance, info) => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .page-header h1 {
@@ -436,6 +437,8 @@ onErrorCaptured((err, _instance, info) => {
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .content-scroll {
@@ -513,6 +516,7 @@ onErrorCaptured((err, _instance, info) => {
 .result-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .result-body {

@@ -194,7 +194,7 @@ const historyCountLabel = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px;
+  padding: 12px;
   border-radius: var(--vibe-radius-xl);
   background: var(--vibe-panel-surface);
   border: 1px solid var(--vibe-panel-border);
@@ -255,7 +255,7 @@ const historyCountLabel = computed(() =>
 
 .nav {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -360,14 +360,9 @@ const historyCountLabel = computed(() =>
   color: var(--vibe-text-muted);
 }
 
-@media (max-width: 520px) {
-  .sidebar {
-    padding: 12px;
-    gap: 10px;
-  }
-
+@media (min-width: 460px) {
   .nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 </style>
