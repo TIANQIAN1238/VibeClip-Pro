@@ -4,7 +4,7 @@ use anyhow::Result;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use image::codecs::png::PngEncoder;
-use image::ColorType;
+use image::{ColorType, ImageEncoder};
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tracing::error;
@@ -29,7 +29,7 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
             drop(status);
 
             if !listening {
-                tauri::async_runtime::sleep(Duration::from_millis(320)).await;
+                tauri::async_runtime::time::sleep(Duration::from_millis(320)).await;
                 continue;
             }
 
@@ -43,10 +43,9 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
                 move || -> Result<Option<(ClipItem, String)>> {
                     if let Some(draft) = capture_clipboard(&app_handle, &prefs_snapshot)? {
                         let payload = draft.into_payload()?;
-                        let hash = payload
-                            .content_hash
-                            .clone()
-                            .unwrap_or_else(|| crate::hash::compute_content_hash(payload.kind, &payload.content));
+                        let hash = payload.content_hash.clone().unwrap_or_else(|| {
+                            crate::hash::compute_content_hash(payload.kind, &payload.content)
+                        });
                         if prefs_snapshot.ignore_self_copies {
                             let status = app_handle.state::<AppStatus>();
                             if status.consume_self_copy(&hash) {
@@ -70,7 +69,7 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
 
             match result {
                 Ok(Ok(Some((clip, hash)))) => {
-                    let _ = app_handle.emit_all("clipboard://captured", &clip);
+                    let _ = app_handle.emit("clipboard://captured", &clip);
                     last_hash = Some(hash);
                     consecutive_failures = 0;
                 }
@@ -95,7 +94,7 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
                     .unwrap_or(poll_interval)
                     .min(Duration::from_secs(3))
             };
-            tauri::async_runtime::sleep(backoff).await;
+            tauri::async_runtime::time::sleep(backoff).await;
         }
     });
 }
@@ -171,7 +170,13 @@ fn build_image_payload(image: &tauri::image::Image<'_>) -> Result<ClipboardDraft
     let mut buffer = Vec::new();
     {
         let mut encoder = PngEncoder::new(&mut buffer);
-        encoder.encode(image.rgba(), image.width(), image.height(), ColorType::Rgba8)?;
+        let rgba = image.rgba();
+        encoder.write_image(
+            rgba.as_ref(),
+            image.width(),
+            image.height(),
+            ColorType::Rgba8,
+        )?;
     }
     let base64 = BASE64_STANDARD.encode(buffer);
     let preview = format!("{} × {} 图像", image.width(), image.height());
@@ -199,7 +204,7 @@ fn try_build_file_payload(text: &str) -> Option<(String, String, Option<String>)
         return None;
     }
 
-    let looks_like_path = segments.iter().all(is_path_like);
+    let looks_like_path = segments.iter().all(|segment| is_path_like(segment));
     if !looks_like_path {
         return None;
     }

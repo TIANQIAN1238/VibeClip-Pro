@@ -53,9 +53,7 @@ impl ClipboardDraft {
                     .image_base64
                     .context("Image payload requires base64 data")?;
                 validate_base64(&image_base64)?;
-                let preview = self
-                    .preview
-                    .or_else(|| Some("图像".to_string()));
+                let preview = self.preview.or_else(|| Some("图像".to_string()));
                 Ok(finalize_payload(ClipPayload {
                     kind: ClipKind::Image,
                     content: image_base64.clone(),
@@ -70,9 +68,7 @@ impl ClipboardDraft {
                 let path = self
                     .file_path
                     .context("File clipboard payload is missing file_path")?;
-                let preview = self
-                    .preview
-                    .or_else(|| Some(path.clone()));
+                let preview = self.preview.or_else(|| Some(path.clone()));
                 Ok(finalize_payload(ClipPayload {
                     kind: ClipKind::File,
                     content: path.clone(),

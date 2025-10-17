@@ -41,7 +41,7 @@
 
 ## PasteMe 对标追踪
 
-`v1.3.3` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
+`v1.3.4` 开发周期内，我们整理了与 PasteMe 的差异条目，方便逐项补齐：
 
 - [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)
 
@@ -107,15 +107,15 @@ pnpm tauri build
 
 生成的安装包位于 `src-tauri/target/release/bundle`。发布建议：
 
-1. 创建 `release/v1.3.3` 分支并推送：
+1. 创建 `release/v1.3.4` 分支并推送：
    ```bash
-   git checkout -b release/v1.3.3
-   git push -u origin release/v1.3.3
-   git tag -a v1.3.3 -m "VibeClip Pro v1.3.3"
-   git push origin v1.3.3
+   git checkout -b release/v1.3.4
+   git push -u origin release/v1.3.4
+   git tag -a v1.3.4 -m "VibeClip Pro v1.3.4"
+   git push origin v1.3.4
    ```
 2. 新建 GitHub Release：
-   - **Title**：`VibeClip Pro v1.3.3`
+   - **Title**：`VibeClip Pro v1.3.4`
    - **Highlights**：恢复剪贴板监听模块编译、清理 Rust 警告、统一版本号并验证 `pnpm tauri dev`。
    - **Assets**：`*.msi`、`*.dmg`、`latest.json` 等。
    - **Screenshots**：可附上本文档中的 SVG 预览或自行截取界面。
