@@ -20,10 +20,7 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_store::StoreExt;
 use tracing::{error, info, warn};
-use once_cell::sync::OnceCell;
-use tracing_subscriber::{fmt, layer::SubscriberExt, reload, util::SubscriberInitExt, EnvFilter};
-
-static LOG_RELOAD_HANDLE: OnceCell<reload::Handle<EnvFilter, fmt::Subscriber>> = OnceCell::new();
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 const DEFAULT_SHORTCUT: &str = "CmdOrControl+Shift+V";
 const HISTORY_LIMIT: u32 = 200;
@@ -249,22 +246,7 @@ async fn update_runtime_preferences(
     config: State<'_, RuntimeConfigState>,
     preferences: RuntimePreferences,
 ) -> Result<(), String> {
-    reload_log_filter(&preferences.log_level)?;
     config.update(preferences);
-    Ok(())
-}
-
-fn reload_log_filter(level: &str) -> Result<(), String> {
-    let normalized = match level.to_lowercase().as_str() {
-        "debug" => "debug",
-        _ => "info",
-    };
-    if let Some(handle) = LOG_RELOAD_HANDLE.get() {
-        let filter = EnvFilter::new(normalized);
-        handle
-            .reload(filter)
-            .map_err(|err| format!("无法更新日志级别: {err}"))?;
-    }
     Ok(())
 }
 
@@ -366,12 +348,10 @@ async fn get_runtime_summary() -> Result<RuntimeSummary, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let (reload_handle, reload_layer) = reload::Layer::new(filter);
     let subscriber = tracing_subscriber::registry()
-        .with(reload_layer)
+        .with(filter)
         .with(fmt::layer());
     let _ = subscriber.try_init();
-    let _ = LOG_RELOAD_HANDLE.set(reload_handle);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
