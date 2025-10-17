@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.4.2 · 2025-10-20
+
+### ⚡ 运行改进
+
+- 新增 `@/libs/tauri` 安全封装，在浏览器预览或缺失 Tauri Runtime 时自动降级到本地存储、剪贴板与示例数据，彻底解决“Cannot read properties of undefined (reading 'invoke')”报错。
+- History/Settings/Clipboard 等核心 Store 与组合式函数统一接入降级逻辑，保证 Web 预览与桌面端双端都能正常渲染与操作。
+- 历史列表在预览模式提供演示数据集与本地导入/导出，实现无桌面依赖的体验巡检。
+
+### 🤖 AI 接入验证
+
+- 默认将 AI 接口切换到 FreeAPI（https://api.freekey.site）并推荐 `gemini-2.5-flash` 模型，支持翻译、摘要、润色等快捷操作。
+- 在非 Tauri 环境中直接使用 `fetch` 调用兼容接口，保持桌面与浏览器预览一致的调用体验。
+- 校验翻译/摘要/润色三大动作的流程，确保结果可写回历史或复制到系统剪贴板。
+
+### 🧭 交互增强
+
+- 历史记录右键菜单扩展为“复制 / 收藏 / 置顶 / 删除 + AI 翻译/摘要/润色”，并与现有按钮动作保持一致反馈。
+- Home 页欢迎文案强调“剪贴板历史管理 + AI 快捷操作”两大卖点，便于新品介绍。
+
+### 📚 文档与版本
+
+- README 补充 FreeAPI 接入说明、右键菜单亮点及 v1.4.2 发布指引。
+- 同步 `package.json`、`tauri.conf.json`、`Cargo.toml`、`AppInfo.ts` 等版本号至 **1.4.2**，为下一轮 release 做准备。
+
 ## v1.4.1 · 2025-10-19
 
 ### ✅ 稳定性与版本同步

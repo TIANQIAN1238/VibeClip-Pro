@@ -323,7 +323,7 @@ function upgradeSnippet() {
                     <img class="home-hero__logo" :src="ClipAIIcon" alt="ClipAI 标志" />
                     <div>
                         <h1>Paste Me!</h1>
-                        <p>一个简易的剪贴板增强工具，聚焦丝滑工作流体验。</p>
+                        <p>一站式剪贴板历史管理与 AI 快捷操作助手，让复制粘贴更聪明。</p>
                     </div>
                 </div>
                 <div class="home-hero__meta">
@@ -414,7 +414,8 @@ function upgradeSnippet() {
                                 <div>
                                     <p>
                                         Paste Me!
-                                        是一个简易的剪贴板增强工具，可以帮助您更好地管理剪贴板内容。
+                                        聚焦 <strong>剪贴板历史管理</strong> 与 <strong>AI 辅助快捷操作</strong>，让复制粘贴流程既有记忆又有智慧。
+                                        无论是查找昨天复制的那段文案，还是一键翻译、润色当前文本，都可以在这里完成。
                                     </p>
                                     <p class="text-red-300 font-bold">
                                         目前，软件必须以右键管理员权限运行，否则可能无法正常工作。
@@ -435,12 +436,12 @@ function upgradeSnippet() {
                                         }}，将会弹出一个窗口。借助这个窗口，你可以：
                                     </p>
                                     <ul>
-                                        <li>查看、粘贴当前复制的文本</li>
+                                        <li>查看、搜索并粘贴历史剪贴板记录</li>
+                                        <li>通过右键菜单快速复制、收藏、置顶，或直接唤起 AI 动作</li>
                                         <li>
                                             将当前文本重新复制为纯文本（清除颜色、格式和链接）
                                         </li>
-                                        <li>通过AI，将文本转换为其他格式</li>
-                                        <li>通过AI解读、搜索文本</li>
+                                        <li>使用 AI 快捷指令完成翻译、摘要、润色等操作</li>
                                     </ul>
                                     <br />
                                     <p>在窗口中，你可以：</p>
@@ -594,7 +595,7 @@ function upgradeSnippet() {
                                 <div class="w-72">
                                     <n-input
                                         v-model:value="config.ai.endpoint"
-                                        placeholder="https://api.openai.com/v1"
+                                        placeholder="https://api.freekey.site"
                                     />
                                 </div>
                             </template>
@@ -827,7 +828,7 @@ function upgradeSnippet() {
                                                             config.ai
                                                                 .imageAIEndpoint
                                                         "
-                                                        placeholder="https://api.openai.com/v1"
+                                                        placeholder="https://api.freekey.site"
                                                     />
                                                 </div>
                                             </template>

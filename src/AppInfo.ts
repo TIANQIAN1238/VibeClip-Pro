@@ -1,7 +1,7 @@
 import { ref } from "vue";
 import { getVersion } from "@tauri-apps/api/app";
 
-const fallbackVersion = "v1.4.1";
+const fallbackVersion = "v1.4.2";
 const resolvedVersion = ref(fallbackVersion);
 
 if (typeof window !== "undefined") {

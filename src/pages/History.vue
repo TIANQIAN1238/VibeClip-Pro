@@ -52,11 +52,30 @@ const contextMenu = reactive({
   item: null as ClipItem | null,
 });
 
-const contextOptions: DropdownOption[] = [
-  { label: aiLabels.translate, key: "translate" },
-  { label: aiLabels.summarize, key: "summarize" },
-  { label: aiLabels.polish, key: "polish" },
-];
+const contextOptions = computed<DropdownOption[]>(() => {
+  const target = contextMenu.item;
+  if (!target) return [];
+  const options: DropdownOption[] = [
+    { label: target.isPinned ? "取消置顶" : "置顶", key: "toggle-pin" },
+    { label: target.isFavorite ? "取消收藏" : "收藏", key: "toggle-favorite" },
+    { label: "复制内容", key: "copy" },
+  ];
+  if (target.kind === ClipKind.Text) {
+    options.push({ type: "divider", key: "divider-ai" } as DropdownOption);
+    options.push(
+      { label: `${aiLabels.translate}（AI）`, key: "ai:translate" },
+      { label: `${aiLabels.summarize}（AI）`, key: "ai:summarize" },
+      { label: `${aiLabels.polish}（AI）`, key: "ai:polish" },
+    );
+  }
+  options.push({ type: "divider", key: "divider-manage" } as DropdownOption);
+  options.push({
+    label: "删除记录",
+    key: "remove",
+    props: { style: "color: var(--n-color-error);" },
+  } as DropdownOption);
+  return options;
+});
 
 const aiDialog = reactive({
   visible: false,
@@ -131,10 +150,6 @@ function closeContextMenu() {
 }
 
 function handleContextMenu(item: ClipItem, event: MouseEvent) {
-  if (item.kind !== ClipKind.Text) {
-    closeContextMenu();
-    return;
-  }
   event.preventDefault();
   contextMenu.item = item;
   contextMenu.x = event.clientX;
@@ -146,8 +161,31 @@ async function handleContextSelect(key: string | number) {
   const target = contextMenu.item;
   closeContextMenu();
   if (!target) return;
-  const action = String(key) as AiActionKind;
-  await runContextAction(target, action);
+  const actionKey = String(key);
+  try {
+    switch (actionKey) {
+      case "copy":
+        await handleCopy(target);
+        break;
+      case "toggle-pin":
+        await handlePin(target);
+        break;
+      case "toggle-favorite":
+        await handleFavorite(target);
+        break;
+      case "remove":
+        await handleRemove(target);
+        break;
+      default:
+        if (actionKey.startsWith("ai:")) {
+          const action = actionKey.replace("ai:", "") as AiActionKind;
+          await runContextAction(target, action);
+        }
+        break;
+    }
+  } catch (error) {
+    reportError("执行快捷操作失败", error);
+  }
 }
 
 async function runContextAction(item: ClipItem, action: AiActionKind) {
@@ -313,22 +351,20 @@ async function handleCopy(item: (typeof history.items)[number]) {
 
 async function handlePin(item: (typeof history.items)[number]) {
   try {
-    console.log('Toggling pin for item:', item.id, 'current state:', item.isPinned);
-    await history.updateFlags(item.id, { pinned: !item.isPinned });
-    console.log('Pin toggle successful');
+    const nextState = !item.isPinned;
+    await history.updateFlags(item.id, { pinned: nextState });
+    message.success(nextState ? "已置顶" : "已取消置顶");
   } catch (error) {
-    console.error('Pin toggle error:', error);
     reportError("更新置顶状态失败", error);
   }
 }
 
 async function handleFavorite(item: (typeof history.items)[number]) {
   try {
-    console.log('Toggling favorite for item:', item.id, 'current state:', item.isFavorite);
-    await history.updateFlags(item.id, { favorite: !item.isFavorite });
-    console.log('Favorite toggle successful');
+    const nextState = !item.isFavorite;
+    await history.updateFlags(item.id, { favorite: nextState });
+    message.success(nextState ? "已添加收藏" : "已取消收藏");
   } catch (error) {
-    console.error('Favorite toggle error:', error);
     reportError("更新收藏状态失败", error);
   }
 }

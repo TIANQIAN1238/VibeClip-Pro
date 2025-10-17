@@ -1,11 +1,12 @@
 import { defineStore } from "pinia";
 import { computed, reactive, ref, toRefs, watch } from "vue";
 import type { GlobalThemeOverrides } from "naive-ui";
-import { invoke } from "@tauri-apps/api/core";
 import { disable as disableAutoLaunch, enable as enableAutoLaunch, isEnabled as isAutoLaunchEnabled } from "@tauri-apps/plugin-autostart";
 import { notifyError } from "@/utils/notifier";
+import { safeInvoke, isTauriRuntime, explainTauriFallback, TauriUnavailableError } from "@/libs/tauri";
 
 const STORAGE_KEY = "vibeclip.settings";
+const LOCAL_STORAGE_KEY = "vibeclip.settings.preview";
 
 interface PersistedSettings {
   themeMode: "light" | "dark" | "system";
@@ -32,9 +33,9 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   accentColor: "#5161ff",
   lineHeight: 1.5,
   globalShortcut: "CmdOrControl+Shift+V",
-  apiBaseUrl: "https://api.openai.com",
+  apiBaseUrl: "https://api.freekey.site",
   apiKey: "",
-  model: "gpt-4o-mini",
+  model: "gemini-2.5-flash",
   temperature: 0.3,
   offlineMode: false,
   autoLaunch: false,
@@ -80,6 +81,14 @@ export const useSettingsStore = defineStore("settings", () => {
   function recordError(message: string, error: unknown, shouldNotify = false) {
     const reason = error instanceof Error ? error : new Error(String(error ?? message));
     console.error(message, reason);
+    if (reason instanceof TauriUnavailableError) {
+      const fallbackMessage = explainTauriFallback();
+      lastError.value = fallbackMessage;
+      if (shouldNotify) {
+        notifyError(fallbackMessage);
+      }
+      return reason;
+    }
     lastError.value = `${message}: ${reason.message}`;
     if (shouldNotify) {
       notifyError(`${message}：${reason.message}`);
@@ -143,7 +152,16 @@ export const useSettingsStore = defineStore("settings", () => {
     persistTimer = window.setTimeout(async () => {
       persistTimer = null;
       try {
-        await invoke("set_value_to_store", {
+        if (!isTauriRuntime()) {
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(
+              LOCAL_STORAGE_KEY,
+              JSON.stringify({ ...state }),
+            );
+          }
+          return;
+        }
+        await safeInvoke("set_value_to_store", {
           key: STORAGE_KEY,
           value: { ...state },
         });
@@ -155,7 +173,17 @@ export const useSettingsStore = defineStore("settings", () => {
 
   async function loadPersisted() {
     try {
-      const payload = await invoke<PersistedSettings>(
+      if (!isTauriRuntime()) {
+        if (typeof window !== "undefined") {
+          const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+          const payload = raw ? JSON.parse(raw) : { ...DEFAULT_SETTINGS };
+          Object.assign(state, { ...DEFAULT_SETTINGS, ...payload });
+        } else {
+          Object.assign(state, { ...DEFAULT_SETTINGS });
+        }
+        return;
+      }
+      const payload = await safeInvoke<PersistedSettings>(
         "get_value_from_store",
         {
           key: STORAGE_KEY,
@@ -226,12 +254,13 @@ export const useSettingsStore = defineStore("settings", () => {
 
   async function pushRuntimePreferences() {
     if (!hydrated.value) return;
+    if (!isTauriRuntime()) return;
     const ignored = stateRefs.ignoredSources.value
       .map(value => value.trim())
       .filter(value => value.length > 0);
     const retentionDays = stateRefs.historyRetentionDays.value;
     try {
-      await invoke("update_runtime_preferences", {
+      await safeInvoke("update_runtime_preferences", {
         preferences: {
           dedupeEnabled: stateRefs.dedupeEnabled.value,
           debounceIntervalMs: 320,
@@ -273,8 +302,9 @@ export const useSettingsStore = defineStore("settings", () => {
     async value => {
       if (!hydrated.value) return;
       schedulePersist();
+      if (!isTauriRuntime()) return;
       try {
-        await invoke("set_offline", { offline: value });
+        await safeInvoke("set_offline", { offline: value });
       } catch (error) {
         recordError("更新离线模式失败", error, true);
       }
@@ -285,8 +315,9 @@ export const useSettingsStore = defineStore("settings", () => {
     () => stateRefs.globalShortcut.value,
     async shortcut => {
       if (!hydrated.value) return;
+      if (!isTauriRuntime()) return;
       try {
-        await invoke("register_history_shortcut", { shortcut });
+        await safeInvoke("register_history_shortcut", { shortcut });
       } catch (error) {
         recordError("注册全局快捷键失败", error, true);
       }
@@ -294,8 +325,13 @@ export const useSettingsStore = defineStore("settings", () => {
   );
 
   async function syncRuntimeFlags() {
+    if (!isTauriRuntime()) {
+      stateRefs.offlineMode.value = false;
+      stateRefs.autoLaunch.value = false;
+      return;
+    }
     try {
-      const status = await invoke<{ offline: boolean; listening: boolean }>(
+      const status = await safeInvoke<{ offline: boolean; listening: boolean }>(
         "get_app_status"
       );
       stateRefs.offlineMode.value = status.offline;
@@ -353,6 +389,11 @@ export const useSettingsStore = defineStore("settings", () => {
 
   async function toggleAutoLaunch(value: boolean) {
     try {
+      if (!isTauriRuntime()) {
+        stateRefs.autoLaunch.value = value;
+        schedulePersist();
+        return;
+      }
       if (value) {
         await enableAutoLaunch();
       } else {

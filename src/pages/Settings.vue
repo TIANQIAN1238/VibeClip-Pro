@@ -5,7 +5,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
 import { useMessage } from "naive-ui";
 import AppInfo from "@/AppInfo";
-import { invoke } from "@tauri-apps/api/core";
+import { safeInvoke, isTauriRuntime } from "@/libs/tauri";
 
 const settings = useSettingsStore();
 const history = useHistoryStore();
@@ -69,15 +69,19 @@ async function clearHistory() {
 
 function resetAiSettings() {
   settings.apiKey = "";
-  settings.apiBaseUrl = "https://api.openai.com";
-  settings.model = "gpt-4o-mini";
+  settings.apiBaseUrl = "https://api.freekey.site";
+  settings.model = "gemini-2.5-flash";
   settings.temperature = 0.3;
   message.success("AI 配置已重置");
 }
 
 async function runVacuum() {
   try {
-    await invoke("vacuum_database");
+    if (!isTauriRuntime()) {
+      message.warning("预览模式下无需整理数据库");
+      return;
+    }
+    await safeInvoke("vacuum_database");
     message.success("数据库已整理");
   } catch (error) {
     reportError("整理数据库失败", error);
@@ -108,7 +112,15 @@ onMounted(async () => {
     
     // 获取运行时信息
     try {
-      runtimeSummary.value = await invoke("get_runtime_summary");
+      if (isTauriRuntime()) {
+        runtimeSummary.value = await safeInvoke("get_runtime_summary");
+      } else {
+        runtimeSummary.value = {
+          appVersion: AppInfo.version.value,
+          tauriVersion: "preview",
+          rustcChannel: "preview",
+        };
+      }
     } catch (error) {
       console.warn("[Settings] 无法获取运行时信息", error);
     }
@@ -189,7 +201,7 @@ onErrorCaptured((err, _instance, info) => {
           <n-card title="AI 服务" size="small" embedded>
             <n-form label-placement="top" :model="settings">
               <n-form-item label="Base URL">
-                <n-input v-model:value="settings.apiBaseUrl" placeholder="https://api.openai.com" />
+                <n-input v-model:value="settings.apiBaseUrl" placeholder="https://api.freekey.site" />
               </n-form-item>
               <n-form-item label="API Key">
                 <n-input v-model:value="settings.apiKey" type="password" show-password-on="click" placeholder="sk-" />
