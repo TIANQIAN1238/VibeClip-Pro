@@ -5,8 +5,9 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use image::codecs::png::PngEncoder;
 use image::{ColorType, ImageEncoder};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_clipboard_manager::ClipboardExt;
+use tokio::time::sleep;
 use tracing::error;
 
 use crate::clipboard::ClipboardDraft;
@@ -14,12 +15,10 @@ use crate::db::{ClipItem, ClipKind, DbState};
 use crate::runtime_config::{RuntimeConfigState, RuntimePreferences};
 use crate::state::AppStatus;
 
-pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
-    let app_handle = app.clone();
-    let db_state = app.state::<DbState>().clone();
-    let config_state = app.state::<RuntimeConfigState>().clone();
-
+pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app_handle: AppHandle<R>) {
     tauri::async_runtime::spawn(async move {
+        let db_state = app_handle.state::<DbState>().clone();
+        let config_state = app_handle.state::<RuntimeConfigState>().clone();
         let mut last_hash: Option<String> = None;
         let mut consecutive_failures = 0u32;
 
@@ -29,51 +28,85 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
             drop(status);
 
             if !listening {
-                tauri::async_runtime::time::sleep(Duration::from_millis(320)).await;
+                sleep(Duration::from_millis(320)).await;
                 continue;
             }
 
             let prefs = config_state.get();
             let poll_interval = Duration::from_millis(prefs.debounce_interval_ms.clamp(200, 800));
-            let result = tauri::async_runtime::spawn_blocking({
-                let app_handle = app_handle.clone();
-                let db_state = db_state.clone();
-                let previous_hash = last_hash.clone();
-                let prefs_snapshot = prefs.clone();
-                move || -> Result<Option<(ClipItem, String)>> {
-                    if let Some(draft) = capture_clipboard(&app_handle, &prefs_snapshot)? {
-                        let payload = draft.into_payload()?;
-                        let hash = payload.content_hash.clone().unwrap_or_else(|| {
-                            crate::hash::compute_content_hash(payload.kind, &payload.content)
-                        });
-                        if prefs_snapshot.ignore_self_copies {
-                            let status = app_handle.state::<AppStatus>();
-                            if status.consume_self_copy(&hash) {
-                                return Ok(None);
-                            }
-                        }
 
-                        let is_duplicate = previous_hash.as_ref() == Some(&hash);
-                        if prefs_snapshot.dedupe_enabled && is_duplicate {
-                            return Ok(None);
-                        }
-                        let clip = db_state.upsert(payload)?;
-                        db_state.apply_retention(&prefs_snapshot)?;
-                        Ok(Some((clip, hash)))
-                    } else {
-                        Ok(None)
-                    }
+            // Capture clipboard in async context (not in spawn_blocking)
+            let draft_result = match capture_clipboard(&app_handle, &prefs) {
+                Ok(opt) => opt,
+                Err(err) => {
+                    error!("clipboard capture error: {err:?}");
+                    consecutive_failures = consecutive_failures.saturating_add(1);
+                    let backoff = poll_interval
+                        .checked_mul(consecutive_failures.min(5) as u32 + 1)
+                        .unwrap_or(poll_interval)
+                        .min(Duration::from_secs(3));
+                    sleep(backoff).await;
+                    continue;
                 }
+            };
+
+            let Some(draft) = draft_result else {
+                consecutive_failures = 0;
+                sleep(poll_interval).await;
+                continue;
+            };
+
+            // Convert draft to payload before spawn_blocking
+            let payload = match draft.into_payload() {
+                Ok(p) => p,
+                Err(err) => {
+                    error!("payload conversion error: {err:?}");
+                    consecutive_failures = consecutive_failures.saturating_add(1);
+                    let backoff = poll_interval
+                        .checked_mul(consecutive_failures.min(5) as u32 + 1)
+                        .unwrap_or(poll_interval)
+                        .min(Duration::from_secs(3));
+                    sleep(backoff).await;
+                    continue;
+                }
+            };
+
+            let hash = payload.content_hash.clone().unwrap_or_else(|| {
+                crate::hash::compute_content_hash(payload.kind, &payload.content)
+            });
+
+            // Check for self-copy before DB操作
+            if prefs.ignore_self_copies {
+                let status = app_handle.state::<AppStatus>();
+                if status.consume_self_copy(&hash) {
+                    consecutive_failures = 0;
+                    sleep(poll_interval).await;
+                    continue;
+                }
+            }
+
+            // Check for duplicate
+            let is_duplicate = last_hash.as_ref() == Some(&hash);
+            if prefs.dedupe_enabled && is_duplicate {
+                consecutive_failures = 0;
+                sleep(poll_interval).await;
+                continue;
+            }
+
+            // Process in spawn_blocking (database operations only)
+            let db_clone = db_state.clone_for_thread();
+            let prefs_snapshot = prefs.clone();
+            let result = tauri::async_runtime::spawn_blocking(move || -> Result<ClipItem> {
+                let clip = db_clone.upsert(payload)?;
+                db_clone.apply_retention(&prefs_snapshot)?;
+                Ok(clip)
             })
             .await;
 
             match result {
-                Ok(Ok(Some((clip, hash)))) => {
+                Ok(Ok(clip)) => {
                     let _ = app_handle.emit("clipboard://captured", &clip);
                     last_hash = Some(hash);
-                    consecutive_failures = 0;
-                }
-                Ok(Ok(None)) => {
                     consecutive_failures = 0;
                 }
                 Ok(Err(err)) => {
@@ -94,7 +127,7 @@ pub fn spawn_clipboard_watcher<R: Runtime + 'static>(app: &AppHandle<R>) {
                     .unwrap_or(poll_interval)
                     .min(Duration::from_secs(3))
             };
-            tauri::async_runtime::time::sleep(backoff).await;
+            sleep(backoff).await;
         }
     });
 }
@@ -169,13 +202,13 @@ fn should_ignore(content: &str, prefs: &RuntimePreferences) -> bool {
 fn build_image_payload(image: &tauri::image::Image<'_>) -> Result<ClipboardDraft> {
     let mut buffer = Vec::new();
     {
-        let mut encoder = PngEncoder::new(&mut buffer);
+        let encoder = PngEncoder::new(&mut buffer);
         let rgba = image.rgba();
         encoder.write_image(
             rgba.as_ref(),
             image.width(),
             image.height(),
-            ColorType::Rgba8,
+            ColorType::Rgba8.into(),
         )?;
     }
     let base64 = BASE64_STANDARD.encode(buffer);

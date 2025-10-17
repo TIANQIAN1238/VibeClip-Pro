@@ -58,10 +58,12 @@ impl DbState {
                 updated_at INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_clips_created_at ON clips(created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_clips_favorite ON clips(is_favorite DESC, is_pinned DESC);
+            CREATE INDEX IF NOT EXISTS idx_clips_updated_at ON clips(updated_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_clips_favorite ON clips(is_favorite DESC, is_pinned DESC, updated_at DESC);
             CREATE INDEX IF NOT EXISTS idx_clips_hash ON clips(content_hash);
             CREATE INDEX IF NOT EXISTS idx_clips_kind ON clips(kind, updated_at DESC);
             CREATE INDEX IF NOT EXISTS idx_clips_pinned ON clips(is_pinned DESC, updated_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_clips_composite ON clips(is_favorite DESC, is_pinned DESC, kind, updated_at DESC);
             "#,
         )
         .context("failed to run migrations")?;
@@ -215,14 +217,29 @@ impl DbState {
         pinned: Option<bool>,
         favorite: Option<bool>,
     ) -> anyhow::Result<()> {
+        log::info!(
+            "update_flags called: id={}, pinned={:?}, favorite={:?}",
+            id,
+            pinned,
+            favorite
+        );
+
         if pinned.is_none() && favorite.is_none() {
+            log::info!("update_flags: both flags are None, skipping update");
             return Ok(());
         }
 
         let conn = self.connect()?;
         let pinned_value = pinned.map(|value| if value { 1 } else { 0 });
         let favorite_value = favorite.map(|value| if value { 1 } else { 0 });
-        conn.execute(
+
+        log::info!(
+            "update_flags: executing SQL with pinned_value={:?}, favorite_value={:?}",
+            pinned_value,
+            favorite_value
+        );
+
+        let rows_affected = conn.execute(
             "UPDATE clips SET \
                 is_pinned = COALESCE(:pinned, is_pinned), \
                 is_favorite = COALESCE(:favorite, is_favorite), \
@@ -235,6 +252,13 @@ impl DbState {
                 ":id": id,
             },
         )?;
+
+        log::info!("update_flags: {} rows affected", rows_affected);
+
+        if rows_affected == 0 {
+            log::warn!("update_flags: no rows were updated for id={}", id);
+        }
+
         Ok(())
     }
 

@@ -63,8 +63,8 @@ export const useHistoryStore = defineStore("history", () => {
   const lastError = ref<string | null>(null);
   const hasMore = ref(false);
   const nextOffset = ref(0);
-let fetchTimer: number | null = null;
-let clipboardUnlisten: UnlistenFn | null = null;
+  let fetchTimer: number | null = null;
+  let clipboardUnlisten: UnlistenFn | null = null;
 
   const settings = useSettingsStore();
 
@@ -240,21 +240,29 @@ let clipboardUnlisten: UnlistenFn | null = null;
 
   async function updateFlags(id: number, data: { pinned?: boolean; favorite?: boolean }) {
     try {
+      console.log('[History Store] Updating flags for id:', id, 'data:', data);
+
       await invoke("update_clip_flags", {
         id,
-        pinned: data.pinned,
-        favorite: data.favorite,
+        pinned: data.pinned ?? null,
+        favorite: data.favorite ?? null,
       });
+
+      console.log('[History Store] Flags updated successfully, updating local state');
+
       items.value = items.value.map(item =>
         item.id === id
           ? {
-              ...item,
-              isPinned: data.pinned ?? item.isPinned,
-              isFavorite: data.favorite ?? item.isFavorite,
-            }
+            ...item,
+            isPinned: data.pinned ?? item.isPinned,
+            isFavorite: data.favorite ?? item.isFavorite,
+          }
           : item
       );
+
+      console.log('[History Store] Local state updated');
     } catch (error) {
+      console.error('[History Store] Update flags error:', error);
       raise("更新剪贴板标记失败", error);
     }
   }

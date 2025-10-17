@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { ClipItem } from "@/types/history";
 import { ClipKind } from "@/types/history";
 import MdiPinOutline from "~icons/mdi/pin-outline";
@@ -43,19 +43,45 @@ const previewText = computed(() => {
   return `${text.slice(0, 200)}…`;
 });
 
+const isProcessing = ref(false);
+
 function handleCopy() {
+  if (isProcessing.value) return;
   emits("copy", props.item);
 }
 
-function handlePin() {
-  emits("pin", props.item);
+async function handlePin() {
+  if (isProcessing.value) {
+    console.log('[HistoryItem] Pin action already in progress, ignoring...');
+    return;
+  }
+  isProcessing.value = true;
+  console.log('[HistoryItem] Emitting pin event for item:', props.item.id);
+  try {
+    emits("pin", props.item);
+  } finally {
+    // Reset after a short delay
+    setTimeout(() => { isProcessing.value = false; }, 1000);
+  }
 }
 
-function handleFavorite() {
-  emits("favorite", props.item);
+async function handleFavorite() {
+  if (isProcessing.value) {
+    console.log('[HistoryItem] Favorite action already in progress, ignoring...');
+    return;
+  }
+  isProcessing.value = true;
+  console.log('[HistoryItem] Emitting favorite event for item:', props.item.id);
+  try {
+    emits("favorite", props.item);
+  } finally {
+    // Reset after a short delay
+    setTimeout(() => { isProcessing.value = false; }, 1000);
+  }
 }
 
 function handleRemove() {
+  if (isProcessing.value) return;
   emits("remove", props.item);
 }
 </script>
@@ -70,7 +96,13 @@ function handleRemove() {
       <div class="item-actions">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-button quaternary size="tiny" circle @click.stop="handlePin">
+            <n-button 
+              quaternary 
+              size="tiny" 
+              circle 
+              :disabled="isProcessing"
+              @click.stop="handlePin"
+            >
               <n-icon :component="item.isPinned ? MdiPin : MdiPinOutline" />
             </n-button>
           </template>
@@ -78,7 +110,13 @@ function handleRemove() {
         </n-tooltip>
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-button quaternary size="tiny" circle @click.stop="handleFavorite">
+            <n-button 
+              quaternary 
+              size="tiny" 
+              circle 
+              :disabled="isProcessing"
+              @click.stop="handleFavorite"
+            >
               <n-icon :component="item.isFavorite ? MdiStar : MdiStarOutline" />
             </n-button>
           </template>
@@ -109,6 +147,7 @@ function handleRemove() {
           alt="Clipboard image preview"
           loading="lazy"
           decoding="async"
+          fetchpriority="low"
         />
       </div>
       <p v-else class="text-preview">{{ previewText }}</p>
@@ -123,10 +162,11 @@ function handleRemove() {
   border-radius: var(--vibe-radius-lg);
   padding: 18px;
   border: 1px solid var(--vibe-border-soft);
-  transition: transform var(--vibe-transition), box-shadow var(--vibe-transition);
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  will-change: transform;
 }
 
 .history-item:hover {
@@ -170,13 +210,25 @@ function handleRemove() {
   gap: 6px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--vibe-transition);
+  transition: opacity 0.15s ease-in-out;
 }
 
 .history-item:hover .item-actions,
 .history-item:focus-within .item-actions {
   opacity: 1;
   pointer-events: auto;
+}
+
+.item-actions :deep(.n-button) {
+  transition: transform 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.item-actions :deep(.n-button:hover:not(:disabled)) {
+  transform: scale(1.1);
+}
+
+.item-actions :deep(.n-button:active:not(:disabled)) {
+  transform: scale(0.95);
 }
 
 .text-preview {

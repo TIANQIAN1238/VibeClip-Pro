@@ -107,11 +107,34 @@ async fn update_clip_flags(
     pinned: Option<bool>,
     favorite: Option<bool>,
 ) -> Result<(), String> {
+    info!(
+        "update_clip_flags invoked: id={}, pinned={:?}, favorite={:?}",
+        id, pinned, favorite
+    );
+
     let db_clone = db.clone_for_thread();
-    tauri::async_runtime::spawn_blocking(move || db_clone.update_flags(id, pinned, favorite))
-        .await
-        .map_err(|err| err.to_string())?
-        .map_err(|err| err.to_string())
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let res = db_clone.update_flags(id, pinned, favorite);
+        if let Err(ref e) = res {
+            error!("Database update_flags error: {:?}", e);
+        }
+        res
+    })
+    .await
+    .map_err(|err| {
+        error!("spawn_blocking join error: {:?}", err);
+        err.to_string()
+    })?
+    .map_err(|err| {
+        error!("update_flags database error: {:?}", err);
+        err.to_string()
+    });
+
+    if result.is_ok() {
+        info!("update_clip_flags completed successfully");
+    }
+
+    result
 }
 
 #[tauri::command]
@@ -387,7 +410,7 @@ pub fn run() {
             app.manage(config_state.clone());
             let db_state = DbState::initialize(&handle)?;
             app.manage(db_state);
-            clipboard_watcher::spawn_clipboard_watcher(&handle);
+            clipboard_watcher::spawn_clipboard_watcher(handle.clone());
             tray::create_tray(&handle)?;
 
             #[cfg(debug_assertions)]

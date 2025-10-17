@@ -305,16 +305,22 @@ async function handleCopy(item: (typeof history.items)[number]) {
 
 async function handlePin(item: (typeof history.items)[number]) {
   try {
+    console.log('Toggling pin for item:', item.id, 'current state:', item.isPinned);
     await history.updateFlags(item.id, { pinned: !item.isPinned });
+    console.log('Pin toggle successful');
   } catch (error) {
+    console.error('Pin toggle error:', error);
     reportError("更新置顶状态失败", error);
   }
 }
 
 async function handleFavorite(item: (typeof history.items)[number]) {
   try {
+    console.log('Toggling favorite for item:', item.id, 'current state:', item.isFavorite);
     await history.updateFlags(item.id, { favorite: !item.isFavorite });
+    console.log('Favorite toggle successful');
   } catch (error) {
+    console.error('Favorite toggle error:', error);
     reportError("更新收藏状态失败", error);
   }
 }
@@ -469,7 +475,7 @@ async function handleClear() {
               class="history-virtual-list"
               :items="history.filteredItems"
               key-field="id"
-              :item-size="178"
+              :item-size="190"
               :show-scrollbar="false"
             >
               <template #default="{ item }">
