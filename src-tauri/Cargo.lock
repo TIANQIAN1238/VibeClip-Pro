@@ -5544,7 +5544,6 @@ dependencies = [
  "enigo",
  "image",
  "log",
- "once_cell",
  "reqwest",
  "rusqlite",
  "serde",
