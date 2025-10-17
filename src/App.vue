@@ -6,11 +6,13 @@ import { useSettingsStore } from "./store/settings";
 import AppEventBridge from "@/components/system/AppEventBridge.vue";
 import AppWindowBar from "@/components/layout/AppWindowBar.vue";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
+import { scheduleWarmRoutes } from "@/utils/routePrefetch";
 
 const settings = useSettingsStore();
 
 onMounted(() => {
   void settings.bootstrap();
+  void scheduleWarmRoutes();
 });
 
 const theme = computed(() => {
