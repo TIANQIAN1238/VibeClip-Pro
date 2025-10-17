@@ -117,7 +117,7 @@ impl DbState {
             .filter(|value| !value.is_empty())
             .map(|value| value.to_string());
         if search_term.is_some() {
-            sql.push_str(" WHERE content LIKE :prefix OR COALESCE(preview, '') LIKE :prefix");
+            sql.push_str(" WHERE content LIKE :pattern OR COALESCE(preview, '') LIKE :pattern");
         }
         if include_favorites_first {
             sql.push_str(" ORDER BY is_favorite DESC, is_pinned DESC, updated_at DESC");
@@ -132,8 +132,8 @@ impl DbState {
         }
         let mut statement = conn.prepare(&sql)?;
         let rows = if let Some(ref value) = search_term {
-            let pattern = format!("{}%", value);
-            statement.query_map(named_params! {":prefix": pattern.as_str()}, map_clip_row)?
+            let pattern = format!("%{}%", value);
+            statement.query_map(named_params! {":pattern": pattern.as_str()}, map_clip_row)?
         } else {
             statement.query_map([], map_clip_row)?
         };
