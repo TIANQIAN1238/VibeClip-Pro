@@ -317,7 +317,7 @@ function upgradeSnippet() {
 
 <template>
     <div class="home-shell">
-        <section class="home-hero">
+        <section class="home-hero" data-tauri-drag-region>
             <div class="home-hero__info">
                 <div class="home-hero__title">
                     <img class="home-hero__logo" :src="ClipAIIcon" alt="ClipAI 标志" />
@@ -333,7 +333,7 @@ function upgradeSnippet() {
                     <span class="home-hero__meta-text">{{ aiProviderLabel }}</span>
                 </div>
             </div>
-            <div class="home-hero__actions">
+            <div class="home-hero__actions" data-tauri-drag-region="false">
                 <n-button tertiary size="small" @click="openProjectPage">项目主页</n-button>
                 <n-button tertiary size="small" @click="openFeedbackPage">反馈</n-button>
                 <n-button
