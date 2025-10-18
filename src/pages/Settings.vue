@@ -328,6 +328,19 @@ onErrorCaptured((err, _instance, info) => {
             </div>
           </section>
 
+          <section class="card onboarding-card">
+            <div class="onboarding-callout">
+              <div class="callout-text">
+                <span class="callout-chip">{{ t("settings.quickstart", "快速上手指南") }}</span>
+                <h3>{{ t("settings.quickstartTitle", "动画教学随时重播") }}</h3>
+                <p>{{ t("settings.quickstartHint", "如果错过了首次安装提示，可在此重新打开引导。") }}</p>
+              </div>
+              <n-button type="primary" size="tiny" @click="settings.openOnboarding()">
+                {{ t("settings.quickstartAction", "重新打开引导") }}
+              </n-button>
+            </div>
+          </section>
+
           <section class="card">
             <h2>{{ t("settings.clipboard", "剪贴板与历史") }}</h2>
             <div class="field-row">
@@ -563,6 +576,62 @@ onErrorCaptured((err, _instance, info) => {
   height: 24px;
   border-radius: var(--vibe-radius-sm);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.onboarding-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.78));
+}
+
+.dark .onboarding-card {
+  background: linear-gradient(150deg, rgba(22, 26, 40, 0.94), rgba(27, 34, 52, 0.88));
+}
+
+.onboarding-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 120% at 16% 16%, rgba(81, 97, 255, 0.18), transparent 70%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.onboarding-callout {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  z-index: 1;
+}
+
+.callout-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.callout-text h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.callout-text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vibe-text-muted);
+}
+
+.callout-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--vibe-accent) 20%, transparent);
+  color: var(--vibe-text-secondary);
 }
 
 .runtime-list {

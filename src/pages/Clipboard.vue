@@ -97,6 +97,73 @@ const recentPlaceholder = computed(() =>
   t("clipboard.suggestEmpty", "暂无推荐，可尝试复制不同类型的内容。")
 );
 
+type WorkflowDefinition = {
+  key: string;
+  icon: string;
+  accent: string;
+  title: string;
+  description: string;
+  highlights: string[];
+  prompt: () => string;
+};
+
+const curatedWorkflows = computed<WorkflowDefinition[]>(() => {
+  const language = settings.preferredLanguage || "zh-CN";
+  return [
+    {
+      key: "meeting-notes",
+      icon: "📝",
+      accent: "linear-gradient(135deg, rgba(81, 97, 255, 0.22), rgba(134, 65, 255, 0.32))",
+      title: t("clipboard.workflowMeetingTitle", "会议纪要一键整理"),
+      description: t(
+        "clipboard.workflowMeetingDescription",
+        "提炼会议重点、列出责任人并生成下一步提醒。"
+      ),
+      highlights: [
+        t("clipboard.workflowMeetingPoint1", "自动提炼决议与风险"),
+        t("clipboard.workflowMeetingPoint2", "生成按责任人分类的行动项"),
+        t("clipboard.workflowMeetingPoint3", "附带便于分享的总结段落"),
+      ],
+      prompt: () =>
+        `你是 VibeClip Pro。请以 ${language} 输出一份结构化会议纪要：\n1. 用最多三行总结整体背景与目标；\n2. 用要点列出所有决议，格式为【负责人】+行动项+截止时间；\n3. 用列表呈现风险或待确认问题；\n4. 生成一段可直接发送给团队的分享文案。`,
+    },
+    {
+      key: "task-breakdown",
+      icon: "🎯",
+      accent: "linear-gradient(135deg, rgba(255, 159, 77, 0.24), rgba(255, 118, 92, 0.32))",
+      title: t("clipboard.workflowTaskTitle", "快速拆解行动计划"),
+      description: t(
+        "clipboard.workflowTaskDescription",
+        "根据当前文本生成时间线、优先级与执行清单。"
+      ),
+      highlights: [
+        t("clipboard.workflowTaskPoint1", "对关键目标做 SMART 化拆解"),
+        t("clipboard.workflowTaskPoint2", "输出按优先级排序的待办列表"),
+        t("clipboard.workflowTaskPoint3", "提醒需要协作的角色与资源"),
+      ],
+      prompt: () =>
+        `阅读以下内容，生成 ${language} 的行动计划：\n- 总结需要达成的目标；\n- 输出一张三列表格：优先级 / 任务 / 负责人；\n- 提供 3 条可立即执行的下一步建议；\n- 如果有阻塞或依赖，请额外列出提醒。`,
+    },
+    {
+      key: "shareable-snippet",
+      icon: "🚀",
+      accent: "linear-gradient(135deg, rgba(63, 195, 161, 0.26), rgba(79, 107, 255, 0.28))",
+      title: t("clipboard.workflowShareTitle", "一键生成分享摘要"),
+      description: t(
+        "clipboard.workflowShareDescription",
+        "制作适合社交或团队播报的亮点段落与推荐行动。"
+      ),
+      highlights: [
+        t("clipboard.workflowSharePoint1", "提炼三条亮点用一句话概括"),
+        t("clipboard.workflowSharePoint2", "配套一句金句或引导语"),
+        t("clipboard.workflowSharePoint3", "附加两项推荐下一步行动"),
+      ],
+      prompt: () =>
+        `请把以下内容整理成 ${language} 的可分享摘要：\n1. 先给出一句引人注目的标题；\n2. 用无序列表列出三条亮点或关键信息；\n3. 给出一个吸引人的引用或金句；\n4. 提供两条下一步建议，适合发送到社群或团队通告。`,
+    },
+  ];
+});
+
 function reportError(label: string, error: unknown) {
   console.error(label, error);
   const detail = error instanceof Error ? error.message : String(error ?? "");
@@ -453,6 +520,29 @@ async function handleSuggestionSelect(suggestion: ClipboardSuggestion) {
   }
 }
 
+async function handleWorkflowStart(key: string) {
+  const input = textSource.value.trim();
+  if (!input) {
+    message.info(t("clipboard.empty", "暂无文本内容，可使用 Ctrl+C 复制后刷新查看。"));
+    return;
+  }
+  const workflow = curatedWorkflows.value.find(item => item.key === key);
+  if (!workflow) {
+    return;
+  }
+  try {
+    await handleAiRun({
+      action: "custom",
+      input,
+      language: settings.preferredLanguage,
+      customPrompt: workflow.prompt(),
+    });
+    message.success(t("clipboard.workflowSuccess", "已触发效率场景，等待 AI 输出"));
+  } catch (error) {
+    reportError(workflow.title, error);
+  }
+}
+
 onMounted(async () => {
   if (!history.items.length) {
     try {
@@ -483,7 +573,7 @@ onMounted(async () => {
     </header>
 
     <n-scrollbar class="content-scroll thin-scrollbar">
-      <section class="card clipboard-card">
+      <section class="card clipboard-card" style="--card-index: 0">
         <header class="card-header">
           <div>
             <h2>{{ t("clipboard.current", "当前剪贴板") }}</h2>
@@ -560,7 +650,7 @@ onMounted(async () => {
         </footer>
       </section>
 
-      <section class="card suggestion-card">
+      <section class="card suggestion-card" style="--card-index: 1">
         <header class="card-header">
           <div>
             <h2>{{ t("clipboard.suggestions", "智能建议") }}</h2>
@@ -584,12 +674,44 @@ onMounted(async () => {
 
       <AiQuickActions
         class="card ai-card"
+        style="--card-index: 2"
         :loading="history.aiBusy"
         :source-text="textSource"
         :on-run="handleAiRun"
       />
 
-      <section class="card recent-card">
+      <section class="card workflow-card" style="--card-index: 3">
+        <header class="card-header">
+          <div>
+            <h2>{{ t("clipboard.workflowTitle", "效率场景") }}</h2>
+            <p>{{ t("clipboard.workflowSubtitle", "精选工作流模板，结合 AI 快速搞定日常任务") }}</p>
+          </div>
+        </header>
+        <TransitionGroup name="workflow-fade" tag="div" class="workflow-grid">
+          <article v-for="item in curatedWorkflows" :key="item.key" class="workflow-item">
+            <div class="workflow-icon" :style="{ background: item.accent }">{{ item.icon }}</div>
+            <div class="workflow-text">
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.description }}</p>
+              <ul>
+                <li v-for="point in item.highlights" :key="point">{{ point }}</li>
+              </ul>
+            </div>
+            <div class="workflow-actions">
+              <n-button
+                type="primary"
+                size="tiny"
+                :loading="history.aiBusy"
+                @click="handleWorkflowStart(item.key)"
+              >
+                {{ t("clipboard.workflowRun", "应用场景") }}
+              </n-button>
+            </div>
+          </article>
+        </TransitionGroup>
+      </section>
+
+      <section class="card recent-card" style="--card-index: 4">
         <header class="card-header">
           <div>
             <h2>{{ t("clipboard.latestHistory", "最近历史") }}</h2>
@@ -683,6 +805,7 @@ onMounted(async () => {
 }
 
 .card {
+  position: relative;
   border-radius: var(--vibe-radius-lg);
   background: var(--vibe-panel-surface);
   border: 1px solid var(--vibe-panel-border);
@@ -691,6 +814,35 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+  transition:
+    transform 240ms var(--vibe-transition),
+    box-shadow 280ms var(--vibe-transition),
+    border-color 240ms ease;
+  animation: card-enter 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 110ms);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 120% at 80% 0%, rgba(255, 255, 255, 0.38), transparent 65%);
+  opacity: 0;
+  transition: opacity 280ms ease;
+  pointer-events: none;
+}
+
+.card:hover,
+.card:focus-within {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 42px rgba(26, 44, 92, 0.16);
+  border-color: color-mix(in srgb, var(--vibe-accent) 24%, transparent);
+}
+
+.card:hover::before,
+.card:focus-within::before {
+  opacity: 1;
 }
 
 .card-header {
@@ -818,6 +970,126 @@ onMounted(async () => {
   font-size: 12px;
 }
 
+.workflow-card {
+  gap: 18px;
+}
+
+.workflow-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workflow-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: var(--vibe-radius-md);
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.72));
+  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 60%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+}
+
+.dark .workflow-item {
+  background: linear-gradient(125deg, rgba(26, 32, 48, 0.92), rgba(20, 26, 40, 0.88));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.workflow-item::after {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto auto;
+  height: 120%;
+  width: 120%;
+  background: rgba(255, 255, 255, 0.18);
+  filter: blur(40px);
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.workflow-item:hover::after {
+  opacity: 1;
+}
+
+.workflow-icon {
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  font-size: 30px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(81, 97, 255, 0.34), rgba(134, 65, 255, 0.48));
+  box-shadow: 0 12px 24px rgba(37, 42, 89, 0.18);
+}
+
+.workflow-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workflow-text h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.workflow-text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vibe-text-muted);
+}
+
+.workflow-text ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--vibe-text-secondary);
+}
+
+.workflow-text li::marker {
+  color: color-mix(in srgb, var(--vibe-accent) 60%, transparent);
+}
+
+.workflow-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.workflow-fade-enter-active,
+.workflow-fade-leave-active {
+  transition: opacity 220ms var(--vibe-transition), transform 220ms var(--vibe-transition);
+}
+
+.workflow-fade-enter-from,
+.workflow-fade-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.01);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 520px) {
   .card {
     padding: 12px;
@@ -825,6 +1097,37 @@ onMounted(async () => {
 
   .card-header h2 {
     font-size: 15px;
+  }
+
+  .workflow-item {
+    grid-template-columns: 52px 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .workflow-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .card::before,
+  .workflow-item,
+  .workflow-item::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .workflow-fade-enter-active,
+  .workflow-fade-leave-active,
+  .recent-fade-enter-active,
+  .recent-fade-leave-active,
+  .fade-list-enter-active,
+  .fade-list-leave-active {
+    transition-duration: 0.01ms !important;
   }
 }
 </style>
