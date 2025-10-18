@@ -22,6 +22,8 @@ import MdiArrowDown from "~icons/mdi/arrow-down";
 import MdiPlus from "~icons/mdi/plus";
 import MdiCheckCircle from "~icons/mdi/check-circle";
 import MdiCircleOutline from "~icons/mdi/circle-outline";
+import MdiChevronUp from "~icons/mdi/chevron-up";
+import MdiChevronDown from "~icons/mdi/chevron-down";
 
 const settings = useSettingsStore();
 const history = useHistoryStore();
@@ -162,12 +164,15 @@ async function clearHistory() {
 }
 
 const showAddProviderDialog = ref(false);
-const selectedPreset = ref<'openai' | 'gemini' | 'claude' | 'custom'>('openai');
+const selectedPreset = ref<'openai' | 'gemini' | 'claude' | 'deepseek' | 'openrouter' | 'local' | 'custom'>('openai');
 
 const presetOptions = [
   { value: 'openai' as const, label: AI_PROVIDER_PRESETS.openai.name },
   { value: 'gemini' as const, label: AI_PROVIDER_PRESETS.gemini.name },
   { value: 'claude' as const, label: AI_PROVIDER_PRESETS.claude.name },
+  { value: 'deepseek' as const, label: AI_PROVIDER_PRESETS.deepseek.name },
+  { value: 'openrouter' as const, label: AI_PROVIDER_PRESETS.openrouter.name },
+  { value: 'local' as const, label: AI_PROVIDER_PRESETS.local.name },
   { value: 'custom' as const, label: '自定义服务商' },
 ];
 
@@ -205,6 +210,58 @@ function handleSetActiveProvider(id: string) {
   const provider = settings.aiProviders.find(p => p.id === id);
   if (provider) {
     message.success(`已切换到 ${provider.name}`);
+  }
+}
+
+const testingProvider = ref<string | null>(null);
+const expandedProviders = ref<Set<string>>(new Set());
+
+function toggleProviderExpand(providerId: string) {
+  if (expandedProviders.value.has(providerId)) {
+    expandedProviders.value.delete(providerId);
+  } else {
+    expandedProviders.value.add(providerId);
+  }
+}
+
+function isProviderExpanded(providerId: string): boolean {
+  // Active provider is always expanded
+  if (providerId === settings.activeProviderId) return true;
+  return expandedProviders.value.has(providerId);
+}
+
+async function testProviderConnection(provider: typeof settings.aiProviders[0]) {
+  if (!provider.apiKey || !provider.baseUrl || !provider.model) {
+    message.warning("请先填写完整的API配置");
+    return;
+  }
+  
+  testingProvider.value = provider.id;
+  try {
+    // 使用ai-sdk测试连接
+    const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
+    
+    const ai = createOpenAICompatible({
+      name: provider.name,
+      apiKey: provider.apiKey,
+      baseURL: provider.baseUrl,
+    });
+    
+    // 简单的连接测试 - 尝试创建模型实例
+    const model = ai.chatModel(provider.model);
+    if (!model) {
+      throw new Error('无法创建模型实例');
+    }
+    
+    settings.updateAIProvider(provider.id, { status: 'connected' });
+    message.success(`${provider.name} 连接成功!`);
+  } catch (error) {
+    settings.updateAIProvider(provider.id, { status: 'error' });
+    const errorMsg = error instanceof Error ? error.message : '未知错误';
+    message.error(`连接失败: ${errorMsg}`);
+    console.error('Provider test failed:', error);
+  } finally {
+    testingProvider.value = null;
   }
 }
 
@@ -607,19 +664,35 @@ onErrorCaptured((err, _instance, info) => {
                 class="provider-card"
                 :class="{ active: settings.activeProviderId === provider.id, disabled: !provider.enabled }"
               >
-                <div class="provider-header">
+                <div class="provider-header" @click="toggleProviderExpand(provider.id)">
                   <div class="provider-info">
                     <n-icon
                       :component="settings.activeProviderId === provider.id ? MdiCheckCircle : MdiCircleOutline"
                       size="20"
                       :class="{ 'active-icon': settings.activeProviderId === provider.id }"
-                      @click="handleSetActiveProvider(provider.id)"
+                      @click.stop="handleSetActiveProvider(provider.id)"
                       style="cursor: pointer;"
                     />
                     <span class="provider-name">{{ provider.name }}</span>
                     <n-tag v-if="provider.preset" size="tiny" type="info">{{ provider.preset }}</n-tag>
+                    <n-tag v-if="provider.status === 'connected'" size="tiny" type="success">已连接</n-tag>
+                    <n-tag v-if="provider.status === 'error'" size="tiny" type="error">连接失败</n-tag>
+                    <n-tag v-if="provider.status === 'unconfigured'" size="tiny" type="warning">未配置</n-tag>
+                    <n-icon
+                      :component="isProviderExpanded(provider.id) ? MdiChevronUp : MdiChevronDown"
+                      size="18"
+                      class="expand-icon"
+                    />
                   </div>
-                  <div class="provider-actions">
+                  <div class="provider-actions" @click.stop>
+                    <n-button
+                      size="tiny"
+                      secondary
+                      :loading="testingProvider === provider.id"
+                      @click="testProviderConnection(provider)"
+                    >
+                      测试连接
+                    </n-button>
                     <n-button
                       size="tiny"
                       quaternary
@@ -639,7 +712,8 @@ onErrorCaptured((err, _instance, info) => {
                   </div>
                 </div>
 
-                <div class="provider-fields">
+                <transition name="provider-expand">
+                  <div v-if="isProviderExpanded(provider.id)" class="provider-fields">
                   <div class="field-row">
                     <label>{{ t("settings.apiBase", "接口地址") }}</label>
                     <n-input
@@ -680,7 +754,16 @@ onErrorCaptured((err, _instance, info) => {
                     />
                     <span class="field-value">{{ provider.temperature.toFixed(1) }}</span>
                   </div>
-                </div>
+                  <div class="switch-row">
+                    <span>{{ t("settings.corsMode", "CORS 兼容模式") }}</span>
+                    <n-switch 
+                      :value="provider.corsMode ?? false"
+                      @update:value="(val: boolean) => settings.updateAIProvider(provider.id, { corsMode: val })"
+                      size="small"
+                    />
+                  </div>
+                  </div>
+                </transition>
               </div>
             </div>
           </section>
@@ -946,6 +1029,11 @@ onErrorCaptured((err, _instance, info) => {
   gap: 12px;
 }
 
+.provider-header {
+  cursor: pointer;
+  user-select: none;
+}
+
 .provider-info {
   display: flex;
   align-items: center;
@@ -956,6 +1044,35 @@ onErrorCaptured((err, _instance, info) => {
 .provider-name {
   font-weight: 600;
   font-size: 14px;
+}
+
+.expand-icon {
+  margin-left: auto;
+  opacity: 0.6;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.provider-header:hover .expand-icon {
+  opacity: 1;
+}
+
+.provider-expand-enter-active,
+.provider-expand-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.provider-expand-enter-from,
+.provider-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+}
+
+.provider-expand-enter-to,
+.provider-expand-leave-from {
+  opacity: 1;
+  max-height: 500px;
 }
 
 .active-icon {

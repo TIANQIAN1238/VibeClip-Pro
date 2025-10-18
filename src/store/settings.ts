@@ -28,7 +28,9 @@ export interface AIProviderConfig {
   model: string;
   temperature: number;
   enabled: boolean;
-  preset?: 'openai' | 'gemini' | 'claude' | 'custom';
+  preset?: 'openai' | 'gemini' | 'claude' | 'deepseek' | 'openrouter' | 'local' | 'custom';
+  corsMode?: boolean; // 独立的CORS设置
+  status?: 'connected' | 'unconfigured' | 'error'; // 连接状态
 }
 
 export type ThemePreset =
@@ -127,6 +129,24 @@ export const AI_PROVIDER_PRESETS = {
     name: 'Anthropic Claude',
     baseUrl: 'https://api.anthropic.com/v1',
     model: 'claude-3-5-sonnet-20241022',
+    temperature: 0.3,
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
+    temperature: 0.3,
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    model: 'google/gemini-2.0-flash-exp:free',
+    temperature: 0.3,
+  },
+  local: {
+    name: 'Local LLM (Ollama)',
+    baseUrl: 'http://localhost:11434/v1',
+    model: 'llama2',
     temperature: 0.3,
   },
 } as const;
@@ -823,7 +843,7 @@ export const useSettingsStore = defineStore("settings", () => {
     );
   });
 
-  function addAIProvider(preset?: 'openai' | 'gemini' | 'claude' | 'custom') {
+  function addAIProvider(preset?: 'openai' | 'gemini' | 'claude' | 'deepseek' | 'openrouter' | 'local' | 'custom') {
     const id = `provider-${Date.now()}`;
     let config: AIProviderConfig;
 
@@ -838,6 +858,8 @@ export const useSettingsStore = defineStore("settings", () => {
         temperature: presetConfig.temperature,
         enabled: true,
         preset,
+        status: 'unconfigured',
+        corsMode: false,
       };
     } else {
       config = {
@@ -849,6 +871,8 @@ export const useSettingsStore = defineStore("settings", () => {
         temperature: 0.3,
         enabled: true,
         preset: 'custom',
+        status: 'unconfigured',
+        corsMode: false,
       };
     }
 

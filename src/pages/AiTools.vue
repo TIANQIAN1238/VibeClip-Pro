@@ -157,7 +157,15 @@ async function handleAiRun(payload: {
 
 async function pasteFromClipboard() {
   try {
-    input.value = await readText();
+    const text = await readText();
+    if (!text) {
+      message.warning("剪贴板为空");
+      return;
+    }
+    // 加载到AI助理
+    ensureAssistantIntro();
+    assistantInput.value = text;
+    message.success("已读取剪贴板内容");
   } catch (error) {
     reportError("读取系统剪贴板失败", error);
   }
@@ -339,34 +347,35 @@ onErrorCaptured((err, _instance, info) => {
 
 <template>
   <div class="ai-tools-page">
-    <section class="main">
-      <n-alert v-if="pageError" type="error" title="页面加载失败" closable @close="pageError = null">
-        {{ pageError }}
-      </n-alert>
+    <n-alert v-if="pageError" type="error" title="页面加载失败" closable @close="pageError = null">
+      {{ pageError }}
+    </n-alert>
 
-      <div v-if="isLoading" class="loading-skeleton">
-        <n-skeleton height="60px" :sharp="false" />
-        <n-skeleton height="400px" :sharp="false" style="margin-top: 16px;" />
-      </div>
+    <div v-if="isLoading" class="loading-skeleton">
+      <n-skeleton height="60px" :sharp="false" />
+      <n-skeleton height="400px" :sharp="false" style="margin-top: 16px;" />
+    </div>
 
-      <template v-else>
-        <header class="page-header">
-          <div>
-            <h1>{{ t("ai.title", "AI 工具集") }}</h1>
-            <p>{{ t("ai.subtitle", "选择合适的动作处理文本，结果可复制或保存到历史") }}</p>
-          </div>
-          <div class="header-actions">
-            <n-button size="tiny" secondary @click="pasteFromClipboard">
-              {{ t("ai.paste", "粘贴剪贴板") }}
-            </n-button>
-            <n-button size="tiny" quaternary @click="clearWorkspace">
-              {{ t("ai.clear", "清空") }}
-            </n-button>
-          </div>
-        </header>
+    <template v-else>
+      <header class="page-header">
+        <div>
+          <h1>{{ t("ai.title", "AI 工具集") }}</h1>
+          <p>{{ t("ai.subtitle", "选择合适的动作处理文本，结果可复制或保存到历史") }}</p>
+        </div>
+        <div class="header-actions">
+          <n-button size="tiny" secondary @click="pasteFromClipboard">
+            {{ t("ai.paste", "粘贴剪贴板") }}
+          </n-button>
+          <n-button size="tiny" quaternary @click="clearWorkspace">
+            {{ t("ai.clear", "清空") }}
+          </n-button>
+        </div>
+      </header>
 
-        <div class="content-scroll thin-scrollbar">
-          <section v-if="clipboardBridge" class="card bridge-card">
+      <div class="ai-tools-layout">
+        <!-- 中间主工作区 -->
+        <div class="main-workspace">
+          <section v-if="clipboardBridge" class="card bridge-card enhanced-bridge-card">
             <header class="bridge-header">
               <div>
                 <h2>{{ clipboardBridge.title ?? t("ai.bridgeTitle", "来自剪贴板") }}</h2>
@@ -429,13 +438,19 @@ onErrorCaptured((err, _instance, info) => {
               <p v-else class="placeholder">{{ t("ai.placeholder", "在此输入需要处理的文本，或点击上方按钮同步系统剪贴板") }}</p>
             </div>
           </section>
+        </div>
 
+        <!-- 右侧AI助理 -->
+        <aside class="ai-assistant-sidebar">
           <section class="card assistant-card">
             <header class="assistant-header">
               <div>
                 <h2>{{ t("ai.assistantTitle", "AI 助理") }}</h2>
                 <p>{{ t("ai.assistantSubtitle", "自由提问或让 AI 帮助翻译、摘要与润色") }}</p>
               </div>
+              <n-button size="tiny" secondary @click="pasteFromClipboard">
+                {{ t("ai.pasteClipboard", "读取剪贴板") }}
+              </n-button>
             </header>
             <div class="assistant-messages thin-scrollbar">
               <template v-if="assistantMessages.length">
@@ -464,9 +479,9 @@ onErrorCaptured((err, _instance, info) => {
               </n-button>
             </div>
           </section>
-        </div>
-      </template>
-    </section>
+        </aside>
+      </div>
+    </template>
 
     <GlobalContextMenu
       :show="contextMenu.state.show"
@@ -489,12 +504,30 @@ onErrorCaptured((err, _instance, info) => {
   overflow: hidden;
 }
 
-.main {
+.ai-tools-layout {
   flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 12px;
   min-height: 0;
+  overflow: hidden;
+}
+
+.main-workspace {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.ai-assistant-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .page-header {
@@ -547,6 +580,41 @@ onErrorCaptured((err, _instance, info) => {
 
 .bridge-card {
   gap: 10px;
+}
+
+.enhanced-bridge-card {
+  position: relative;
+  background: linear-gradient(135deg,
+    rgba(var(--vibe-accent-rgb), 0.08),
+    rgba(var(--vibe-accent-rgb), 0.02)
+  );
+  border-color: rgba(var(--vibe-accent-rgb), 0.3);
+  border-width: 2px;
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+.enhanced-bridge-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at top left,
+    rgba(var(--vibe-accent-rgb), 0.15),
+    transparent 60%
+  );
+  opacity: 1;
+  pointer-events: none;
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    border-color: rgba(var(--vibe-accent-rgb), 0.3);
+    box-shadow: 0 0 0 0 rgba(var(--vibe-accent-rgb), 0.4);
+  }
+  50% {
+    border-color: rgba(var(--vibe-accent-rgb), 0.5);
+    box-shadow: 0 0 0 6px rgba(var(--vibe-accent-rgb), 0);
+  }
 }
 
 .bridge-header h2 {
@@ -617,7 +685,19 @@ onErrorCaptured((err, _instance, info) => {
 }
 
 .assistant-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.assistant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .assistant-header h2 {
@@ -632,11 +712,13 @@ onErrorCaptured((err, _instance, info) => {
 }
 
 .assistant-messages {
-  max-height: 200px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-right: 4px;
 }
 
 .assistant-message {
@@ -674,6 +756,17 @@ onErrorCaptured((err, _instance, info) => {
   gap: 16px;
 }
 
+@media (max-width: 1024px) {
+  .ai-tools-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .ai-assistant-sidebar {
+    max-height: 400px;
+  }
+}
+
 @media (max-width: 520px) {
   .card {
     padding: 12px;
@@ -681,6 +774,10 @@ onErrorCaptured((err, _instance, info) => {
 
   .assistant-message.assistant {
     background: rgba(122, 209, 245, 0.18);
+  }
+  
+  .ai-tools-layout {
+    gap: 8px;
   }
 }
 </style>

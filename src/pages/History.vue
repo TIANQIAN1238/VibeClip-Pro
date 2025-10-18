@@ -492,6 +492,36 @@ async function loadMore() {
   await history.loadMore();
 }
 
+async function handleClearHistory() {
+  try {
+    await history.clearHistory();
+    message.success(t("history.cleared", "历史记录已清空"));
+  } catch (error) {
+    reportError(t("history.clearAll", "清空历史"), error);
+  }
+}
+
+function handleSnapshotContextMenu(event: MouseEvent) {
+  if (!clipboardPreview.value) return;
+  
+  contextMenu.item = {
+    id: 0 as any, // 临时ID用于快照
+    kind: ClipKind.Text,
+    content: clipboardPreview.value,
+    preview: clipboardPreview.value.slice(0, 120),
+    contentHash: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isPinned: false,
+    isFavorite: false,
+  } as ClipItem;
+  
+  contextMenu.x = event.clientX;
+  contextMenu.y = event.clientY;
+  contextMenu.show = true;
+  nextTick(adjustMenuPosition);
+}
+
 onMounted(async () => {
   try {
     await history.syncStatus();
@@ -515,6 +545,23 @@ onMounted(async () => {
           <h1>{{ t("history.title", "历史记录") }}</h1>
           <p>{{ t("history.subtitle", "按标签筛选历史记录，并在右键菜单中快速操作") }}</p>
         </div>
+        <div class="header-actions">
+          <n-popconfirm
+            :positive-text="t('common.confirm', '确定')"
+            :negative-text="t('common.cancel', '取消')"
+            @positive-click="handleClearHistory"
+          >
+            <template #trigger>
+              <n-button size="tiny" tertiary type="error">
+                {{ t("history.clearAll", "清空历史") }}
+              </n-button>
+            </template>
+            {{ t("history.confirmClearAll", "确认清空所有历史记录？此操作不可撤销。") }}
+          </n-popconfirm>
+          <n-button size="tiny" secondary @click="history.exportHistory" :loading="history.isExporting">
+            {{ t("settings.export", "导出历史") }}
+          </n-button>
+        </div>
       </header>
 
       <div class="content-scroll thin-scrollbar">
@@ -535,7 +582,7 @@ onMounted(async () => {
               {{ t("history.syncClipboard", "同步") }}
             </n-button>
           </div>
-          <div class="card-body">
+          <div class="card-body" @contextmenu.prevent="handleSnapshotContextMenu">
             <p v-if="clipboardPreview" class="preview-text">{{ clipboardPreview }}</p>
             <p v-else class="placeholder">
               {{ t("history.clipboardPlaceholder", "剪贴板暂无文本，可在应用中粘贴图片或文件以自动收集。") }}
@@ -688,6 +735,14 @@ onMounted(async () => {
   min-height: 0;
 }
 
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .page-header h1 {
   margin: 0;
   font-size: 20px;
@@ -697,6 +752,12 @@ onMounted(async () => {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--vibe-text-muted);
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .content-scroll {

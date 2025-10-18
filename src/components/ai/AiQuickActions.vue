@@ -189,13 +189,27 @@ async function handleSubmit() {
       <n-skeleton height="18px" :sharp="false" />
       <n-skeleton height="120px" :sharp="false" />
     </div>
-    <div v-else-if="needsSetup" class="ai-placeholder">
-      <n-empty description="AI 功能未配置">
-        <template #extra>
-          <n-button size="small" type="primary" @click="openSettings">前往设置 API Key</n-button>
-        </template>
-      </n-empty>
-    </div>
+    <template v-else-if="needsSetup">
+      <header class="ai-header">
+        <div class="title-group">
+          <span class="title-chip">{{ t("ai.quickActionsChip", "即时处理") }}</span>
+          <div class="title-meta">
+            <n-icon :component="MdiSparkle" size="20" />
+            <div>
+              <h3>{{ t("ai.quickActionsTitle", "AI 快捷操作") }}</h3>
+              <p>{{ t("ai.quickActionsSubtitle", "翻译、摘要、润色或快速结构化") }}</p>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="ai-setup-prompt">
+        <n-empty description="AI 功能未配置">
+          <template #extra>
+            <n-button size="small" type="primary" @click="openSettings">前往设置 API Key</n-button>
+          </template>
+        </n-empty>
+      </div>
+    </template>
     <template v-else>
       <header class="ai-header">
         <div class="title-group">
@@ -423,11 +437,17 @@ async function handleSubmit() {
   gap: 12px;
 }
 
-.ai-placeholder {
+.ai-setup-prompt {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 180px;
+  min-height: 120px;
+  padding: 20px;
+  border-radius: var(--vibe-radius-md);
+  background: color-mix(in srgb, var(--vibe-control-bg) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 70%, transparent);
+  z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -64,8 +64,37 @@ const editDraft = ref("");
 const textSource = computed(() => (snapshot.kind === "text" ? snapshot.text : ""));
 
 const suggestions = computed(() => {
-  const source = textSource.value.trim();
-  return source ? buildClipboardSuggestions(source) : [];
+  // 文本建议
+  if (snapshot.kind === "text") {
+    const source = textSource.value.trim();
+    return source ? buildClipboardSuggestions(source) : [];
+  }
+  
+  // 图片建议
+  if (snapshot.kind === "image" && snapshot.imageDataUrl) {
+    return [
+      {
+        key: "ocr-image",
+        labelKey: "clipboard.ocrImage",
+        fallback: "AI OCR 识别文字",
+        action: { type: "ai" as const, action: "custom" as AiActionKind },
+      },
+      {
+        key: "describe-image",
+        labelKey: "clipboard.describeImage",
+        fallback: "AI 描述图片内容",
+        action: { type: "ai" as const, action: "summarize" as AiActionKind },
+      },
+      {
+        key: "save-image",
+        labelKey: "clipboard.save",
+        fallback: "保存到历史",
+        action: { type: "copy" as const, payload: "" },
+      },
+    ] as ClipboardSuggestion[];
+  }
+  
+  return [];
 });
 
 const recentItems = computed(() => history.items.slice(0, 5));
@@ -106,6 +135,16 @@ const imageMeta = computed(() => {
   }
   const { width, height } = snapshot.imageSize;
   return `${width}×${height}`;
+});
+
+const textStats = computed(() => {
+  if (snapshot.kind !== "text" || !snapshot.text) {
+    return null;
+  }
+  const charCount = snapshot.text.length;
+  const wordCount = snapshot.text.split(/\s+/).filter(w => w.length > 0).length;
+  const lineCount = snapshot.text.split(/\n/).length;
+  return { charCount, wordCount, lineCount };
 });
 
 const recentPlaceholder = computed(() =>
@@ -582,12 +621,40 @@ function sendToAssistant() {
 }
 
 async function handleSuggestionSelect(suggestion: ClipboardSuggestion) {
-  const input = textSource.value.trim();
-  if (!input) {
-    message.info(t("clipboard.empty", "暂无文本内容，可使用 Ctrl+C 复制后刷新查看。"));
-    return;
-  }
   try {
+    // 处理图片相关建议
+    if (snapshot.kind === "image") {
+      if (suggestion.key === "save-image") {
+        await saveClipboard();
+        return;
+      }
+      if (suggestion.key === "ocr-image" || suggestion.key === "describe-image") {
+        const imageData = snapshot.imageDataUrl;
+        if (!imageData) {
+          message.warning("图片数据不可用");
+          return;
+        }
+        // 发送图片到AI工具页面
+        bridge.stageClipboardSeed({
+          kind: ClipKind.Image,
+          content: imageData,
+          extra: suggestion.key === "ocr-image" ? "OCR识别" : "图片描述",
+          title: suggestion.fallback,
+          mode: "assistant",
+        });
+        router.push("/ai");
+        message.success("已发送到 AI 工具");
+        return;
+      }
+    }
+    
+    // 处理文本相关建议
+    const input = textSource.value.trim();
+    if (!input) {
+      message.info(t("clipboard.empty", "暂无文本内容，可使用 Ctrl+C 复制后刷新查看。"));
+      return;
+    }
+    
     if (suggestion.action.type === "open-url") {
       await openUrl(suggestion.action.url);
       message.success(t("clipboard.openLink", "打开链接"));
@@ -718,13 +785,16 @@ onMounted(async () => {
     </header>
 
     <n-scrollbar class="content-scroll thin-scrollbar">
-      <section class="card clipboard-card" style="--card-index: 0">
+      <section class="card clipboard-card enhanced-card" style="--card-index: 0">
         <header class="card-header">
-          <div>
+          <div class="header-content">
             <h2>{{ t("clipboard.current", "当前剪贴板") }}</h2>
             <div class="card-meta">
-              <span class="chip">{{ snapshotTypeLabel }}</span>
-              <span v-if="imageMeta" class="muted">{{ imageMeta }}</span>
+              <span class="chip chip-type">{{ snapshotTypeLabel }}</span>
+              <span v-if="imageMeta" class="chip chip-info">{{ imageMeta }}</span>
+              <span v-if="textStats" class="chip chip-info">
+                {{ textStats.charCount }} 字符 · {{ textStats.wordCount }} 词 · {{ textStats.lineCount }} 行
+              </span>
             </div>
           </div>
         </header>
@@ -1052,6 +1122,46 @@ onMounted(async () => {
   background: var(--vibe-control-bg);
   font-size: 12px;
   color: var(--vibe-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.chip-type {
+  background: linear-gradient(135deg, rgba(81, 97, 255, 0.15), rgba(122, 209, 245, 0.15));
+  color: var(--vibe-text-primary);
+  font-weight: 600;
+}
+
+.chip-info {
+  background: rgba(var(--vibe-accent-rgb), 0.08);
+  color: var(--vibe-text-secondary);
+  font-size: 11px;
+}
+
+.enhanced-card {
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--vibe-panel-surface) 98%, var(--vibe-accent) 2%),
+    var(--vibe-panel-surface)
+  );
+  border-width: 2px;
+}
+
+.enhanced-card::before {
+  background: radial-gradient(
+    circle at top right,
+    rgba(var(--vibe-accent-rgb), 0.12),
+    transparent 50%
+  );
+  opacity: 1;
+}
+
+.enhanced-card:hover {
+  border-color: var(--vibe-accent);
+  box-shadow: 0 24px 48px rgba(var(--vibe-accent-rgb), 0.2);
+  transform: translateY(-4px) scale(1.01);
+}
+
+.header-content {
+  flex: 1;
 }
 
 .card-body {
