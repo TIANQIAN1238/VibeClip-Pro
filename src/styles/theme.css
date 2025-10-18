@@ -6,7 +6,7 @@
   --vibe-radius-md: 14px;
   --vibe-radius-sm: 10px;
   --vibe-transition: 220ms ease;
-  --vibe-app-width: 360px;
+  --vibe-app-width: 420px;
   --vibe-accent: #4f6bff;
   --vibe-accent-strong: #3651ff;
   --vibe-bg-surface: rgba(255, 255, 255, 0.94);
@@ -143,18 +143,6 @@ body {
   box-sizing: border-box;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(60% 60% at 16% 18%, rgba(79, 107, 255, 0.14), transparent 60%),
-    radial-gradient(46% 46% at 82% 12%, color-mix(in srgb, var(--vibe-accent) 22%, transparent), transparent 65%),
-    radial-gradient(42% 42% at 70% 78%, color-mix(in srgb, var(--vibe-accent-strong) 18%, transparent), transparent 70%);
-  opacity: 0.7;
-  z-index: -1;
-}
-
 #app {
   height: 100%;
   width: 100%;
@@ -163,6 +151,69 @@ body::before {
 }
 
 
+.app-stage {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 14px 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(40% 40% at 18% 18%, rgba(121, 146, 255, 0.12), transparent 58%),
+    radial-gradient(52% 52% at 78% 16%, rgba(116, 203, 255, 0.08), transparent 64%),
+    radial-gradient(46% 46% at 70% 78%, rgba(89, 131, 255, 0.08), transparent 68%);
+}
+
+.app-shell__background {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  filter: saturate(140%);
+  z-index: 0;
+}
+
+.app-shell__gradient {
+  position: absolute;
+  inset: -45% -30%;
+  background: radial-gradient(70% 70% at 25% 20%, rgba(102, 154, 255, 0.75), transparent 70%);
+  opacity: 0.75;
+  animation: aurora-pan 18s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+.app-shell__gradient--secondary {
+  inset: -55% -20%;
+  background: radial-gradient(65% 65% at 80% 30%, rgba(79, 224, 255, 0.68), transparent 70%);
+  animation-duration: 22s;
+  animation-delay: -6s;
+}
+
+.app-shell__particle {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0));
+  filter: blur(12px);
+  opacity: 0.65;
+  animation: aurora-float 16s ease-in-out infinite;
+}
+
+.app-shell__particle--one {
+  top: -40px;
+  left: 12%;
+}
+
+.app-shell__particle--two {
+  bottom: -60px;
+  right: 6%;
+  animation-delay: -8s;
+}
+
 .app-shell {
   position: relative;
   height: 100%;
@@ -170,10 +221,47 @@ body::before {
   display: flex;
   flex-direction: column;
   margin: 0 auto;
-  padding: 48px 14px 18px;
+  padding: 52px 16px 20px;
   box-sizing: border-box;
-  backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(155%);
+  border-radius: calc(var(--vibe-radius-xl) + 6px);
+  background: color-mix(in srgb, var(--vibe-bg-surface) 92%, rgba(255, 255, 255, 0.2));
+  box-shadow: 0 28px 68px rgba(26, 42, 94, 0.28);
   overflow: hidden;
+  z-index: 1;
+}
+
+.app-shell > *:not(.app-shell__background) {
+  position: relative;
+  z-index: 1;
+}
+
+.app-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--vibe-accent) 14%, transparent);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0.12) 60%, rgba(255, 255, 255, 0.04) 100%);
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dark .app-shell__gradient {
+  opacity: 0.6;
+  mix-blend-mode: lighten;
+}
+
+.dark .app-shell {
+  background: color-mix(in srgb, var(--vibe-bg-elevated) 88%, rgba(16, 23, 47, 0.6));
+  box-shadow: 0 32px 80px rgba(5, 11, 28, 0.62);
+}
+
+.dark .app-shell::before {
+  background: linear-gradient(180deg, rgba(122, 209, 245, 0.24) 0%, rgba(47, 82, 186, 0.18) 70%, rgba(12, 22, 48, 0.32) 100%);
+  opacity: 0.55;
 }
 
 .app-body {
@@ -182,16 +270,16 @@ body::before {
   flex-direction: column;
   gap: 12px;
   border-radius: var(--vibe-radius-xl);
-  background: var(--vibe-bg-surface);
-  box-shadow: var(--vibe-shadow-soft);
-  padding: 16px;
+  background: color-mix(in srgb, var(--vibe-panel-surface) 92%, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 18px 44px rgba(28, 48, 110, 0.18);
+  padding: 18px;
   overflow: hidden;
   transition: background 280ms ease, box-shadow 280ms ease;
 }
 
 .dark .app-body {
-  background: var(--vibe-bg-elevated);
-  box-shadow: 0 20px 48px rgba(10, 16, 32, 0.55);
+  background: color-mix(in srgb, var(--vibe-panel-surface) 86%, rgba(4, 10, 25, 0.6));
+  box-shadow: 0 24px 58px rgba(4, 9, 24, 0.64);
 }
 
 .app-sidebar {
@@ -254,6 +342,33 @@ body::before {
   transform: translateY(8px) scale(0.97);
 }
 
+@keyframes aurora-pan {
+  0% {
+    transform: translate3d(-5%, -2%, 0) scale(1.05);
+  }
+  45% {
+    transform: translate3d(6%, 4%, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-4%, 6%, 0) scale(1.03);
+  }
+}
+
+@keyframes aurora-float {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.9);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate3d(0, 18px, 0) scale(1.05);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(0, -12px, 0) scale(0.95);
+    opacity: 0.5;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-slide-enter-active,
   .page-slide-leave-active,
@@ -265,6 +380,11 @@ body::before {
   .recent-fade-move {
     transition-duration: 0.01ms;
     transition-delay: 0.01ms;
+  }
+
+  .app-stage__gradient,
+  .app-stage__particle {
+    animation: none;
   }
 
   .page-slide-enter-from,

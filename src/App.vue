@@ -46,26 +46,37 @@ const naiveDateLocale = computed(() =>
         <n-message-provider placement="bottom-right" :duration="2500">
           <AppEventBridge>
             <div
-              class="app-shell"
+              class="app-stage"
               :class="[settings.themeClass, settings.themePresetClass]"
             >
-              <AppWindowBar />
-              <div class="app-body">
-                <AppSidebar class="app-sidebar" />
-                <div class="app-content">
-                  <RouterView v-slot="{ Component }">
-                    <Transition name="page-slide" mode="out-in">
-                      <component :is="Component" class="app-route-view" />
-                    </Transition>
-                  </RouterView>
+              <div
+                class="app-shell"
+                :class="[settings.themeClass, settings.themePresetClass]"
+              >
+                <div class="app-shell__background" aria-hidden="true">
+                  <div class="app-shell__gradient app-shell__gradient--primary" />
+                  <div class="app-shell__gradient app-shell__gradient--secondary" />
+                  <div class="app-shell__particle app-shell__particle--one" />
+                  <div class="app-shell__particle app-shell__particle--two" />
                 </div>
+                <AppWindowBar />
+                <div class="app-body">
+                  <AppSidebar class="app-sidebar" />
+                  <div class="app-content">
+                    <RouterView v-slot="{ Component }">
+                      <Transition name="page-slide" mode="out-in">
+                        <component :is="Component" class="app-route-view" />
+                      </Transition>
+                    </RouterView>
+                  </div>
+                </div>
+                <AppOnboarding
+                  :visible="settings.onboardingVisible"
+                  @complete="settings.completeOnboarding()"
+                  @skip="settings.skipOnboarding()"
+                  @remind="settings.remindOnboardingLater()"
+                />
               </div>
-              <AppOnboarding
-                :visible="settings.onboardingVisible"
-                @complete="settings.completeOnboarding()"
-                @skip="settings.skipOnboarding()"
-                @remind="settings.remindOnboardingLater()"
-              />
             </div>
           </AppEventBridge>
         </n-message-provider>

@@ -14,6 +14,8 @@ import {
 import KeySelector from '@/components/KeySelector.vue';
 import { type Snippet, useConfig } from '@/composables/useConfig';
 import { useAutoStart } from '@/composables/useAutoStart';
+import { useClipboard } from '@/composables/useClipboard';
+import { useWorkflowDiagnostics, type WorkflowPhaseReport } from '@/composables/useWorkflowDiagnostics';
 import QlementineIconsWindowsMinimize16 from '~icons/qlementine-icons/windows-minimize-16';
 import QlementineIconsWindowsClose16 from '~icons/qlementine-icons/windows-close-16';
 import SolarRefreshLineDuotone from '~icons/solar/refresh-line-duotone';
@@ -37,6 +39,8 @@ import Toast from '@/components/Toast.vue';
 
 const { config, loadConfig, saveConfig } = useConfig();
 const { autoStart, toggleAutoStart, refreshAutoStart } = useAutoStart();
+const { stats: clipboardStats, refresh: refreshClipboard } = useClipboard();
+const { updateState, checkUpdate } = useUpdater();
 const mainview = getCurrentWebviewWindow();
 
 const closeConfirm = ref(false);
@@ -169,6 +173,67 @@ const overviewCards = computed(() => {
     ];
 });
 
+const {
+    running: diagnosticsRunning,
+    report: diagnosticsReport,
+    readinessScore,
+    readinessTone,
+    readinessLabel,
+    readinessSummary,
+    suggestions: diagnosticSuggestions,
+    readinessFactors,
+    lastRunAt,
+    lastRuntime,
+    runDiagnostic,
+} = useWorkflowDiagnostics({
+    config,
+    autoStart,
+    updateState,
+    clipboardStats,
+    refreshClipboard,
+});
+
+function formatRelativeTime(date: Date | null) {
+    if (!date) return '尚未巡检';
+    const diffMs = Date.now() - date.getTime();
+    if (diffMs < 60_000) return '刚刚';
+    const diffMinutes = Math.round(diffMs / 60_000);
+    if (diffMinutes < 60) return `${diffMinutes} 分钟前`;
+    const diffHours = Math.round(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} 小时前`;
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays} 天前`;
+}
+
+function formatDurationLabel(duration: number | null | undefined) {
+    if (!duration || Number.isNaN(duration)) return '—';
+    if (duration < 1000) return `${Math.max(1, Math.round(duration))} ms`;
+    return `${(duration / 1000).toFixed(1)} s`;
+}
+
+function formatPhaseDuration(duration: number | undefined) {
+    if (typeof duration !== 'number') return '';
+    return duration < 1000
+        ? `${Math.max(1, Math.round(duration))} ms`
+        : `${(duration / 1000).toFixed(1)} s`;
+}
+
+const diagnosticsPhases = computed<WorkflowPhaseReport[]>(() => {
+    if (diagnosticsReport.value) {
+        return diagnosticsReport.value.phases;
+    }
+    return readinessFactors.value.map<WorkflowPhaseReport>(factor => ({
+        key: factor.key,
+        label: factor.label,
+        status: factor.ready ? 'success' : 'warning',
+        hint: factor.hint,
+        duration: undefined,
+    }));
+});
+
+const lastRunLabel = computed(() => formatRelativeTime(lastRunAt.value));
+const lastRuntimeLabel = computed(() => formatDurationLabel(lastRuntime.value));
+
 const tabPaneStyle = computed(() => ({
     padding: '0',
     height: '100%',
@@ -188,6 +253,8 @@ onMounted(async () => {
 
     await loadConfig();
     await refreshAutoStart();
+    await refreshClipboard();
+    void runDiagnostic();
 });
 
 onBeforeUnmount(async () => {
@@ -214,8 +281,6 @@ const UpdateIcons = {
     install: SolarRestartCircleLineDuotone,
     failed: SolarSadCircleLineDuotone,
 };
-
-const { updateState, checkUpdate } = useUpdater();
 
 const currentIcon = computed(() => {
     if (updateState.value.type === 'error') return UpdateIcons.failed;
@@ -376,12 +441,13 @@ function upgradeSnippet() {
                 </n-button>
             </div>
         </section>
-        <section class="home-stats-grid">
-            <div
-                v-for="card in overviewCards"
+        <TransitionGroup name="home-card" tag="section" class="home-stats-grid">
+            <article
+                v-for="(card, index) in overviewCards"
                 :key="card.title"
                 class="home-stat-card"
                 :class="card.tone ? `home-stat-card--${card.tone}` : ''"
+                :style="{ '--card-index': index }"
             >
                 <div class="home-stat-card__title">{{ card.title }}</div>
                 <div class="home-stat-card__value">{{ card.value }}</div>
@@ -394,7 +460,61 @@ function upgradeSnippet() {
                     :show-indicator="false"
                     size="small"
                 />
+            </article>
+        </TransitionGroup>
+
+        <section class="home-diagnostics">
+            <div class="home-diagnostics__header">
+                <div>
+                    <h2>工作流体检</h2>
+                    <p>{{ readinessSummary }}</p>
+                </div>
+                <n-button
+                    size="small"
+                    type="primary"
+                    strong
+                    :loading="diagnosticsRunning"
+                    @click="runDiagnostic"
+                >
+                    {{ diagnosticsRunning ? '巡检中...' : '立即巡检' }}
+                </n-button>
             </div>
+            <div class="home-diagnostics__score" :data-tone="readinessTone">
+                <span class="home-diagnostics__score-value">{{ readinessScore }}</span>
+                <n-tag round size="small" :type="readinessTone">
+                    {{ readinessLabel }}
+                </n-tag>
+                <span class="home-diagnostics__score-meta">
+                    上次巡检：{{ lastRunLabel }} · 耗时 {{ lastRuntimeLabel }}
+                </span>
+            </div>
+            <TransitionGroup name="diagnostic-list" tag="ul" class="home-diagnostics__list">
+                <li
+                    v-for="phase in diagnosticsPhases"
+                    :key="phase.key"
+                    class="home-diagnostics__item"
+                    :class="`home-diagnostics__item--${phase.status}`"
+                >
+                    <div class="home-diagnostics__item-top">
+                        <span>{{ phase.label }}</span>
+                        <span
+                            v-if="phase.duration"
+                            class="home-diagnostics__item-duration"
+                        >
+                            ≈ {{ formatPhaseDuration(phase.duration) }}
+                        </span>
+                    </div>
+                    <p v-if="phase.hint" class="home-diagnostics__item-hint">
+                        {{ phase.hint }}
+                    </p>
+                </li>
+            </TransitionGroup>
+            <ul
+                v-if="diagnosticSuggestions.length"
+                class="home-diagnostics__suggestions"
+            >
+                <li v-for="hint in diagnosticSuggestions" :key="hint">{{ hint }}</li>
+            </ul>
         </section>
         <div class="home-content">
             <div class="home-tabs-card">
@@ -1210,21 +1330,46 @@ function upgradeSnippet() {
 }
 
 .home-hero {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 24px;
-    padding: 24px 32px;
+    padding: 28px 34px;
     border-radius: var(--vibe-radius-xl);
-    background: linear-gradient(140deg, rgba(255, 255, 255, 0.92), rgba(236, 244, 255, 0.86));
-    border: 1px solid var(--vibe-border-soft);
-    box-shadow: var(--vibe-shadow-soft);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(231, 241, 255, 0.78) 100%);
+    border: 1px solid color-mix(in srgb, var(--vibe-accent) 16%, transparent);
+    box-shadow: 0 26px 54px rgba(49, 70, 255, 0.18);
+    overflow: hidden;
+}
+
+.home-hero::before,
+.home-hero::after {
+    content: "";
+    position: absolute;
+    inset: -30% -10% auto -10%;
+    height: 160%;
+    background: radial-gradient(65% 65% at 20% 25%, rgba(79, 155, 255, 0.32), transparent 68%);
+    transform: translate3d(0, 0, 0);
+    animation: hero-glow 16s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.home-hero::after {
+    inset: auto -20% -40% 40%;
+    background: radial-gradient(60% 60% at 60% 40%, rgba(111, 207, 255, 0.22), transparent 72%);
+    animation-delay: -6s;
 }
 
 :global(.dark) .home-hero {
-    background: linear-gradient(140deg, rgba(33, 40, 63, 0.92), rgba(26, 34, 54, 0.9));
-    border-color: var(--vibe-border-strong);
-    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+    background: linear-gradient(140deg, rgba(30, 37, 58, 0.9), rgba(21, 28, 47, 0.86));
+    border-color: color-mix(in srgb, var(--vibe-border-strong) 60%, transparent);
+    box-shadow: 0 28px 58px rgba(2, 10, 28, 0.6);
+}
+
+:global(.dark) .home-hero::before,
+:global(.dark) .home-hero::after {
+    background: radial-gradient(68% 68% at 30% 30%, rgba(78, 131, 255, 0.24), transparent 70%);
 }
 
 .home-hero__info {
@@ -1283,25 +1428,51 @@ function upgradeSnippet() {
 
 .home-stats-grid {
     display: grid;
-    gap: 16px;
+    gap: 18px;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
+.home-card-enter-active,
+.home-card-leave-active,
+.home-card-move {
+    transition: transform 360ms var(--vibe-transition), opacity 360ms var(--vibe-transition);
+}
+
+.home-card-enter-from,
+.home-card-leave-to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+}
+
 .home-stat-card {
-    background: var(--vibe-bg-elevated);
-    border-radius: var(--vibe-radius-lg);
-    border: 1px solid var(--vibe-border-soft);
-    box-shadow: var(--vibe-shadow-soft);
-    padding: 18px 20px;
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    transition: transform var(--vibe-transition), box-shadow var(--vibe-transition);
+    padding: 20px 22px;
+    border-radius: var(--vibe-radius-lg);
+    border: 1px solid color-mix(in srgb, var(--vibe-accent) 14%, transparent);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(235, 242, 255, 0.78));
+    box-shadow: 0 24px 52px rgba(28, 48, 110, 0.16);
+    overflow: hidden;
+    transform: translateZ(0);
+    animation: card-float 840ms ease forwards;
+    animation-delay: calc(0.08s * var(--card-index, 0));
+}
+
+.home-stat-card::before {
+    content: "";
+    position: absolute;
+    inset: -40% -20% auto 40%;
+    height: 140%;
+    background: radial-gradient(60% 60% at 65% 20%, rgba(79, 107, 255, 0.18), transparent 70%);
+    opacity: 0.9;
+    pointer-events: none;
 }
 
 .home-stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 42px rgba(49, 70, 255, 0.18);
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 28px 64px rgba(28, 48, 110, 0.22);
 }
 
 .home-stat-card__title {
@@ -1327,15 +1498,183 @@ function upgradeSnippet() {
 }
 
 .home-stat-card--positive {
-    border-color: rgba(82, 196, 26, 0.32);
+    border-color: rgba(82, 196, 26, 0.28);
 }
 
 .home-stat-card--success {
-    border-color: rgba(82, 196, 26, 0.3);
+    border-color: rgba(82, 196, 26, 0.32);
 }
 
 .home-stat-card--warning {
-    border-color: rgba(250, 173, 20, 0.4);
+    border-color: rgba(250, 173, 20, 0.38);
+}
+
+:global(.dark) .home-stat-card {
+    background: linear-gradient(160deg, rgba(29, 36, 58, 0.92), rgba(21, 28, 48, 0.85));
+    border-color: color-mix(in srgb, var(--vibe-border-strong) 60%, transparent);
+    box-shadow: 0 28px 64px rgba(2, 9, 26, 0.72);
+}
+
+:global(.dark) .home-stat-card::before {
+    background: radial-gradient(60% 60% at 65% 20%, rgba(78, 131, 255, 0.2), transparent 70%);
+}
+
+.home-diagnostics {
+    position: relative;
+    margin-top: 4px;
+    padding: 26px 28px;
+    border-radius: var(--vibe-radius-xl);
+    border: 1px solid color-mix(in srgb, var(--vibe-accent) 12%, transparent);
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(228, 239, 255, 0.76));
+    box-shadow: 0 32px 70px rgba(28, 48, 110, 0.22);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow: hidden;
+}
+
+.home-diagnostics::before {
+    content: "";
+    position: absolute;
+    inset: -45% 30% auto -20%;
+    height: 150%;
+    background: radial-gradient(60% 60% at 60% 35%, rgba(79, 172, 255, 0.18), transparent 75%);
+    pointer-events: none;
+}
+
+:global(.dark) .home-diagnostics {
+    background: linear-gradient(155deg, rgba(26, 32, 53, 0.9), rgba(18, 24, 42, 0.82));
+    border-color: color-mix(in srgb, var(--vibe-border-strong) 58%, transparent);
+    box-shadow: 0 36px 76px rgba(2, 8, 24, 0.72);
+}
+
+:global(.dark) .home-diagnostics::before {
+    background: radial-gradient(60% 60% at 60% 35%, rgba(78, 131, 255, 0.22), transparent 75%);
+}
+
+.home-diagnostics__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.home-diagnostics__header h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.home-diagnostics__header p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--vibe-text-secondary);
+}
+
+.home-diagnostics__score {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--vibe-text-secondary);
+    font-size: 13px;
+}
+
+.home-diagnostics__score-value {
+    font-size: 44px;
+    font-weight: 700;
+    color: var(--vibe-accent-strong);
+    line-height: 1;
+    animation: score-pulse 3s ease-in-out infinite;
+}
+
+.home-diagnostics__score[data-tone="warning"] .home-diagnostics__score-value {
+    color: #f6a700;
+}
+
+.home-diagnostics__score[data-tone="error"] .home-diagnostics__score-value {
+    color: #ff6b6b;
+}
+
+.home-diagnostics__score-meta {
+    font-size: 12px;
+    color: var(--vibe-text-muted);
+}
+
+.home-diagnostics__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+}
+
+.home-diagnostics__item {
+    padding: 14px 18px;
+    border-radius: var(--vibe-radius-md);
+    border: 1px solid rgba(79, 107, 255, 0.14);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 18px 32px rgba(28, 48, 110, 0.08);
+    transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.home-diagnostics__item--success {
+    border-color: rgba(82, 196, 26, 0.28);
+}
+
+.home-diagnostics__item--warning {
+    border-color: rgba(250, 173, 20, 0.32);
+}
+
+.home-diagnostics__item--error {
+    border-color: rgba(255, 107, 107, 0.32);
+    background: rgba(255, 235, 235, 0.76);
+}
+
+.home-diagnostics__item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.home-diagnostics__item-duration {
+    font-size: 12px;
+    color: var(--vibe-text-muted);
+}
+
+.home-diagnostics__item-hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--vibe-text-secondary);
+    line-height: 1.5;
+}
+
+:global(.dark) .home-diagnostics__item {
+    background: rgba(24, 30, 52, 0.82);
+    box-shadow: 0 22px 40px rgba(2, 8, 24, 0.62);
+}
+
+.home-diagnostics__suggestions {
+    list-style: disc;
+    margin: 0;
+    padding-left: 20px;
+    color: var(--vibe-text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.diagnostic-list-enter-active,
+.diagnostic-list-leave-active,
+.diagnostic-list-move {
+    transition: transform 320ms var(--vibe-transition), opacity 320ms var(--vibe-transition);
+}
+
+.diagnostic-list-enter-from,
+.diagnostic-list-leave-to {
+    opacity: 0;
+    transform: translateY(12px);
 }
 
 .home-content {
@@ -1349,14 +1688,15 @@ function upgradeSnippet() {
     display: flex;
     padding: 12px;
     border-radius: var(--vibe-radius-xl);
-    border: 1px solid var(--vibe-border-soft);
-    background: rgba(255, 255, 255, 0.72);
-    box-shadow: var(--vibe-shadow-soft);
+    border: 1px solid color-mix(in srgb, var(--vibe-accent) 12%, transparent);
+    background: color-mix(in srgb, var(--vibe-panel-surface-strong) 94%, rgba(255, 255, 255, 0.1));
+    box-shadow: 0 24px 54px rgba(28, 48, 110, 0.18);
     overflow: hidden;
 }
 
 :global(.dark) .home-tabs-card {
-    background: rgba(28, 31, 48, 0.82);
+    background: color-mix(in srgb, var(--vibe-panel-surface) 88%, rgba(16, 22, 40, 0.6));
+    box-shadow: 0 24px 60px rgba(2, 8, 24, 0.68);
 }
 
 .home-tabs {
@@ -1448,5 +1788,66 @@ function upgradeSnippet() {
 ul {
     list-style-type: disc;
     padding-left: 20px;
+}
+
+@keyframes hero-glow {
+    0% {
+        transform: translate3d(-4%, -6%, 0) scale(1.04);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translate3d(6%, 4%, 0) scale(1.08);
+        opacity: 1;
+    }
+    100% {
+        transform: translate3d(-2%, 6%, 0) scale(1.02);
+        opacity: 0.75;
+    }
+}
+
+@keyframes card-float {
+    0% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes score-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.04);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-card-enter-active,
+    .home-card-leave-active,
+    .home-card-move,
+    .diagnostic-list-enter-active,
+    .diagnostic-list-leave-active,
+    .diagnostic-list-move {
+        transition-duration: 0.01ms;
+    }
+
+    .home-card-enter-from,
+    .home-card-leave-to,
+    .diagnostic-list-enter-from,
+    .diagnostic-list-leave-to {
+        transform: none;
+    }
+
+    .home-stat-card,
+    .home-diagnostics__score-value,
+    .home-hero::before,
+    .home-hero::after {
+        animation: none !important;
+    }
 }
 </style>
