@@ -4,9 +4,21 @@ import type { GlobalThemeOverrides } from "naive-ui";
 import { disable as disableAutoLaunch, enable as enableAutoLaunch, isEnabled as isAutoLaunchEnabled } from "@tauri-apps/plugin-autostart";
 import { notifyError } from "@/utils/notifier";
 import { safeInvoke, isTauriRuntime, explainTauriFallback, TauriUnavailableError } from "@/libs/tauri";
+import type { AiActionKind } from "@/types/history";
 
 const STORAGE_KEY = "vibeclip.settings";
 const LOCAL_STORAGE_KEY = "vibeclip.settings.preview";
+
+export interface QuickActionConfig {
+  id: string;
+  label: string;
+  kind: AiActionKind;
+  enabled: boolean;
+  description?: string | null;
+  language?: string | null;
+  promptTemplate?: string | null;
+  allowCustomPrompt?: boolean;
+}
 
 export type ThemePreset =
   | "aurora"
@@ -49,6 +61,7 @@ interface PersistedSettings {
   ignoreSelfCopies: boolean;
   ignoredSources: string[];
   logLevel: "info" | "debug";
+  quickActions: QuickActionConfig[];
 }
 
 const THEME_PRESET_ACCENTS: Record<Exclude<ThemePreset, "custom">, string> = {
@@ -84,6 +97,58 @@ const THEME_PRESET_CLASSES = THEME_PRESETS
   .filter(preset => preset !== "custom")
   .map(preset => `theme-${preset}`);
 
+const DEFAULT_QUICK_ACTIONS: QuickActionConfig[] = [
+  {
+    id: "translate",
+    label: "AI 翻译",
+    kind: "translate",
+    enabled: true,
+    description: "将文本翻译为当前首选语言",
+  },
+  {
+    id: "summarize",
+    label: "AI 摘要",
+    kind: "summarize",
+    enabled: true,
+    description: "提炼关键要点并输出条列摘要",
+  },
+  {
+    id: "polish",
+    label: "AI 润色",
+    kind: "polish",
+    enabled: true,
+    description: "提升段落语气与可读性",
+  },
+  {
+    id: "jsonify",
+    label: "结构化 JSON",
+    kind: "jsonify",
+    enabled: true,
+    description: "整理为标准 JSON 对象",
+  },
+  {
+    id: "custom-brief",
+    label: "会议纪要",
+    kind: "custom",
+    enabled: true,
+    description: "生成行动项与风险提示",
+    promptTemplate:
+      "你是 VibeClip Pro。请针对 {{clipboard}} 整理会议纪要：\n- 以 3 行概括背景；\n- 输出表格列出负责人/事项/截止日；\n- 附上风险与下一步建议。",
+  },
+  {
+    id: "custom-free",
+    label: "自定义指令",
+    kind: "custom",
+    enabled: true,
+    description: "手动填写 Prompt 完成任意处理",
+    allowCustomPrompt: true,
+  },
+];
+
+function cloneDefaultQuickActions(): QuickActionConfig[] {
+  return DEFAULT_QUICK_ACTIONS.map(action => ({ ...action }));
+}
+
 const DEFAULT_SETTINGS: PersistedSettings = {
   themeMode: "light",
   themePreset: "nebula",
@@ -106,6 +171,7 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   ignoreSelfCopies: true,
   ignoredSources: [],
   logLevel: "info",
+  quickActions: cloneDefaultQuickActions(),
 };
 
 function blend(color: string, target: string, ratio: number) {
@@ -300,6 +366,9 @@ export const useSettingsStore = defineStore("settings", () => {
           const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
           const payload = raw ? JSON.parse(raw) : { ...DEFAULT_SETTINGS };
           Object.assign(state, { ...DEFAULT_SETTINGS, ...payload });
+          if (!Array.isArray(state.quickActions) || !state.quickActions.length) {
+            state.quickActions = cloneDefaultQuickActions();
+          }
         } else {
           Object.assign(state, { ...DEFAULT_SETTINGS });
         }
@@ -313,6 +382,9 @@ export const useSettingsStore = defineStore("settings", () => {
         }
       );
       Object.assign(state, { ...DEFAULT_SETTINGS, ...payload });
+      if (!Array.isArray(state.quickActions) || !state.quickActions.length) {
+        state.quickActions = cloneDefaultQuickActions();
+      }
     } catch (error) {
       Object.assign(state, { ...DEFAULT_SETTINGS });
       recordError("读取配置失败，已使用默认值", error, true);
@@ -396,6 +468,19 @@ export const useSettingsStore = defineStore("settings", () => {
       if (hydrated.value) {
         schedulePersist();
       }
+    },
+    { deep: true }
+  );
+
+  watch(
+    () => stateRefs.quickActions.value,
+    value => {
+      if (!hydrated.value) return;
+      if (!Array.isArray(value) || !value.length) {
+        stateRefs.quickActions.value = cloneDefaultQuickActions();
+        return;
+      }
+      schedulePersist();
     },
     { deep: true }
   );
@@ -531,6 +616,43 @@ export const useSettingsStore = defineStore("settings", () => {
     })();
   }
 
+  function setQuickActions(actions: QuickActionConfig[]) {
+    const payload = Array.isArray(actions) && actions.length ? actions : cloneDefaultQuickActions();
+    stateRefs.quickActions.value = payload.map(item => ({ ...item }));
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
+  function upsertQuickAction(action: QuickActionConfig) {
+    const payload = { ...action };
+    const list = stateRefs.quickActions.value;
+    const index = list.findIndex(entry => entry.id === payload.id);
+    if (index >= 0) {
+      list.splice(index, 1, payload);
+    } else {
+      list.push(payload);
+    }
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
+  function removeQuickAction(id: string) {
+    const next = stateRefs.quickActions.value.filter(item => item.id !== id);
+    stateRefs.quickActions.value = next.length ? next : cloneDefaultQuickActions();
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
+  function resetQuickActions() {
+    stateRefs.quickActions.value = cloneDefaultQuickActions();
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
   watch(
     () => hydrated.value,
     value => {
@@ -636,6 +758,10 @@ export const useSettingsStore = defineStore("settings", () => {
     setOfflineLocal,
     toggleAutoLaunch,
     pushRuntimePreferences,
+    setQuickActions,
+    upsertQuickAction,
+    removeQuickAction,
+    resetQuickActions,
     setThemePreset,
     updateCustomTheme,
     openOnboarding,

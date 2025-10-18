@@ -4,12 +4,14 @@ import {
   useSettingsStore,
   type ThemePreset,
   type CustomThemePalette,
+  type QuickActionConfig,
 } from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
 import { useMessage } from "naive-ui";
 import AppInfo from "@/AppInfo";
 import { safeInvoke, isTauriRuntime } from "@/libs/tauri";
 import { useLocale } from "@/composables/useLocale";
+import type { AiActionKind } from "@/types/history";
 
 const settings = useSettingsStore();
 const history = useHistoryStore();
@@ -107,6 +109,23 @@ const historyCountLabel = computed(() =>
   format("settings.historyCount", "剪贴板条目 {count}", { count: history.items.length })
 );
 
+const quickActionKindOptions = computed(() => [
+  { value: "translate" as AiActionKind, label: t("ai.actions.translate", "翻译") },
+  { value: "summarize" as AiActionKind, label: t("ai.actions.summarize", "摘要") },
+  { value: "polish" as AiActionKind, label: t("ai.actions.polish", "润色") },
+  { value: "jsonify" as AiActionKind, label: t("ai.actions.jsonify", "结构化") },
+  { value: "custom" as AiActionKind, label: t("ai.actions.custom", "自定义") },
+]);
+
+const quickActionLanguageOptions = computed(() => [
+  { value: "", label: t("settings.quickActionsLanguageAuto", "跟随首选语言") },
+  { value: "zh-CN", label: t("ai.languages.zh", "中文") },
+  { value: "en", label: t("ai.languages.en", "English") },
+  { value: "ja", label: t("ai.languages.ja", "日本語") },
+  { value: "ko", label: t("ai.languages.ko", "한국어") },
+  { value: "fr", label: t("ai.languages.fr", "Français") },
+]);
+
 function reportError(label: string, error: unknown) {
   console.error(label, error);
   const detail = error instanceof Error ? error.message : String(error ?? "");
@@ -137,6 +156,81 @@ function resetAiSettings() {
   settings.model = "gemini-2.5-flash";
   settings.temperature = 0.3;
   message.success("AI 配置已重置");
+}
+
+function updateQuickAction(id: string, patch: Partial<QuickActionConfig>) {
+  const current = settings.quickActions.find(action => action.id === id);
+  if (!current) return;
+  settings.upsertQuickAction({ ...current, ...patch });
+}
+
+function setQuickActionEnabled(action: QuickActionConfig, value: boolean) {
+  updateQuickAction(action.id, { enabled: value });
+}
+
+function setQuickActionLabel(action: QuickActionConfig, value: string) {
+  updateQuickAction(action.id, { label: value });
+}
+
+function setQuickActionLanguage(action: QuickActionConfig, value: string | null) {
+  const normalized = value && value.trim().length ? value : null;
+  updateQuickAction(action.id, { language: normalized });
+}
+
+function setQuickActionPrompt(action: QuickActionConfig, value: string) {
+  updateQuickAction(action.id, { promptTemplate: value });
+}
+
+function setQuickActionDescription(action: QuickActionConfig, value: string) {
+  updateQuickAction(action.id, { description: value });
+}
+
+function handleQuickActionLanguageChange(action: QuickActionConfig, value: unknown) {
+  if (typeof value === "string") {
+    setQuickActionLanguage(action, value);
+    return;
+  }
+  setQuickActionLanguage(action, null);
+}
+
+function setQuickActionAllowPrompt(action: QuickActionConfig, value: boolean) {
+  updateQuickAction(action.id, { allowCustomPrompt: value });
+}
+
+function handleQuickActionKindChange(action: QuickActionConfig, value: unknown) {
+  const kind = (typeof value === "string" ? value : action.kind) as AiActionKind;
+  const patch: Partial<QuickActionConfig> = { kind };
+  if (kind !== "custom") {
+    patch.promptTemplate = null;
+    patch.allowCustomPrompt = false;
+  } else if (!action.promptTemplate) {
+    patch.promptTemplate = "";
+    patch.allowCustomPrompt = true;
+  }
+  updateQuickAction(action.id, patch);
+}
+
+function addQuickAction() {
+  const id = `custom-${Date.now().toString(36)}`;
+  settings.upsertQuickAction({
+    id,
+    label: t("settings.quickActionsNew", "新的快捷指令"),
+    kind: "custom",
+    enabled: true,
+    description: "",
+    language: settings.preferredLanguage,
+    promptTemplate: "",
+    allowCustomPrompt: true,
+  });
+}
+
+function removeQuickAction(id: string) {
+  settings.removeQuickAction(id);
+}
+
+function resetQuickActions() {
+  settings.resetQuickActions();
+  message.success(t("settings.quickActionsResetSuccess", "已恢复默认快捷指令"));
 }
 
 async function runVacuum() {
@@ -392,6 +486,84 @@ onErrorCaptured((err, _instance, info) => {
           </section>
 
           <section class="card">
+            <h2>{{ t("settings.quickActions", "AI 快捷按钮") }}</h2>
+            <p class="muted">{{ t("settings.quickActionsHint", "自定义列表、语言与 Prompt，让浮窗与面板更贴合使用习惯") }}</p>
+            <div class="quick-actions-list">
+              <article v-for="action in settings.quickActions" :key="action.id" class="quick-action-item">
+                <div class="quick-action-header">
+                  <n-switch
+                    :value="action.enabled !== false"
+                    size="small"
+                    @update:value="setQuickActionEnabled(action, $event)"
+                  />
+                  <n-input
+                    class="quick-action-name"
+                    size="small"
+                    :value="action.label"
+                    :placeholder="t('settings.quickActionsNamePlaceholder', '快捷指令名称')"
+                    @update:value="setQuickActionLabel(action, $event)"
+                  />
+                  <n-button
+                    size="tiny"
+                    quaternary
+                    @click="removeQuickAction(action.id)"
+                    :disabled="settings.quickActions.length <= 1"
+                  >
+                    {{ t("settings.quickActionsRemove", "删除") }}
+                  </n-button>
+                </div>
+                <div class="quick-action-grid">
+                  <n-select
+                    class="quick-action-kind"
+                    size="small"
+                    :value="action.kind"
+                    :options="quickActionKindOptions"
+                    @update:value="handleQuickActionKindChange(action, $event)"
+                  />
+                  <n-select
+                    class="quick-action-language"
+                    size="small"
+                    :value="action.language ?? ''"
+                    :options="quickActionLanguageOptions"
+                    @update:value="handleQuickActionLanguageChange(action, $event)"
+                  />
+                  <n-switch
+                    v-if="action.kind === 'custom'"
+                    size="small"
+                    :value="action.allowCustomPrompt !== false"
+                    @update:value="setQuickActionAllowPrompt(action, $event)"
+                  >
+                    {{ t("settings.quickActionsAllowEdit", "允许执行时编辑 Prompt") }}
+                  </n-switch>
+                </div>
+                <n-input
+                  v-if="action.kind === 'custom'"
+                  type="textarea"
+                  :value="action.promptTemplate ?? ''"
+                  :autosize="{ minRows: 2, maxRows: 4 }"
+                  :placeholder="t('settings.quickActionsPromptPlaceholder', '可选：执行时的默认 Prompt，支持 {{clipboard}} 占位符')"
+                  @update:value="setQuickActionPrompt(action, $event)"
+                />
+                <n-input
+                  type="textarea"
+                  :value="action.description ?? ''"
+                  :autosize="{ minRows: 1, maxRows: 2 }"
+                  :placeholder="t('settings.quickActionsDescriptionPlaceholder', '可选：用于在面板中显示的说明')"
+                  @update:value="setQuickActionDescription(action, $event)"
+                />
+              </article>
+            </div>
+            <div class="quick-action-footer">
+              <n-button size="tiny" tertiary @click="addQuickAction">
+                {{ t("settings.quickActionsAdd", "新增自定义指令") }}
+              </n-button>
+              <n-button size="tiny" quaternary @click="resetQuickActions">
+                {{ t("settings.quickActionsReset", "恢复默认") }}
+              </n-button>
+            </div>
+          </section>
+
+          <section class="card">
             <h2>{{ t("settings.historyActions", "历史维护") }}</h2>
             <div class="switch-row">
               <span>{{ t("settings.autoLaunch", "开机自启") }}</span>
@@ -457,6 +629,52 @@ onErrorCaptured((err, _instance, info) => {
 
 .settings-alert {
   border-radius: var(--vibe-radius-lg);
+}
+
+.quick-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-action-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--vibe-radius-md);
+  background: var(--vibe-panel-surface-strong);
+  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 70%, transparent);
+}
+
+.quick-action-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quick-action-name {
+  flex: 1;
+  min-width: 160px;
+}
+
+.quick-action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.quick-action-kind,
+.quick-action-language {
+  width: 160px;
+}
+
+.quick-action-footer {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
 }
 
 .content-scroll {

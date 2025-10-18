@@ -6,24 +6,29 @@ use tauri::{
     AppHandle, Manager, Runtime,
 };
 
-use crate::state::AppStatus;
+use crate::{db::DbState, state::AppStatus};
 
 pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let show_item = MenuItem::with_id(app, "show", "显示 VibeClip Pro", true, None::<&str>)?;
+    let panel_item = MenuItem::with_id(app, "open-panel", "打开浮动面板", true, None::<&str>)?;
     let hide_item = MenuItem::with_id(app, "hide", "隐藏窗口", true, None::<&str>)?;
     let listening_item =
         MenuItem::with_id(app, "toggle-listener", "暂停剪贴板监听", true, None::<&str>)?;
     let offline_item =
         MenuItem::with_id(app, "toggle-offline", "切换离线模式", true, None::<&str>)?;
+    let clear_history_item =
+        MenuItem::with_id(app, "clear-history", "清理历史记录", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,
         &[
             &show_item,
+            &panel_item,
             &hide_item,
             &listening_item,
             &offline_item,
+            &clear_history_item,
             &quit_item,
         ],
     )?;
@@ -41,6 +46,12 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
                     let _ = window.set_focus();
+                }
+            }
+            "open-panel" => {
+                if let Some(panel) = app.get_webview_window("context") {
+                    let _ = panel.show();
+                    let _ = panel.set_focus();
                 }
             }
             "hide" => {
@@ -64,6 +75,14 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     "关闭离线模式"
                 } else {
                     "切换离线模式"
+                });
+            }
+            "clear-history" => {
+                let db_state = app.state::<DbState>().clone_for_thread();
+                tauri::async_runtime::spawn_blocking(move || {
+                    if let Err(err) = db_state.clear() {
+                        tracing::error!("failed to clear history from tray: {err:?}");
+                    }
                 });
             }
             "quit" => {
