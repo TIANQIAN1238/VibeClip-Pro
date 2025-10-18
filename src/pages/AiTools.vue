@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { onMounted, onErrorCaptured, ref, watch } from "vue";
+import { computed, onMounted, onErrorCaptured, ref, watch } from "vue";
 import { useMessage } from "naive-ui";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import AiQuickActions from "@/components/ai/AiQuickActions.vue";
+import GlobalContextMenu from "@/components/system/GlobalContextMenu.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
 import { useBridgeStore } from "@/store/bridge";
 import type { ClipboardBridgePayload } from "@/store/bridge";
 import { ClipKind, type AiActionKind } from "@/types/history";
 import { useLocale } from "@/composables/useLocale";
+import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
+import MdiContentCopy from "~icons/mdi/content-copy";
+import MdiContentSave from "~icons/mdi/content-save";
+import MdiDeleteOutline from "~icons/mdi/delete-outline";
 
 const history = useHistoryStore();
 const settings = useSettingsStore();
 const bridge = useBridgeStore();
 const message = useMessage();
 const { t } = useLocale();
+const contextMenu = useContextMenu();
 
 const input = ref("");
 const output = ref("");
@@ -25,6 +31,16 @@ const assistantMessages = ref<{ role: "user" | "assistant"; content: string }[]>
 const assistantInput = ref("");
 const assistantLoading = ref(false);
 const clipboardBridge = ref<ClipboardBridgePayload | null>(null);
+
+const resultContextMenuItems = computed<ContextMenuItem[]>(() => [
+  { key: "copy", label: t("ai.copy", "复制结果"), icon: MdiContentCopy },
+  { key: "save", label: t("ai.save", "保存到历史"), icon: MdiContentSave },
+]);
+
+const assistantMessageContextMenuItems = computed<ContextMenuItem[]>(() => [
+  { key: "copy", label: t("assistant.copy", "复制回答"), icon: MdiContentCopy },
+  { key: "delete", label: t("contextMenu.delete", "删除"), icon: MdiDeleteOutline, danger: true },
+]);
 
 function ensureAssistantIntro() {
   if (!assistantMessages.value.length) {
@@ -230,6 +246,60 @@ function copyAssistantResponse(entry: { role: "user" | "assistant"; content: str
   })();
 }
 
+function handleResultContextMenu(event: MouseEvent) {
+  if (!output.value) return;
+  contextMenu.showContextMenu(event, resultContextMenuItems.value, {
+    type: "ai-result",
+    data: { content: output.value },
+    position: { x: event.clientX, y: event.clientY },
+  });
+}
+
+function handleAssistantMessageContextMenu(event: MouseEvent, message: { role: "user" | "assistant"; content: string }, index: number) {
+  if (message.role !== "assistant") return;
+  contextMenu.showContextMenu(event, assistantMessageContextMenuItems.value, {
+    type: "ai-message",
+    data: { message, index },
+    position: { x: event.clientX, y: event.clientY },
+  });
+}
+
+async function handleContextMenuSelect(key: string) {
+  const ctx = contextMenu.state.context;
+  contextMenu.closeContextMenu();
+  
+  if (!ctx) return;
+  
+  if (ctx.type === "ai-result") {
+    switch (key) {
+      case "copy":
+        await copyResult();
+        break;
+      case "save":
+        await saveResult();
+        break;
+    }
+  } else if (ctx.type === "ai-message") {
+    const { message: msg, index } = ctx.data;
+    switch (key) {
+      case "copy":
+        try {
+          await history.markSelfCapture({ kind: ClipKind.Text, content: msg.content });
+          await writeText(msg.content);
+          message.success(t("assistant.copy", "复制回答"));
+        } catch (error) {
+          reportError(t("assistant.copy", "复制回答"), error);
+        }
+        break;
+      case "delete":
+        if (index >= 0 && index < assistantMessages.value.length) {
+          assistantMessages.value.splice(index, 1);
+        }
+        break;
+    }
+  }
+}
+
 onMounted(async () => {
   isLoading.value = true;
   ensureAssistantIntro();
@@ -354,7 +424,7 @@ onErrorCaptured((err, _instance, info) => {
                 </n-button>
               </div>
             </div>
-            <div class="result-body">
+            <div class="result-body" @contextmenu="handleResultContextMenu">
               <pre v-if="output">{{ output }}</pre>
               <p v-else class="placeholder">{{ t("ai.placeholder", "在此输入需要处理的文本，或点击上方按钮同步系统剪贴板") }}</p>
             </div>
@@ -374,6 +444,7 @@ onErrorCaptured((err, _instance, info) => {
                   :key="index"
                   :class="['assistant-message', message.role]"
                   @dblclick="copyAssistantResponse(message)"
+                  @contextmenu="handleAssistantMessageContextMenu($event, message, index)"
                 >
                   <p>{{ message.content }}</p>
                 </div>
@@ -396,6 +467,16 @@ onErrorCaptured((err, _instance, info) => {
         </div>
       </template>
     </section>
+
+    <GlobalContextMenu
+      :show="contextMenu.state.show"
+      :x="contextMenu.state.renderX"
+      :y="contextMenu.state.renderY"
+      :items="contextMenu.state.items"
+      :ref="contextMenu.menuRef"
+      @select="handleContextMenuSelect"
+      @close="contextMenu.closeContextMenu"
+    />
   </div>
 </template>
 
@@ -410,6 +491,7 @@ onErrorCaptured((err, _instance, info) => {
 
 .main {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -443,10 +525,13 @@ onErrorCaptured((err, _instance, info) => {
 
 .content-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  padding-right: 4px;
 }
 
 .card {
@@ -483,7 +568,7 @@ onErrorCaptured((err, _instance, info) => {
 
 .bridge-image {
   width: 100%;
-  max-height: 200px;
+  max-height: 150px;
   object-fit: contain;
   border-radius: var(--vibe-radius-md);
   border: 1px solid var(--vibe-panel-border);
@@ -520,10 +605,10 @@ onErrorCaptured((err, _instance, info) => {
 }
 
 .result-body {
-  max-height: 240px;
+  max-height: 180px;
   overflow-y: auto;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .result-body pre {
@@ -547,7 +632,7 @@ onErrorCaptured((err, _instance, info) => {
 }
 
 .assistant-messages {
-  max-height: 220px;
+  max-height: 200px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

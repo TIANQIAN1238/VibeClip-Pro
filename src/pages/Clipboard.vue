@@ -6,6 +6,7 @@ import { readText, writeText, readImage } from "@tauri-apps/plugin-clipboard-man
 import { openUrl } from "@tauri-apps/plugin-opener";
 import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import HistoryItem from "@/components/history/HistoryItem.vue";
+import GlobalContextMenu from "@/components/system/GlobalContextMenu.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
 import { useBridgeStore } from "@/store/bridge";
@@ -17,7 +18,17 @@ import {
   isLikelyFilePath as isClipboardFilePath,
 } from "@/utils/content-inspector";
 import { useLocale } from "@/composables/useLocale";
+import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
 import type { Image as TauriImage } from "@tauri-apps/api/image";
+import MdiContentCopy from "~icons/mdi/content-copy";
+import MdiContentSave from "~icons/mdi/content-save";
+import MdiTranslate from "~icons/mdi/translate";
+import MdiTextBoxSearchOutline from "~icons/mdi/text-box-search-outline";
+import MdiFeather from "~icons/mdi/feather";
+import MdiRobotOutline from "~icons/mdi/robot-outline";
+import MdiTextRecognition from "~icons/mdi/text-recognition";
+import MdiImageSearchOutline from "~icons/mdi/image-search-outline";
+import MdiFileDocumentOutline from "~icons/mdi/file-document-outline";
 
 const MAX_IMAGE_DIMENSION = 1280;
 
@@ -35,6 +46,7 @@ const settings = useSettingsStore();
 const bridge = useBridgeStore();
 const message = useMessage();
 const { t, format } = useLocale();
+const contextMenu = useContextMenu();
 
 const snapshot = reactive<ClipboardSnapshot>({
   kind: "empty",
@@ -56,7 +68,7 @@ const suggestions = computed(() => {
   return source ? buildClipboardSuggestions(source) : [];
 });
 
-const recentItems = computed(() => history.items.slice(0, 8));
+const recentItems = computed(() => history.items.slice(0, 5));
 
 const recentCountLabel = computed(() =>
   format("clipboard.total", "共 {count} 条", { count: history.items.length })
@@ -99,6 +111,44 @@ const imageMeta = computed(() => {
 const recentPlaceholder = computed(() =>
   t("clipboard.suggestEmpty", "暂无推荐，可尝试复制不同类型的内容。")
 );
+
+const clipboardContextMenuItems = computed<ContextMenuItem[]>(() => {
+  const items: ContextMenuItem[] = [];
+  
+  if (snapshot.kind === "empty") return [];
+  
+  if (snapshot.kind === "text") {
+    items.push(
+      { key: "copy", label: t("contextMenu.copy", "复制"), icon: MdiContentCopy },
+      { key: "save", label: t("clipboard.save", "保存到历史"), icon: MdiContentSave },
+      { key: "divider-1", label: "", divider: true },
+      { key: "translate", label: t("contextMenu.translate", "AI 翻译"), icon: MdiTranslate },
+      { key: "summarize", label: t("contextMenu.summarize", "AI 摘要"), icon: MdiTextBoxSearchOutline },
+      { key: "polish", label: t("contextMenu.polish", "AI 润色"), icon: MdiFeather },
+      { key: "divider-2", label: "", divider: true },
+      { key: "assistant", label: t("clipboard.askAssistant", "发送到 AI 助理"), icon: MdiRobotOutline }
+    );
+  } else if (snapshot.kind === "image") {
+    items.push(
+      { key: "save", label: t("clipboard.save", "保存到历史"), icon: MdiContentSave },
+      { key: "divider-1", label: "", divider: true },
+      { key: "ocr", label: t("clipboard.ocrImage", "AI OCR 提取文字"), icon: MdiTextRecognition },
+      { key: "describe", label: t("clipboard.describeImage", "AI 识图描述"), icon: MdiImageSearchOutline },
+      { key: "divider-2", label: "", divider: true },
+      { key: "assistant", label: t("clipboard.askAssistant", "发送到 AI 助理"), icon: MdiRobotOutline }
+    );
+  } else if (snapshot.kind === "file") {
+    items.push(
+      { key: "copy", label: t("clipboard.copyPath", "复制文件路径"), icon: MdiContentCopy },
+      { key: "save", label: t("clipboard.save", "保存到历史"), icon: MdiContentSave },
+      { key: "divider-1", label: "", divider: true },
+      { key: "analyze", label: t("clipboard.fileInsight", "AI 洞察文件"), icon: MdiFileDocumentOutline },
+      { key: "assistant", label: t("clipboard.askAssistant", "发送到 AI 助理"), icon: MdiRobotOutline }
+    );
+  }
+  
+  return items;
+});
 
 type WorkflowDefinition = {
   key: string;
@@ -585,6 +635,59 @@ async function handleWorkflowStart(key: string) {
   }
 }
 
+function handleClipboardContextMenu(event: MouseEvent) {
+  if (snapshot.kind === "empty") return;
+  contextMenu.showContextMenu(event, clipboardContextMenuItems.value, {
+    type: "clipboard",
+    data: snapshot,
+    position: { x: event.clientX, y: event.clientY },
+  });
+}
+
+async function handleContextMenuSelect(key: string) {
+  contextMenu.closeContextMenu();
+  
+  switch (key) {
+    case "copy":
+      if (snapshot.kind === "text") {
+        try {
+          await history.markSelfCapture({ kind: ClipKind.Text, content: snapshot.text });
+          await writeText(snapshot.text);
+          message.success(t("contextMenu.copy", "复制"));
+        } catch (error) {
+          reportError(t("contextMenu.copy", "复制"), error);
+        }
+      } else if (snapshot.kind === "file" && snapshot.filePath) {
+        await copyFilePath();
+      }
+      break;
+    case "save":
+      await saveClipboard();
+      break;
+    case "translate":
+      await runTextAction("translate");
+      break;
+    case "summarize":
+      await runTextAction("summarize");
+      break;
+    case "polish":
+      await runTextAction("polish");
+      break;
+    case "ocr":
+      await runImagePrompt("ocr");
+      break;
+    case "describe":
+      await runImagePrompt("describe");
+      break;
+    case "analyze":
+      await runFileAnalysis();
+      break;
+    case "assistant":
+      sendToAssistant();
+      break;
+  }
+}
+
 onMounted(async () => {
   if (!history.items.length) {
     try {
@@ -625,7 +728,7 @@ onMounted(async () => {
             </div>
           </div>
         </header>
-        <div class="card-body">
+        <div class="card-body" @contextmenu="handleClipboardContextMenu">
           <template v-if="snapshot.kind === 'text'">
             <div v-if="editing" class="edit-area">
               <n-input
@@ -803,6 +906,16 @@ onMounted(async () => {
         </n-scrollbar>
       </section>
     </n-scrollbar>
+
+    <GlobalContextMenu
+      :show="contextMenu.state.show"
+      :x="contextMenu.state.renderX"
+      :y="contextMenu.state.renderY"
+      :items="contextMenu.state.items"
+      :ref="contextMenu.menuRef"
+      @select="handleContextMenuSelect"
+      @close="contextMenu.closeContextMenu"
+    />
   </div>
 </template>
 
@@ -946,7 +1059,7 @@ onMounted(async () => {
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 220px;
+  max-height: 150px;
   overflow-y: auto;
 }
 
@@ -1021,7 +1134,7 @@ onMounted(async () => {
 }
 
 .recent-scroll {
-  max-height: 260px;
+  max-height: 180px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1052,10 +1165,10 @@ onMounted(async () => {
 .workflow-item {
   position: relative;
   display: grid;
-  grid-template-columns: 60px 1fr auto;
-  gap: 16px;
+  grid-template-columns: 48px 1fr auto;
+  gap: 12px;
   align-items: center;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: var(--vibe-radius-md);
   background: linear-gradient(120deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.72));
   border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 60%, transparent);
@@ -1085,15 +1198,15 @@ onMounted(async () => {
 }
 
 .workflow-icon {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
-  border-radius: 20px;
-  font-size: 30px;
+  border-radius: 16px;
+  font-size: 24px;
   color: #fff;
   background: linear-gradient(135deg, rgba(81, 97, 255, 0.34), rgba(134, 65, 255, 0.48));
-  box-shadow: 0 12px 24px rgba(37, 42, 89, 0.18);
+  box-shadow: 0 8px 16px rgba(37, 42, 89, 0.16);
 }
 
 .workflow-text {
@@ -1116,11 +1229,15 @@ onMounted(async () => {
 .workflow-text ul {
   margin: 0;
   padding-left: 18px;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
   color: var(--vibe-text-secondary);
+}
+
+.workflow-item:hover .workflow-text ul {
+  display: flex;
 }
 
 .workflow-text li::marker {

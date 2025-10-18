@@ -231,7 +231,7 @@ body {
   z-index: 1;
 }
 
-.app-shell > *:not(.app-shell__background) {
+.app-shell>*:not(.app-shell__background) {
   position: relative;
   z-index: 1;
 }
@@ -267,12 +267,12 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   border-radius: calc(var(--vibe-radius-xl) - 6px);
   background: color-mix(in srgb, var(--vibe-panel-surface) 88%, rgba(255, 255, 255, 0.1));
   border: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  padding: 18px;
+  padding: 14px;
   overflow: hidden;
   transition: background 280ms ease, border-color 280ms ease;
 }
@@ -294,7 +294,7 @@ body {
   overflow: hidden;
 }
 
-.app-content > * {
+.app-content>* {
   flex: 1;
   display: flex;
   min-height: 0;
@@ -346,9 +346,11 @@ body {
   0% {
     transform: translate3d(-5%, -2%, 0) scale(1.05);
   }
+
   45% {
     transform: translate3d(6%, 4%, 0) scale(1.08);
   }
+
   100% {
     transform: translate3d(-4%, 6%, 0) scale(1.03);
   }
@@ -359,10 +361,12 @@ body {
     transform: translate3d(0, 0, 0) scale(0.9);
     opacity: 0.4;
   }
+
   50% {
     transform: translate3d(0, 18px, 0) scale(1.05);
     opacity: 0.85;
   }
+
   100% {
     transform: translate3d(0, -12px, 0) scale(0.95);
     opacity: 0.5;
@@ -370,6 +374,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .page-slide-enter-active,
   .page-slide-leave-active,
   .fade-list-enter-active,

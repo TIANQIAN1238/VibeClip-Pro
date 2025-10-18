@@ -189,7 +189,7 @@ function handleRemind() {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 32px 18px;
+  padding: 20px 16px;
   background: color-mix(in srgb, rgba(20, 24, 42, 0.62) 68%, transparent);
   backdrop-filter: blur(24px) saturate(160%);
   z-index: 999;
@@ -202,12 +202,13 @@ function handleRemind() {
 
 .onboarding-dialog {
   position: relative;
-  width: min(520px, 100%);
+  width: min(420px, 100%);
+  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 24px 22px 22px;
-  border-radius: 26px;
+  gap: 14px;
+  padding: 20px 18px 18px;
+  border-radius: 22px;
   background: linear-gradient(140deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.82));
   border: 1px solid color-mix(in srgb, var(--vibe-accent) 18%, transparent);
   box-shadow: 0 32px 72px rgba(24, 32, 72, 0.28);
@@ -251,23 +252,27 @@ function handleRemind() {
 
 .onboarding-body {
   position: relative;
-  min-height: 220px;
+  min-height: 160px;
+  max-height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto;
 }
 
 .step-card {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   align-items: center;
 }
 
 .step-visual {
   position: relative;
-  border-radius: 24px;
-  height: 160px;
+  width: 100%;
+  max-width: 200px;
+  border-radius: 18px;
+  height: 120px;
   display: grid;
   place-items: center;
   color: #fff;
@@ -277,14 +282,16 @@ function handleRemind() {
 }
 
 .step-icon {
-  font-size: 40px;
+  font-size: 32px;
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.28));
 }
 
 .step-content {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  text-align: center;
 }
 
 .step-index {
@@ -301,22 +308,23 @@ function handleRemind() {
 
 .step-content h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .step-content p {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--vibe-text-muted);
 }
 
 .step-content ul {
   margin: 0;
   padding-left: 18px;
+  text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: 12px;
   color: var(--vibe-text-secondary);
 }
 
@@ -369,12 +377,11 @@ function handleRemind() {
 
 @media (max-width: 540px) {
   .step-card {
-    grid-template-columns: 1fr;
-    text-align: left;
+    width: 100%;
   }
 
   .step-visual {
-    width: 100%;
+    max-width: 160px;
   }
 }
 
