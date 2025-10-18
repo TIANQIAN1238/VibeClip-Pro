@@ -53,19 +53,35 @@ async function close() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 0 18px;
   font-weight: 600;
   letter-spacing: 0.2px;
   color: var(--vibe-text-primary);
   -webkit-app-region: drag;
-  background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.18) 0%,
-      rgba(244, 249, 255, 0.12) 60%,
-      rgba(255, 255, 255, 0) 100%
-    );
-  backdrop-filter: blur(20px);
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.46), rgba(234, 242, 255, 0.18));
+  border-bottom: 1px solid color-mix(in srgb, var(--vibe-accent) 18%, transparent);
+  backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: 0 18px 34px rgba(28, 48, 110, 0.18);
   z-index: 12;
+}
+
+.window-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0));
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.dark .window-bar {
+  background: linear-gradient(110deg, rgba(33, 42, 68, 0.72), rgba(21, 28, 48, 0.58));
+  border-bottom-color: color-mix(in srgb, var(--vibe-border-strong) 60%, transparent);
+  box-shadow: 0 20px 38px rgba(2, 8, 24, 0.55);
+}
+
+.dark .window-bar::after {
+  background: linear-gradient(90deg, rgba(122, 209, 245, 0.22), rgba(12, 22, 48, 0));
 }
 
 .window-title {
