@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { AiActionKind } from "@/types/history";
-import { useSettingsStore } from "@/store/settings";
+import { useSettingsStore, type QuickActionConfig } from "@/store/settings";
 import MdiSparkle from "~icons/mdi/sparkles";
 import MdiLanguage from "~icons/mdi/translate";
 import { useLocale } from "@/composables/useLocale";
@@ -18,7 +18,6 @@ const router = useRouter();
 const { t } = useLocale();
 
 const state = reactive({
-  action: "translate" as AiActionKind,
   language: settings.preferredLanguage,
   customPrompt: "",
   input: "",
@@ -27,6 +26,37 @@ const state = reactive({
 const settingsReady = computed(() => settings.hydrated);
 const needsSetup = computed(() => !settings.apiKey);
 
+const activeActionId = ref<string>("");
+const lastClipboardSeed = ref<string>("");
+const lastSelectedAction = ref<string | null>(null);
+
+const quickActions = computed<QuickActionConfig[]>(() => {
+  const enabled = settings.quickActions.filter(action => action.enabled !== false);
+  return enabled.length ? enabled : settings.quickActions;
+});
+
+watch(
+  quickActions,
+  actions => {
+    if (!actions.length) {
+      activeActionId.value = "";
+      return;
+    }
+    if (!actions.some(action => action.id === activeActionId.value)) {
+      activeActionId.value = actions[0].id;
+    }
+  },
+  { immediate: true }
+);
+
+const activeAction = computed<QuickActionConfig | null>(() => {
+  const actions = quickActions.value;
+  if (!actions.length) return null;
+  const current = actions.find(action => action.id === activeActionId.value);
+  return current ?? actions[0];
+});
+
+const currentKind = computed<AiActionKind>(() => activeAction.value?.kind ?? "translate");
 const hasClipboardSeed = computed(() => props.sourceText.trim().length > 0);
 
 const languageOptions = computed(() => [
@@ -41,22 +71,11 @@ type LanguageOption = (typeof languageOptions.value)[number];
 
 const renderLanguageLabel = (option: LanguageOption) => option.label;
 
-const actions = computed(
-  () =>
-    [
-      { key: "translate", label: t("ai.actions.translate", "翻译") },
-      { key: "summarize", label: t("ai.actions.summarize", "摘要") },
-      { key: "polish", label: t("ai.actions.polish", "润色") },
-      { key: "jsonify", label: t("ai.actions.jsonify", "结构化") },
-      { key: "custom", label: t("ai.actions.custom", "自定义") },
-    ] satisfies ReadonlyArray<{ key: AiActionKind; label: string }>
-);
-
 const placeholder = computed(() => {
-  if (state.action === "translate") return t("ai.placeholders.translate", "输入想要翻译的内容");
-  if (state.action === "summarize") return t("ai.placeholders.summarize", "输入需要总结的内容");
-  if (state.action === "polish") return t("ai.placeholders.polish", "输入需要润色的段落");
-  if (state.action === "jsonify") return t("ai.placeholders.jsonify", "输入需要结构化的内容");
+  if (currentKind.value === "translate") return t("ai.placeholders.translate", "输入想要翻译的内容");
+  if (currentKind.value === "summarize") return t("ai.placeholders.summarize", "输入需要总结的内容");
+  if (currentKind.value === "polish") return t("ai.placeholders.polish", "输入需要润色的段落");
+  if (currentKind.value === "jsonify") return t("ai.placeholders.jsonify", "输入需要结构化的内容");
   return t("ai.placeholders.default", "输入内容");
 });
 
@@ -70,20 +89,96 @@ const languageHint = computed(() =>
   t("ai.quickActionsLanguageHint", "默认使用上方语言；留空时使用系统首选")
 );
 
-async function handleSubmit() {
-  const input = state.input.trim() || props.sourceText.trim();
-  if (!input) return;
-  await props.onRun({
-    action: state.action,
-    input,
-    language: state.language || settings.preferredLanguage,
-    customPrompt: state.customPrompt.trim() || undefined,
-  });
-  state.input = "";
-}
+const actionHint = computed(() => activeAction.value?.description ?? "");
+
+watch(
+  () => settings.preferredLanguage,
+  value => {
+    if (!activeAction.value || activeAction.value.language) return;
+    state.language = value;
+  },
+  { immediate: true }
+);
+
+watch(
+  activeAction,
+  action => {
+    if (!action) {
+      state.language = settings.preferredLanguage;
+      state.customPrompt = "";
+      return;
+    }
+    if (action.language) {
+      state.language = action.language;
+    } else {
+      state.language = settings.preferredLanguage;
+    }
+    if (action.kind === "custom") {
+      const template = action.promptTemplate ?? "";
+      if (!action.allowCustomPrompt || lastSelectedAction.value !== action.id) {
+        state.customPrompt = template;
+      } else if (!state.customPrompt.trim()) {
+        state.customPrompt = template;
+      }
+    } else {
+      state.customPrompt = "";
+    }
+    lastSelectedAction.value = action.id;
+  },
+  { immediate: true }
+);
+
+watch(
+  () => props.sourceText,
+  value => {
+    const normalized = value.trim();
+    if (!normalized) {
+      lastClipboardSeed.value = "";
+      return;
+    }
+    if (!state.input.trim() || state.input.trim() === lastClipboardSeed.value) {
+      state.input = normalized;
+    }
+    lastClipboardSeed.value = normalized;
+  },
+  { immediate: true }
+);
 
 function openSettings() {
   router.push("/settings");
+}
+
+function selectAction(id: string) {
+  activeActionId.value = id;
+}
+
+function resolveCustomPrompt(input: string, action: QuickActionConfig | null) {
+  if (!action || action.kind !== "custom") {
+    return undefined;
+  }
+  const template = state.customPrompt.trim() || action.promptTemplate?.trim() || "";
+  if (!template) return undefined;
+  return template.replace(/\{\{\s*clipboard\s*\}\}/gi, input);
+}
+
+async function handleSubmit() {
+  if (props.loading) return;
+  const action = activeAction.value;
+  if (!action) return;
+  const input = state.input.trim() || props.sourceText.trim();
+  if (!input) return;
+  const language = action.language || state.language || settings.preferredLanguage;
+  const customPrompt = resolveCustomPrompt(input, action);
+  await props.onRun({
+    action: action.kind,
+    input,
+    language,
+    customPrompt,
+  });
+  state.input = "";
+  if (action.kind === "custom" && !action.allowCustomPrompt) {
+    state.customPrompt = action.promptTemplate ?? "";
+  }
 }
 </script>
 
@@ -119,6 +214,7 @@ function openSettings() {
           size="small"
           :options="languageOptions"
           :render-label="renderLanguageLabel"
+          :disabled="Boolean(activeAction?.language)"
         />
       </header>
       <div class="ai-status">
@@ -126,44 +222,46 @@ function openSettings() {
           {{ t("ai.quickActionsClipboardBadge", "已衔接剪贴板文本") }}
         </span>
         <span class="status-hint">{{ t("ai.quickActionsHint", "留空时会自动引用剪贴板内容") }}</span>
+        <span v-if="actionHint" class="status-desc">{{ actionHint }}</span>
       </div>
-    <div class="action-tabs">
-      <n-button
-        v-for="item in actions"
-        :key="item.key"
-        size="tiny"
-        quaternary
-        class="tab-button"
-        :type="state.action === item.key ? 'primary' : 'default'"
-        @click="state.action = item.key"
-      >
-        {{ item.label }}
-      </n-button>
-    </div>
-    <n-input
-      v-model:value="state.input"
-      type="textarea"
-      :autosize="{ minRows: 3, maxRows: 6 }"
-      :placeholder="placeholder"
-      class="action-input"
-    />
-    <n-input
-      v-if="state.action === 'custom'"
-      v-model:value="state.customPrompt"
-      type="textarea"
-      :autosize="{ minRows: 2, maxRows: 4 }"
-      :placeholder="customPromptPlaceholder"
-      class="action-input"
-    />
-    <div class="action-footer">
-      <div class="helper">
-        <n-icon :component="MdiLanguage" size="16" />
-        <span>{{ languageHint }}</span>
+      <div class="action-tabs">
+        <n-button
+          v-for="item in quickActions"
+          :key="item.id"
+          size="tiny"
+          quaternary
+          class="tab-button"
+          :type="activeAction?.id === item.id ? 'primary' : 'default'"
+          @click="selectAction(item.id)"
+        >
+          {{ item.label }}
+        </n-button>
       </div>
-      <n-button type="primary" size="small" :loading="loading" @click="handleSubmit">
-        {{ executeLabel }}
-      </n-button>
-    </div>
+      <n-input
+        v-model:value="state.input"
+        type="textarea"
+        :autosize="{ minRows: 3, maxRows: 6 }"
+        :placeholder="placeholder"
+        class="action-input"
+      />
+      <n-input
+        v-if="currentKind === 'custom'"
+        v-model:value="state.customPrompt"
+        type="textarea"
+        :autosize="{ minRows: 2, maxRows: 4 }"
+        :placeholder="customPromptPlaceholder"
+        class="action-input"
+        :readonly="activeAction && activeAction.allowCustomPrompt === false"
+      />
+      <div class="action-footer">
+        <div class="helper">
+          <n-icon :component="MdiLanguage" size="16" />
+          <span>{{ languageHint }}</span>
+        </div>
+        <n-button type="primary" size="small" :loading="loading" @click="handleSubmit">
+          {{ executeLabel }}
+        </n-button>
+      </div>
     </template>
   </div>
 </template>
@@ -271,6 +369,10 @@ function openSettings() {
 
 .status-hint {
   color: var(--vibe-text-muted);
+}
+
+.status-desc {
+  color: var(--vibe-text-secondary);
 }
 
 .action-tabs {

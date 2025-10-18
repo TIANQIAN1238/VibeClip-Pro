@@ -48,7 +48,9 @@
 - **连续剪贴板捕获**：后台监听器以 250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径，并支持来源黑名单过滤、内容哈希去重。
 - **四大核心页面**：首页总览、实时剪贴板、历史记录与 AI 工具，侧边栏快捷切换，搭配毛玻璃卡片化视觉。
 - **AI 快捷操作**：内置翻译、摘要、润色与 JSON 化能力，支持自定义 Prompt；结果可复制、写回历史或同步到系统剪贴板。
+- **AI 快捷按钮库**：在设置页开启/关闭快捷指令，调整默认语言或 Prompt 模板，并新增自定义动作与说明。
 - **右键快捷菜单**：在历史记录中右键即可复制、收藏、置顶或直接触发 AI 翻译/摘要/润色，让日常操作更顺手。
+- **内联剪贴板编辑器**：在剪贴板卡片直接修改文本并一键写回系统，无需离开应用即可完成调整。
 - **运行偏好自定义**：去重、容量与保留天数、来源黑名单、日志等级、离线模式、开机自启等设置一应俱全。
 - **系统级控制**：默认全局快捷键 `Ctrl+Shift+V` 呼出浮动面板，托盘菜单支持显示/隐藏、暂停监听、切换离线模式。
 - **跨平台桌面应用**：基于 Tauri 2 + Vue 3，Rust 端封装数据库与系统能力，前端调用 `invoke` 即可完成交互。
@@ -97,23 +99,29 @@ pnpm tauri dev              # 启动桌面端调试（会同时跑前端）
 
 Rust 端命令位于 `src-tauri/`，例如 `cargo check`、`cargo fmt` 等；数据库、托盘、剪贴板等系统能力均封装在 `src-tauri/src` 内的模块中。
 
-## 📦 发布流程（v1.4.2 准备）
+## 📦 发布流程（v2.2.1 准备）
 
-1. 更新版本号（本次已同步 `package.json`、Tauri 配置与 Rust Cargo 元数据至 **1.4.2**）。
+1. 核对版本号（已同步 `package.json`、Tauri 配置、`Cargo.toml`/`Cargo.lock` 与 `AppInfo.ts` 至 **2.2.1**）。
 2. 构建产物：
    ```bash
    pnpm build
    pnpm tauri build
    ```
-   安装包将输出至 `src-tauri/target/release/bundle`。
+   - `pnpm build` 产出的前端静态资源位于 `dist/`，供调试浮窗或 Web 预览使用。
+   - `pnpm tauri build` 会在 `src-tauri/target/release/bundle/` 下生成安装包与签名，需要宿主机已安装 `glib-2.0` 等系统依赖。
 3. 创建发布分支与标签：
    ```bash
-   git checkout -b release/v1.4.2
-   git push -u origin release/v1.4.2
-   git tag -a v1.4.2 -m "VibeClip Pro v1.4.2"
-   git push origin v1.4.2
+   git checkout -b release/v2.2.1
+   git push -u origin release/v2.2.1
+   git tag -a v2.2.1 -m "VibeClip Pro v2.2.1"
+   git push origin v2.2.1
    ```
-4. 在 GitHub Release 页面撰写更新摘要（建议突出 UI 检查、AI 功能确认、README 调整等要点），并上传 `.msi`/`.dmg`/`.AppImage` 等桌面包以及 `latest.json`。
+4. 在 GitHub Release 页面撰写更新摘要（建议突出 AI 快捷按钮库、剪贴板即时编辑、历史统计卡片与托盘新增指令等要点），并上传与 PasteMe 一致的资产：
+   - `latest.json`
+   - Windows 安装包 `VibeClip_2.2.1_x64-setup.exe` 与对应 `.sig`
+   - Windows MSI 包 `VibeClip_2.2.1_x64.msi` 与对应 `.sig`
+   - `Source code (zip)`、`Source code (tar.gz)`
+   如需 macOS / Linux 安装包，可在本地增加 `--target` 参数构建后同步上传。
 
 ## 📚 额外资料
 

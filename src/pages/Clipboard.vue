@@ -45,6 +45,9 @@ const snapshot = reactive<ClipboardSnapshot>({
 });
 
 const capturing = ref(false);
+const editing = ref(false);
+const editingBusy = ref(false);
+const editDraft = ref("");
 
 const textSource = computed(() => (snapshot.kind === "text" ? snapshot.text : ""));
 
@@ -170,12 +173,45 @@ function reportError(label: string, error: unknown) {
   message.error(`${label}${detail ? `：${detail}` : ""}`);
 }
 
+function startEditing() {
+  if (snapshot.kind !== "text") return;
+  editDraft.value = snapshot.text;
+  editing.value = true;
+}
+
+function cancelEditing() {
+  editing.value = false;
+  editingBusy.value = false;
+  editDraft.value = "";
+}
+
+async function applyEditing() {
+  if (snapshot.kind !== "text") return;
+  const text = editDraft.value.trim();
+  snapshot.text = text;
+  editingBusy.value = true;
+  try {
+    await history.markSelfCapture({ kind: ClipKind.Text, content: text });
+    await writeText(text);
+    message.success(t("clipboard.editSaved", "已更新系统剪贴板"));
+    editing.value = false;
+    editDraft.value = text;
+  } catch (error) {
+    reportError(t("clipboard.editSaveFailed", "更新剪贴板失败"), error);
+  } finally {
+    editingBusy.value = false;
+  }
+}
+
 function resetSnapshot() {
   snapshot.kind = "empty";
   snapshot.text = "";
   snapshot.filePath = null;
   snapshot.imageDataUrl = null;
   snapshot.imageSize = null;
+  editing.value = false;
+  editingBusy.value = false;
+  editDraft.value = "";
 }
 
 async function convertImageToDataUrl(image: TauriImage) {
@@ -224,6 +260,9 @@ async function convertImageToDataUrl(image: TauriImage) {
 async function syncClipboard() {
   capturing.value = true;
   try {
+    editing.value = false;
+    editingBusy.value = false;
+    editDraft.value = "";
     const text = await readText().catch(() => "");
     const normalized = text.replace(/\0/g, "").trim();
     if (normalized) {
@@ -270,6 +309,9 @@ async function saveClipboard() {
       }
       await history.captureText(content);
       message.success(t("clipboard.save", "保存到历史"));
+      editing.value = false;
+      editingBusy.value = false;
+      editDraft.value = content;
       return;
     }
 
@@ -585,7 +627,15 @@ onMounted(async () => {
         </header>
         <div class="card-body">
           <template v-if="snapshot.kind === 'text'">
-            <p class="preview-text">{{ snapshot.text }}</p>
+            <div v-if="editing" class="edit-area">
+              <n-input
+                v-model:value="editDraft"
+                type="textarea"
+                :autosize="{ minRows: 6, maxRows: 12 }"
+                :placeholder="t('clipboard.editPlaceholder', '直接在此调整文本，保存后会同步系统剪贴板')"
+              />
+            </div>
+            <p v-else class="preview-text">{{ snapshot.text }}</p>
           </template>
           <template v-else-if="snapshot.kind === 'image'">
             <img
@@ -609,6 +659,19 @@ onMounted(async () => {
         </div>
         <footer class="card-footer">
           <div v-if="snapshot.kind === 'text'" class="quick-actions">
+            <template v-if="!editing">
+              <n-button size="tiny" quaternary @click="startEditing">
+                {{ t("clipboard.editText", "编辑文本") }}
+              </n-button>
+            </template>
+            <template v-else>
+              <n-button size="tiny" type="primary" :loading="editingBusy" @click="applyEditing">
+                {{ t("clipboard.applyEdit", "保存修改") }}
+              </n-button>
+              <n-button size="tiny" quaternary :disabled="editingBusy" @click="cancelEditing">
+                {{ t("clipboard.cancelEdit", "取消") }}
+              </n-button>
+            </template>
             <n-button size="tiny" tertiary :loading="history.aiBusy" @click="runTextAction('translate')">
               {{ t("clipboard.translate", "AI 翻译") }}
             </n-button>
@@ -889,6 +952,12 @@ onMounted(async () => {
 
 .preview-text {
   margin: 0;
+}
+
+.edit-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .preview-image {

@@ -140,6 +140,31 @@ const clipboardCountLabel = computed(() =>
   format("history.total", "共 {count} 条记录", { count: history.items.length })
 );
 
+const historySummary = computed(() => {
+  const stats = {
+    total: history.items.length,
+    text: 0,
+    images: 0,
+    files: 0,
+    favorites: 0,
+    pinned: 0,
+  };
+  for (const item of history.items) {
+    if (item.kind === ClipKind.Text) stats.text += 1;
+    if (item.kind === ClipKind.Image) stats.images += 1;
+    if (item.kind === ClipKind.File) stats.files += 1;
+    if (item.isFavorite) stats.favorites += 1;
+    if (item.isPinned) stats.pinned += 1;
+  }
+  return [
+    { key: "total", label: t("history.summaryTotal", "总计"), value: stats.total },
+    { key: "text", label: t("history.summaryText", "文本"), value: stats.text },
+    { key: "images", label: t("history.summaryImages", "图片"), value: stats.images },
+    { key: "favorites", label: t("history.summaryFavorites", "收藏"), value: stats.favorites },
+    { key: "pinned", label: t("history.summaryPinned", "置顶"), value: stats.pinned },
+  ];
+});
+
 watch(
   () => history.searchTerm,
   value => {
@@ -466,6 +491,13 @@ onMounted(async () => {
       </header>
 
       <div class="content-scroll thin-scrollbar">
+        <div class="history-summary">
+          <div v-for="stat in historySummary" :key="stat.key" class="summary-chip">
+            <span class="summary-value">{{ stat.value }}</span>
+            <span class="summary-label">{{ stat.label }}</span>
+          </div>
+        </div>
+
         <section class="card clipboard-card">
           <div class="card-header">
             <div>
@@ -646,6 +678,35 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.history-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.summary-chip {
+  flex: 1 1 120px;
+  min-width: 120px;
+  padding: 12px;
+  border-radius: var(--vibe-radius-md);
+  background: var(--vibe-panel-surface-strong);
+  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 70%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--vibe-text-primary);
+}
+
+.summary-label {
+  font-size: 12px;
+  color: var(--vibe-text-muted);
 }
 
 .card {

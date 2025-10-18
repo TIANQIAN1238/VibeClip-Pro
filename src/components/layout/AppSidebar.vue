@@ -210,10 +210,10 @@ const historyCountLabel = computed(() =>
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  border-radius: var(--vibe-radius-xl);
-  background: var(--vibe-panel-surface);
-  border: 1px solid var(--vibe-panel-border);
-  box-shadow: var(--vibe-shadow-soft);
+  border-radius: calc(var(--vibe-radius-xl) - 6px);
+  background: color-mix(in srgb, var(--vibe-panel-surface) 92%, rgba(255, 255, 255, 0.12));
+  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 45%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -282,7 +282,7 @@ const historyCountLabel = computed(() =>
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  background: var(--vibe-control-bg);
+  background: color-mix(in srgb, var(--vibe-control-bg) 95%, rgba(255, 255, 255, 0.05));
   color: var(--vibe-text-secondary);
   cursor: pointer;
   position: relative;
@@ -291,9 +291,9 @@ const historyCountLabel = computed(() =>
   isolation: isolate;
   transition:
     transform 180ms var(--vibe-transition),
-    box-shadow 220ms var(--vibe-transition),
     color 160ms ease,
-    background 200ms ease;
+    background 200ms ease,
+    box-shadow 220ms var(--vibe-transition);
   -webkit-app-region: no-drag;
 }
 
@@ -312,8 +312,8 @@ const historyCountLabel = computed(() =>
 }
 
 .nav-item:hover {
-  background: var(--vibe-control-hover);
-  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--vibe-control-hover) 90%, rgba(255, 255, 255, 0.06));
+  transform: translateY(-1px);
 }
 
 .nav-item:hover::after,
@@ -325,7 +325,7 @@ const historyCountLabel = computed(() =>
 .nav-item.active {
   background: linear-gradient(135deg, var(--vibe-accent), var(--vibe-accent-strong));
   color: var(--vibe-nav-text-active);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 28px rgba(62, 88, 255, 0.16);
   animation: nav-activate 420ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
@@ -356,21 +356,21 @@ const historyCountLabel = computed(() =>
   justify-content: space-between;
   gap: 12px;
   padding: 12px;
-  border-radius: var(--vibe-radius-lg);
-  background: var(--vibe-panel-surface-strong);
-  border: 1px solid var(--vibe-panel-border);
+  border-radius: calc(var(--vibe-radius-lg) - 2px);
+  background: color-mix(in srgb, var(--vibe-panel-surface-strong) 94%, rgba(255, 255, 255, 0.14));
+  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 42%, transparent);
   -webkit-app-region: no-drag;
   transition:
     transform 200ms var(--vibe-transition),
-    box-shadow 240ms var(--vibe-transition),
-    border-color 180ms ease;
+    border-color 180ms ease,
+    background 200ms ease;
 }
 
 .control-card:hover,
 .control-card:focus-within {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.12);
-  border-color: color-mix(in srgb, var(--vibe-accent) 28%, transparent);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--vibe-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--vibe-panel-surface-strong) 98%, rgba(255, 255, 255, 0.18));
 }
 
 .control-text {
