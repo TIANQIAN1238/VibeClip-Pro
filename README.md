@@ -1,133 +1,160 @@
 # VibeClip Pro
 
-> VibeClip Pro 是一款面向创作者与效率爱好者的跨平台剪贴板控制台，整合本地历史、AI 快捷操作与深色/浅色视觉体系，让“复制 → 处理 → 粘贴”变成一次呼吸间的流程。
+> 跨平台的 AI 增强型剪贴板控制台，让「复制 → 处理 → 粘贴」保持顺畅。VibeClip Pro 基于 Tauri 2 + Vue 3 构建，提供桌面端级别的体验，并可在离线/在线模式之间自由切换。
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Built with Tauri](https://img.shields.io/badge/Desktop-Tauri%202-blue.svg)](https://tauri.app)
 [![Vue 3](https://img.shields.io/badge/Web-Vue%203-42b983.svg)](https://vuejs.org)
 
-<div align="center">
-  <svg width="520" height="240" viewBox="0 0 520 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <defs>
-      <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-        <stop stop-color="#f6f8ff" offset="0%"/>
-        <stop stop-color="#e7fbff" offset="55%"/>
-        <stop stop-color="#f1f4ff" offset="100%"/>
-      </linearGradient>
-      <linearGradient id="card" x1="0%" x2="100%" y1="0%" y2="100%">
-        <stop stop-color="#ffffff" stop-opacity="0.92" offset="0%"/>
-        <stop stop-color="#f3f6ff" stop-opacity="0.95" offset="100%"/>
-      </linearGradient>
-    </defs>
-    <rect width="520" height="240" rx="28" fill="url(#bg)"/>
-    <rect x="32" y="36" width="140" height="168" rx="22" fill="#4c6ef5" fill-opacity="0.92"/>
-    <text x="52" y="86" font-family="Inter, sans-serif" font-size="18" fill="#ffffff">VibeClip</text>
-    <text x="52" y="112" font-family="Inter, sans-serif" font-size="12" fill="#d7e0ff">Pro · History</text>
-    <rect x="196" y="48" width="280" height="68" rx="18" fill="url(#card)" stroke="#dfe3ff" stroke-opacity="0.5"/>
-    <text x="218" y="78" font-family="Inter, sans-serif" font-size="14" fill="#1c2340">系统剪贴板 · 文本</text>
-    <text x="218" y="96" font-family="Inter, sans-serif" font-size="11" fill="#6470a3">按一次即可保存到历史</text>
-    <rect x="196" y="136" width="280" height="68" rx="18" fill="url(#card)" stroke="#dfe3ff" stroke-opacity="0.5"/>
-    <text x="218" y="166" font-family="Inter, sans-serif" font-size="14" fill="#1c2340">AI 快捷操作 · 翻译 / 摘要 / JSON 化</text>
-    <text x="218" y="184" font-family="Inter, sans-serif" font-size="11" fill="#6470a3">Ctrl+Shift+V 呼出 · 支持离线模式切换</text>
-  </svg>
-</div>
+## 📑 目录
 
-## 目录
+- [产品概览](#产品概览)
+- [核心特性](#核心特性)
+- [快速体验（面向使用者）](#快速体验面向使用者)
+- [AI 与云服务配置](#ai-与云服务配置)
+- [开发环境搭建](#开发环境搭建)
+- [常用命令速查](#常用命令速查)
+- [项目结构](#项目结构)
+- [发布流程](#发布流程)
+- [常见问题](#常见问题)
+- [许可证与更多资料](#许可证与更多资料)
 
-- [✨ 主要特性](#-主要特性)
-- [🚀 快速开始](#-快速开始)
-- [🖥️ 菜单与界面概览](#️-菜单与界面概览)
-- [🤖 AI 快速处理指南](#-ai-快速处理指南)
-- [🛠️ 开发者常用命令](#️-开发者常用命令)
-- [📦 发布流程（v1.4.2 准备）](#-发布流程v142-准备)
-- [📚 额外资料](#-额外资料)
-- [📄 许可](#-许可)
+## 产品概览
 
-## ✨ 主要特性
+VibeClip Pro 聚焦桌面剪贴板效率，提供实时捕获、历史管理、AI 快捷操作与托盘控制等功能。默认提供 Windows 安装包，并可通过源码构建 macOS/Linux 版本。
 
-- **连续剪贴板捕获**：后台监听器以 250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径，并支持来源黑名单过滤、内容哈希去重。
-- **四大核心页面**：首页总览、实时剪贴板、历史记录与 AI 工具，侧边栏快捷切换，搭配毛玻璃卡片化视觉。
-- **AI 快捷操作**：内置翻译、摘要、润色与 JSON 化能力，支持自定义 Prompt；结果可复制、写回历史或同步到系统剪贴板。
-- **AI 快捷按钮库**：在设置页开启/关闭快捷指令，调整默认语言或 Prompt 模板，并新增自定义动作与说明。
-- **右键快捷菜单**：在历史记录中右键即可复制、收藏、置顶或直接触发 AI 翻译/摘要/润色，让日常操作更顺手。
-- **内联剪贴板编辑器**：在剪贴板卡片直接修改文本并一键写回系统，无需离开应用即可完成调整。
-- **运行偏好自定义**：去重、容量与保留天数、来源黑名单、日志等级、离线模式、开机自启等设置一应俱全。
-- **系统级控制**：默认全局快捷键 `Ctrl+Shift+V` 呼出浮动面板，托盘菜单支持显示/隐藏、暂停监听、切换离线模式。
-- **跨平台桌面应用**：基于 Tauri 2 + Vue 3，Rust 端封装数据库与系统能力，前端调用 `invoke` 即可完成交互。
+最新稳定版：**v2.4.0**（2025-10-18）。
 
-## 🚀 快速开始
+## 核心特性
+
+- **智能剪贴板捕获**：250~400 ms 节流轮询系统剪贴板，自动保存文本、图像（Base64）与文件路径，支持黑名单过滤与内容去重。
+- **四大主界面**：首页总览、实时剪贴板、历史记录与 AI 工具，提供统一的毛玻璃视觉与深浅色主题切换。
+- **AI 快捷操作**：内置翻译、摘要、润色、JSON 化、OCR 等动作，可自定义 Prompt 并将结果写回系统剪贴板或历史记录。
+- **全局右键菜单**（v2.4.0）：剪贴板、历史、AI 工具与设置页面拥有一致的右键体验，自动匹配内容类型。
+- **托盘与快捷键**：默认 `Ctrl+Shift+V` 呼出浮动面板，托盘菜单可暂停监听、切换离线模式与清理历史。
+- **多平台兼容**：Tauri 2 + Rust 后端封装系统能力，前端使用 Vue 3 + TypeScript，提供跨平台桌面构建能力。
+
+## 快速体验（面向使用者）
+
+### 1. 下载与安装
+
+1. 访问 [GitHub Releases](https://github.com/<owner>/VibeClip/releases) 页面下载最新 `VibeClip_2.4.0_x64-setup.exe` 安装包及 `latest.json`。
+2. 双击安装包并按照向导完成安装；首次启动会在系统托盘驻留。
+3. macOS / Linux 用户可从源码构建或使用对应的 `.dmg` / `.AppImage`（如有提供）。
+
+> **系统要求**：Windows 10/11、macOS 13+ 或主流桌面 Linux，需安装 Microsoft Visual C++ 运行库（Windows）或满足 Tauri 运行时依赖。
+
+### 2. 首次运行
+
+1. 启动应用后按 `Ctrl+Shift+V` 呼出主界面，或在托盘菜单选择“打开主界面”。
+2. 在**设置 → AI 服务**中配置 API Base URL 与 API Key（默认使用 FreeAPI 示例端点）。
+3. 开启「连续监听剪贴板」，复制任意文本/图像即可在**剪贴板**页面实时查看并写入历史。
+4. 右键历史条目即可执行 AI 翻译、摘要或 OCR，结果支持保存与复制。
+
+### 3. 快速排查
+
+- 未配置 API Key 时，AI 相关功能会提示跳转设置页。
+- 离线模式下禁止调用云端接口，可在托盘菜单关闭离线模式。
+- 运行日志可在设置页开启并查看 `logs/` 目录输出。
+
+## AI 与云服务配置
+
+1. 打开 **设置 → AI 服务**。
+2. 填写兼容 OpenAI 的 `API Base URL`（默认为 `https://api.freekey.site`）与 `API Key`。
+3. 为每个快捷操作选择模型（默认 `gemini-2.5-flash`）与语言，或自定义 Prompt 模板，支持使用 `{{clipboard}}` 占位符。
+4. 在剪贴板或历史记录右键图片可触发 OCR；文本内容可执行翻译、摘要、润色、JSON 化等操作。
+
+## 开发环境搭建
+
+| 依赖 | 最低版本 | 说明 |
+| --- | --- | --- |
+| Node.js | 18.x LTS | 建议配合 [corepack](https://nodejs.org/api/corepack.html) 启用 `pnpm` |
+| pnpm | 8.x | `corepack enable pnpm` 或手动安装 |
+| Rust / Cargo | 1.72+ | 构建 Tauri 后端；macOS/Linux 需安装系统依赖（`libgtk-3`、`webkit2gtk` 等） |
+| Tauri CLI | 2.x | `cargo install tauri-cli --version ^2` |
 
 ```bash
-pnpm install                # 安装依赖
-pnpm dev                    # 启动 Vite 开发服务器
-pnpm tauri dev              # 启动桌面端调试（会同时跑前端）
+# 克隆仓库
+git clone https://github.com/<owner>/VibeClip.git
+cd VibeClip
+
+# 安装依赖
+pnpm install
+
+# 启动 Web 端开发服务器（http://localhost:5173）
+pnpm dev
+
+# 启动 Tauri 桌面调试（会自动启动 Web 端）
+pnpm tauri dev
 ```
 
-> **提示**：项目使用 `pnpm` 进行包管理，如需生成锁文件请执行 `pnpm install`。Windows 用户可直接运行 `pnpm i && pnpm tauri dev` 完成安装与桌面调试。
+> Windows 用户可使用 `pnpm i && pnpm tauri dev` 一次性安装并启动桌面调试。
 
-## 🖥️ 菜单与界面概览
-
-| 菜单 | 说明 |
-| --- | --- |
-| **首页** | 欢迎横幅、系统状态和最近历史的概览，提供入口快速跳转到四大功能。 |
-| **剪贴板** | 实时展示最新捕获内容，可一键保存、置顶、收藏或执行 AI 快捷操作。 |
-| **历史记录** | 支持类型筛选、关键字搜索、分页加载，文本/图像/文件均有对应操作与预览。 |
-| **AI 工具** | 集成输入区、AI 快捷操作卡片与输出结果区，支持复制、保存与粘贴回系统。 |
-| **设置** | 覆盖主题、快捷键、AI 接口配置、运行参数、导入导出等项目级偏好。 |
-
-界面遵循统一的渐变与毛玻璃风格，卡片圆角、阴影与留白在 4 个页面之间保持一致，可在深浅色主题间自动切换。
-
-## 🤖 AI 快速处理指南
-
-1. 在 **设置** 菜单配置 OpenAI 兼容的 `API Base URL` 与 `API Key`，默认已内置 [FreeAPI](https://api.freekey.site) 端点与 `gemini-2.5-flash` 模型，可直接替换为自己的 Key。
-2. 返回 **AI 工具** 页面，在输入区粘贴文本或使用“粘贴剪贴板”按钮快速导入当前剪贴板内容。
-3. 在右侧 **AI 快捷操作** 卡片选择动作（翻译、摘要、润色、JSON、自定义）与目标语言/Prompt。
-4. 点击“执行”后，结果会显示在输出区域，并可一键复制或保存到历史列表。
-5. 若未配置 API Key，系统会引导跳转到设置页；离线模式下会阻止调用并给出提示。
-
-以上逻辑已在 v1.4.2 版本中完成校验，替换为您的 API Key 便可体验 AI 功能与右键快捷动作。
-
-## 🛠️ 开发者常用命令
+## 常用命令速查
 
 | 场景 | 命令 |
 | --- | --- |
-| 安装依赖 | `pnpm install` |
-| 前端热更新 | `pnpm dev` |
-| 桌面调试 | `pnpm tauri dev` |
-| 类型检查 | `pnpm lint` |
-| 生产构建 | `pnpm build` |
+| 类型检查与 Lint | `pnpm lint` |
+| 单独构建前端 | `pnpm build` |
+| 构建桌面安装包 | `pnpm tauri build` |
+| Rust 端检查 | `cargo check`、`cargo fmt` |
 
-Rust 端命令位于 `src-tauri/`，例如 `cargo check`、`cargo fmt` 等；数据库、托盘、剪贴板等系统能力均封装在 `src-tauri/src` 内的模块中。
+构建产物：
+- 前端静态资源输出至 `dist/`，适合 Web 预览或嵌入桌面端。
+- 桌面安装包位于 `src-tauri/target/release/bundle/`，包含 `.exe`、`.msi`、`.dmg`、`.AppImage` 等平台文件（视构建目标而定）。
 
-## 📦 发布流程（v2.2.1 准备）
+## 项目结构
 
-1. 核对版本号（已同步 `package.json`、Tauri 配置、`Cargo.toml`/`Cargo.lock` 与 `AppInfo.ts` 至 **2.2.1**）。
-2. 构建产物：
+```
+VibeClip/
+├── src/                # Vue 3 前端代码（页面、组件、stores、composables）
+├── src-tauri/          # Rust 后端：剪贴板监听、数据库、AI 调用、托盘等
+├── public/             # 静态资源与图标
+├── docs/               # 额外文档（如 PasteMe 对标分析）
+├── package.json        # 前端依赖与脚本
+├── tauri.conf.json     # Tauri 桌面配置
+└── README.md           # 当前文档
+```
+
+更多资料：
+- [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)：追踪与竞品功能差异。
+- `src-tauri/src/`：后端模块，包括数据库访问、AI 客户端、剪贴板桥接等实现。
+
+## 发布流程
+
+以下步骤以 **v2.4.0** 为例：
+
+1. **版本同步**
+   - 更新 `package.json`、`tauri.conf.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src/AppInfo.ts` 等版本号。
+   - 提交并打上标签：
+     ```bash
+     git checkout -b release/v2.4.0
+     git push -u origin release/v2.4.0
+     git tag -a v2.4.0 -m "VibeClip Pro v2.4.0"
+     git push origin v2.4.0
+     ```
+
+2. **构建产物**
    ```bash
    pnpm build
    pnpm tauri build
    ```
-   - `pnpm build` 产出的前端静态资源位于 `dist/`，供调试浮窗或 Web 预览使用。
-   - `pnpm tauri build` 会在 `src-tauri/target/release/bundle/` 下生成安装包与签名，需要宿主机已安装 `glib-2.0` 等系统依赖。
-3. 创建发布分支与标签：
-   ```bash
-   git checkout -b release/v2.2.1
-   git push -u origin release/v2.2.1
-   git tag -a v2.2.1 -m "VibeClip Pro v2.2.1"
-   git push origin v2.2.1
-   ```
-4. 在 GitHub Release 页面撰写更新摘要（建议突出 AI 快捷按钮库、剪贴板即时编辑、历史统计卡片与托盘新增指令等要点），并上传与 PasteMe 一致的资产：
-   - `latest.json`
-   - Windows 安装包 `VibeClip_2.2.1_x64-setup.exe` 与对应 `.sig`
-   - Windows MSI 包 `VibeClip_2.2.1_x64.msi` 与对应 `.sig`
-   - `Source code (zip)`、`Source code (tar.gz)`
-   如需 macOS / Linux 安装包，可在本地增加 `--target` 参数构建后同步上传。
+   - `pnpm build`：生成 Web 静态资源到 `dist/`。
+   - `pnpm tauri build`：在 `src-tauri/target/release/bundle/` 生成安装包与签名文件。
 
-## 📚 额外资料
+3. **发布资产**
+   - 上传 `latest.json`、Windows 安装包（`.exe`、`.msi` 及 `.sig`）。
+   - 若提供 macOS/Linux 版本，请附带 `.dmg`、`.AppImage`、`.deb` 等文件及签名。
+   - 在 GitHub Release 页面撰写摘要，突出 OCR、全局右键菜单等亮点。
 
-- [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)：追踪与 PasteMe 功能差异的对照表。
+## 常见问题
 
-## 📄 许可
+- **AI 调用失败**：确认 API Key 正确、未处于离线模式，并检查网络代理配置。
+- **剪贴板未捕获内容**：检查系统权限（macOS 需在隐私设置授权），或确认监听未被暂停。
+- **构建失败**：确保 Rust 工具链版本满足要求，并安装 Tauri 所需系统依赖。
+
+## 许可证与更多资料
 
 - 代码遵循 [MIT License](LICENSE)。
-- 集成的第三方服务（如 OpenAI 或兼容接口）请遵守各自的使用条款。
+- 请遵守所集成的第三方服务（如 OpenAI 或兼容接口）的使用条款。
+- 隐私与数据处理说明见 [PRIVACY.md](PRIVACY.md)。
