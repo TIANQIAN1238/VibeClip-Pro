@@ -42,6 +42,7 @@ interface PersistedSettings {
   autoLaunch: boolean;
   preferredLanguage: string;
   uiLanguage: "zh-CN" | "en-US";
+  hasCompletedOnboarding: boolean;
   historyLimit: number;
   historyRetentionDays: number | null;
   dedupeEnabled: boolean;
@@ -98,6 +99,7 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   autoLaunch: false,
   preferredLanguage: "zh-CN",
   uiLanguage: "zh-CN",
+  hasCompletedOnboarding: false,
   historyLimit: 500,
   historyRetentionDays: null,
   dedupeEnabled: true,
@@ -132,6 +134,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const hydrated = ref(false);
   const lastError = ref<string | null>(null);
   const isDarkPreferred = ref(false);
+  const onboardingVisible = ref(false);
   let persistTimer: number | null = null;
   const stateRefs = toRefs(state);
   const LOAD_TIMEOUT = 3000;
@@ -528,6 +531,36 @@ export const useSettingsStore = defineStore("settings", () => {
     })();
   }
 
+  watch(
+    () => hydrated.value,
+    value => {
+      if (value && !stateRefs.hasCompletedOnboarding.value) {
+        onboardingVisible.value = true;
+      }
+    },
+    { immediate: true }
+  );
+
+  function openOnboarding() {
+    onboardingVisible.value = true;
+  }
+
+  function remindOnboardingLater() {
+    onboardingVisible.value = false;
+  }
+
+  function completeOnboarding() {
+    stateRefs.hasCompletedOnboarding.value = true;
+    onboardingVisible.value = false;
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
+  function skipOnboarding() {
+    completeOnboarding();
+  }
+
   function setOfflineLocal(value: boolean) {
     stateRefs.offlineMode.value = value;
   }
@@ -597,6 +630,7 @@ export const useSettingsStore = defineStore("settings", () => {
     initialized,
     hydrated,
     lastError,
+    onboardingVisible,
     bootstrap,
     schedulePersist,
     setOfflineLocal,
@@ -604,5 +638,9 @@ export const useSettingsStore = defineStore("settings", () => {
     pushRuntimePreferences,
     setThemePreset,
     updateCustomTheme,
+    openOnboarding,
+    remindOnboardingLater,
+    completeOnboarding,
+    skipOnboarding,
   };
 });

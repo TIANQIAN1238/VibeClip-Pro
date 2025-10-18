@@ -6,6 +6,7 @@ import { useSettingsStore } from "./store/settings";
 import AppEventBridge from "@/components/system/AppEventBridge.vue";
 import AppWindowBar from "@/components/layout/AppWindowBar.vue";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
+import AppOnboarding from "@/components/onboarding/AppOnboarding.vue";
 import { scheduleWarmRoutes } from "@/utils/routePrefetch";
 
 const settings = useSettingsStore();
@@ -59,6 +60,12 @@ const naiveDateLocale = computed(() =>
                   </RouterView>
                 </div>
               </div>
+              <AppOnboarding
+                :visible="settings.onboardingVisible"
+                @complete="settings.completeOnboarding()"
+                @skip="settings.skipOnboarding()"
+                @remind="settings.remindOnboardingLater()"
+              />
             </div>
           </AppEventBridge>
         </n-message-provider>
