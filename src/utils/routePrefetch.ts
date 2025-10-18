@@ -3,7 +3,6 @@ const routeLoaders = {
   "/history": () => import("@/pages/History.vue"),
   "/ai": () => import("@/pages/AiTools.vue"),
   "/settings": () => import("@/pages/Settings.vue"),
-  "/panel": () => import("@/pages/Panel.vue"),
 } as const;
 
 export type RoutePrefetchKey = keyof typeof routeLoaders;

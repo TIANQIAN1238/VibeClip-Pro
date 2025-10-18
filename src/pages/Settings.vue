@@ -5,18 +5,29 @@ import {
   type ThemePreset,
   type CustomThemePalette,
   type QuickActionConfig,
+  AI_PROVIDER_PRESETS,
 } from "@/store/settings";
 import { useHistoryStore } from "@/store/history";
 import { useMessage } from "naive-ui";
 import AppInfo from "@/AppInfo";
 import { safeInvoke, isTauriRuntime } from "@/libs/tauri";
 import { useLocale } from "@/composables/useLocale";
+import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
+import GlobalContextMenu from "@/components/system/GlobalContextMenu.vue";
 import type { AiActionKind } from "@/types/history";
+import MdiContentCopy from "~icons/mdi/content-copy";
+import MdiDeleteOutline from "~icons/mdi/delete-outline";
+import MdiArrowUp from "~icons/mdi/arrow-up";
+import MdiArrowDown from "~icons/mdi/arrow-down";
+import MdiPlus from "~icons/mdi/plus";
+import MdiCheckCircle from "~icons/mdi/check-circle";
+import MdiCircleOutline from "~icons/mdi/circle-outline";
 
 const settings = useSettingsStore();
 const history = useHistoryStore();
 const message = useMessage();
 const { t, languageOptions, format } = useLocale();
+const contextMenu = useContextMenu();
 
 const pageError = ref<string | null>(null);
 const isInitializing = ref(false);
@@ -150,12 +161,51 @@ async function clearHistory() {
   }
 }
 
-function resetAiSettings() {
-  settings.apiKey = "";
-  settings.apiBaseUrl = "https://api.freekey.site";
-  settings.model = "gemini-2.5-flash";
-  settings.temperature = 0.3;
-  message.success("AI 配置已重置");
+const showAddProviderDialog = ref(false);
+const selectedPreset = ref<'openai' | 'gemini' | 'claude' | 'custom'>('openai');
+
+const presetOptions = [
+  { value: 'openai' as const, label: AI_PROVIDER_PRESETS.openai.name },
+  { value: 'gemini' as const, label: AI_PROVIDER_PRESETS.gemini.name },
+  { value: 'claude' as const, label: AI_PROVIDER_PRESETS.claude.name },
+  { value: 'custom' as const, label: '自定义服务商' },
+];
+
+function openAddProviderDialog() {
+  selectedPreset.value = 'openai';
+  showAddProviderDialog.value = true;
+}
+
+function handleAddProvider() {
+  const newProvider = settings.addAIProvider(selectedPreset.value);
+  showAddProviderDialog.value = false;
+  message.success(`已添加 ${newProvider.name}`);
+}
+
+function handleRemoveProvider(id: string) {
+  const provider = settings.aiProviders.find(p => p.id === id);
+  if (!provider) return;
+  if (settings.aiProviders.length === 1) {
+    message.error("至少需要保留一个服务商");
+    return;
+  }
+  settings.removeAIProvider(id);
+  message.success(`已删除 ${provider.name}`);
+}
+
+function handleToggleProvider(id: string) {
+  const provider = settings.aiProviders.find(p => p.id === id);
+  if (!provider) return;
+  settings.updateAIProvider(id, { enabled: !provider.enabled });
+  message.success(provider.enabled ? `已禁用 ${provider.name}` : `已启用 ${provider.name}`);
+}
+
+function handleSetActiveProvider(id: string) {
+  settings.setActiveProvider(id);
+  const provider = settings.aiProviders.find(p => p.id === id);
+  if (provider) {
+    message.success(`已切换到 ${provider.name}`);
+  }
 }
 
 function updateQuickAction(id: string, patch: Partial<QuickActionConfig>) {
@@ -231,6 +281,81 @@ function removeQuickAction(id: string) {
 function resetQuickActions() {
   settings.resetQuickActions();
   message.success(t("settings.quickActionsResetSuccess", "已恢复默认快捷指令"));
+}
+
+function getQuickActionContextMenuItems(_action: QuickActionConfig, index: number): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [
+    { key: "copy", label: t("contextMenu.copy", "复制配置"), icon: MdiContentCopy },
+  ];
+  
+  if (index > 0) {
+    items.push({ key: "move-up", label: "上移", icon: MdiArrowUp });
+  }
+  
+  if (index < settings.quickActions.length - 1) {
+    items.push({ key: "move-down", label: "下移", icon: MdiArrowDown });
+  }
+  
+  items.push(
+    { key: "divider-1", label: "", divider: true },
+    { 
+      key: "delete", 
+      label: t("settings.quickActionsRemove", "删除"), 
+      icon: MdiDeleteOutline, 
+      danger: true,
+      disabled: settings.quickActions.length <= 1
+    }
+  );
+  
+  return items;
+}
+
+function handleQuickActionContextMenu(event: MouseEvent, action: QuickActionConfig, index: number) {
+  const items = getQuickActionContextMenuItems(action, index);
+  contextMenu.showContextMenu(event, items, {
+    type: "quick-action",
+    data: { action, index },
+    position: { x: event.clientX, y: event.clientY },
+  });
+}
+
+async function handleContextMenuSelect(key: string) {
+  const ctx = contextMenu.state.context;
+  contextMenu.closeContextMenu();
+  
+  if (!ctx || ctx.type !== "quick-action") return;
+  
+  const { action, index } = ctx.data;
+  
+  switch (key) {
+    case "copy": {
+      const copy = {
+        ...action,
+        id: `custom-${Date.now().toString(36)}`,
+        label: `${action.label} (副本)`,
+      };
+      settings.upsertQuickAction(copy);
+      message.success("已复制快捷指令");
+      break;
+    }
+    case "move-up":
+      if (index > 0) {
+        const actions = [...settings.quickActions];
+        [actions[index - 1], actions[index]] = [actions[index], actions[index - 1]];
+        settings.quickActions = actions;
+      }
+      break;
+    case "move-down":
+      if (index < settings.quickActions.length - 1) {
+        const actions = [...settings.quickActions];
+        [actions[index], actions[index + 1]] = [actions[index + 1], actions[index]];
+        settings.quickActions = actions;
+      }
+      break;
+    case "delete":
+      removeQuickAction(action.id);
+      break;
+  }
 }
 
 async function runVacuum() {
@@ -465,31 +590,124 @@ onErrorCaptured((err, _instance, info) => {
           </section>
 
           <section class="card">
-            <h2>{{ t("settings.ai", "AI 服务") }}</h2>
-            <div class="field-row">
-              <label>{{ t("settings.apiBase", "接口地址") }}</label>
-              <n-input v-model:value="settings.apiBaseUrl" placeholder="https://" />
+            <div class="section-header">
+              <h2>{{ t("settings.ai", "AI 服务商") }}</h2>
+              <n-button size="tiny" type="primary" @click="openAddProviderDialog">
+                <template #icon>
+                  <n-icon :component="MdiPlus" />
+                </template>
+                添加服务商
+              </n-button>
             </div>
-            <div class="field-row">
-              <label>{{ t("settings.apiKey", "API Key") }}</label>
-              <n-input v-model:value="settings.apiKey" type="password" show-password-on="click" />
+
+            <div class="providers-list">
+              <div
+                v-for="provider in settings.aiProviders"
+                :key="provider.id"
+                class="provider-card"
+                :class="{ active: settings.activeProviderId === provider.id, disabled: !provider.enabled }"
+              >
+                <div class="provider-header">
+                  <div class="provider-info">
+                    <n-icon
+                      :component="settings.activeProviderId === provider.id ? MdiCheckCircle : MdiCircleOutline"
+                      size="20"
+                      :class="{ 'active-icon': settings.activeProviderId === provider.id }"
+                      @click="handleSetActiveProvider(provider.id)"
+                      style="cursor: pointer;"
+                    />
+                    <span class="provider-name">{{ provider.name }}</span>
+                    <n-tag v-if="provider.preset" size="tiny" type="info">{{ provider.preset }}</n-tag>
+                  </div>
+                  <div class="provider-actions">
+                    <n-button
+                      size="tiny"
+                      quaternary
+                      :type="provider.enabled ? 'default' : 'success'"
+                      @click="handleToggleProvider(provider.id)"
+                    >
+                      {{ provider.enabled ? '禁用' : '启用' }}
+                    </n-button>
+                    <n-button
+                      size="tiny"
+                      quaternary
+                      type="error"
+                      @click="handleRemoveProvider(provider.id)"
+                    >
+                      删除
+                    </n-button>
+                  </div>
+                </div>
+
+                <div class="provider-fields">
+                  <div class="field-row">
+                    <label>{{ t("settings.apiBase", "接口地址") }}</label>
+                    <n-input
+                      :value="provider.baseUrl"
+                      @update:value="(val: string) => settings.updateAIProvider(provider.id, { baseUrl: val })"
+                      placeholder="https://"
+                      size="small"
+                    />
+                  </div>
+                  <div class="field-row">
+                    <label>{{ t("settings.apiKey", "API Key") }}</label>
+                    <n-input
+                      :value="provider.apiKey"
+                      @update:value="(val: string) => settings.updateAIProvider(provider.id, { apiKey: val })"
+                      type="password"
+                      show-password-on="click"
+                      size="small"
+                    />
+                  </div>
+                  <div class="field-row">
+                    <label>{{ t("settings.model", "模型") }}</label>
+                    <n-input
+                      :value="provider.model"
+                      @update:value="(val: string) => settings.updateAIProvider(provider.id, { model: val })"
+                      placeholder="gemini-2.5-flash"
+                      size="small"
+                    />
+                  </div>
+                  <div class="field-row">
+                    <label>{{ t("settings.temperature", "温度") }}</label>
+                    <n-slider
+                      :value="provider.temperature"
+                      @update:value="(val: number) => settings.updateAIProvider(provider.id, { temperature: val })"
+                      :step="0.1"
+                      :min="0"
+                      :max="1"
+                      style="flex: 1;"
+                    />
+                    <span class="field-value">{{ provider.temperature.toFixed(1) }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="field-row">
-              <label>{{ t("settings.model", "模型") }}</label>
-              <n-input v-model:value="settings.model" placeholder="gemini-2.5-flash" />
-            </div>
-            <div class="field-row">
-              <label>{{ t("settings.temperature", "温度") }}</label>
-              <n-slider v-model:value="settings.temperature" :step="0.1" :min="0" :max="1" />
-            </div>
-            <n-button size="tiny" tertiary @click="resetAiSettings">{{ t("settings.resetAi", "重置 AI 配置") }}</n-button>
           </section>
+
+          <n-modal v-model:show="showAddProviderDialog" preset="dialog" title="添加 AI 服务商">
+            <div class="field-column" style="gap: 16px;">
+              <div class="field-row">
+                <label>选择预设</label>
+                <n-select v-model:value="selectedPreset" :options="presetOptions" />
+              </div>
+            </div>
+            <template #action>
+              <n-button @click="showAddProviderDialog = false">取消</n-button>
+              <n-button type="primary" @click="handleAddProvider">添加</n-button>
+            </template>
+          </n-modal>
 
           <section class="card">
             <h2>{{ t("settings.quickActions", "AI 快捷按钮") }}</h2>
             <p class="muted">{{ t("settings.quickActionsHint", "自定义列表、语言与 Prompt，让浮窗与面板更贴合使用习惯") }}</p>
             <div class="quick-actions-list">
-              <article v-for="action in settings.quickActions" :key="action.id" class="quick-action-item">
+              <article 
+                v-for="(action, index) in settings.quickActions" 
+                :key="action.id" 
+                class="quick-action-item"
+                @contextmenu="handleQuickActionContextMenu($event, action, index)"
+              >
                 <div class="quick-action-header">
                   <n-switch
                     :value="action.enabled !== false"
@@ -597,6 +815,16 @@ onErrorCaptured((err, _instance, info) => {
         </div>
       </template>
     </section>
+
+    <GlobalContextMenu
+      :show="contextMenu.state.show"
+      :x="contextMenu.state.renderX"
+      :y="contextMenu.state.renderY"
+      :items="contextMenu.state.items"
+      :ref="contextMenu.menuRef"
+      @select="handleContextMenuSelect"
+      @close="contextMenu.closeContextMenu"
+    />
   </div>
 </template>
 
@@ -611,6 +839,7 @@ onErrorCaptured((err, _instance, info) => {
 
 .main {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -677,12 +906,84 @@ onErrorCaptured((err, _instance, info) => {
   gap: 8px;
 }
 
-.content-scroll {
-  flex: 1;
-  overflow-y: auto;
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.providers-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.provider-card {
+  border-radius: 12px;
+  background: rgba(var(--vibe-accent-rgb), 0.05);
+  border: 1px solid rgba(var(--vibe-accent-rgb), 0.15);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.provider-card.active {
+  background: rgba(var(--vibe-accent-rgb), 0.12);
+  border-color: var(--vibe-accent);
+}
+
+.provider-card.disabled {
+  opacity: 0.5;
+}
+
+.provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.provider-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.provider-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.active-icon {
+  color: var(--vibe-accent);
+}
+
+.provider-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.provider-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--vibe-panel-border);
+}
+
+.content-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
 }
 
 .card {
@@ -690,10 +991,10 @@ onErrorCaptured((err, _instance, info) => {
   background: var(--vibe-panel-surface);
   border: 1px solid var(--vibe-panel-border);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .card h2 {
@@ -704,12 +1005,12 @@ onErrorCaptured((err, _instance, info) => {
 .field-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .field-row label {
-  width: 110px;
-  font-size: 13px;
+  width: 100px;
+  font-size: 12px;
   color: var(--vibe-text-muted);
 }
 
@@ -722,7 +1023,7 @@ onErrorCaptured((err, _instance, info) => {
 .field-column {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .switch-row {
@@ -745,10 +1046,10 @@ onErrorCaptured((err, _instance, info) => {
 }
 
 .preset-grid {
-  margin-top: 8px;
+  margin-top: 6px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .custom-theme-grid {
@@ -769,12 +1070,13 @@ onErrorCaptured((err, _instance, info) => {
 
 .preset-chip {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   border: 1px solid var(--vibe-panel-border);
   background: var(--vibe-panel-surface);
   border-radius: var(--vibe-radius-md);
-  padding: 10px 12px;
+  padding: 8px;
   cursor: pointer;
   transition: border 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -787,10 +1089,12 @@ onErrorCaptured((err, _instance, info) => {
 
 .preset-chip span:last-child {
   font-weight: 600;
+  font-size: 11px;
+  text-align: center;
 }
 
 .preset-swatch {
-  width: 32px;
+  width: 100%;
   height: 24px;
   border-radius: var(--vibe-radius-sm);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);

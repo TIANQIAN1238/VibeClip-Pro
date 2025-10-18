@@ -208,8 +208,8 @@ const historyCountLabel = computed(() =>
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px;
   border-radius: calc(var(--vibe-radius-xl) - 6px);
   background: color-mix(in srgb, var(--vibe-panel-surface) 92%, rgba(255, 255, 255, 0.12));
   border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 45%, transparent);
@@ -225,17 +225,17 @@ const historyCountLabel = computed(() =>
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .brand-mark {
-  width: 44px;
-  height: 44px;
-  border-radius: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 22px;
+  font-size: 16px;
   color: #fff;
   background: linear-gradient(135deg, var(--vibe-accent), var(--vibe-accent-strong));
   -webkit-app-region: no-drag;
@@ -250,20 +250,20 @@ const historyCountLabel = computed(() =>
 
 .brand-meta h1 {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .brand-tag {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--vibe-text-muted);
 }
 
 .version-chip {
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: var(--vibe-control-bg);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--vibe-text-secondary);
   -webkit-app-region: no-drag;
 }
@@ -271,17 +271,17 @@ const historyCountLabel = computed(() =>
 .nav {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .nav-item {
   border: none;
-  border-radius: var(--vibe-radius-lg);
-  padding: 10px;
+  border-radius: var(--vibe-radius-md);
+  padding: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   background: color-mix(in srgb, var(--vibe-control-bg) 95%, rgba(255, 255, 255, 0.05));
   color: var(--vibe-text-secondary);
   cursor: pointer;
@@ -340,22 +340,22 @@ const historyCountLabel = computed(() =>
 }
 
 .nav-item span {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .control-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .control-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px;
   border-radius: calc(var(--vibe-radius-lg) - 2px);
   background: color-mix(in srgb, var(--vibe-panel-surface-strong) 94%, rgba(255, 255, 255, 0.14));
   border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 42%, transparent);
@@ -389,7 +389,7 @@ const historyCountLabel = computed(() =>
 
 .control-name {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 11px;
   color: var(--vibe-text-primary);
 }
 
@@ -408,16 +408,16 @@ const historyCountLabel = computed(() =>
 
 .control-text p {
   margin: 0;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--vibe-text-muted);
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--vibe-text-secondary);
 }
 

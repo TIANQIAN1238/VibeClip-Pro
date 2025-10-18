@@ -25,9 +25,4 @@ export const routes: RouteRecordRaw[] = [
     name: "settings",
     component: () => import("../pages/Settings.vue"),
   },
-  {
-    path: "/panel",
-    name: "panel",
-    component: () => import("../pages/Panel.vue"),
-  },
 ];

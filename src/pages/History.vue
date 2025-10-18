@@ -22,6 +22,7 @@ import MdiFeather from "~icons/mdi/feather";
 import MdiShareVariant from "~icons/mdi/share-variant";
 import MdiOpenInNew from "~icons/mdi/open-in-new";
 import MdiDeleteOutline from "~icons/mdi/delete-outline";
+import MdiTextRecognition from "~icons/mdi/text-recognition";
 
 const history = useHistoryStore();
 const settings = useSettingsStore();
@@ -75,6 +76,7 @@ const contextOptions = computed(() => {
   }[];
   const features = extractFeaturesFromClip(item);
   const isText = item.kind === ClipKind.Text;
+  const isImage = item.kind === ClipKind.Image;
   const items: { key: string; label: string; icon: any; danger?: boolean }[] = [
     { key: "copy", label: t("contextMenu.copy", "复制"), icon: MdiContentCopy },
     {
@@ -111,6 +113,13 @@ const contextOptions = computed(() => {
         icon: MdiShareVariant,
       },
     );
+  }
+  if (isImage) {
+    items.push({
+      key: "ocr",
+      label: t("contextMenu.ocr", "AI OCR 提取文字"),
+      icon: MdiTextRecognition,
+    });
   }
   if (isText && features.has("url")) {
     items.push({ key: "open", label: t("contextMenu.open", "打开链接"), icon: MdiOpenInNew });
@@ -189,9 +198,11 @@ function reportError(label: string, error: unknown) {
 async function syncSystemClipboard() {
   try {
     capturing.value = true;
-    clipboardPreview.value = await readText();
+    const text = await readText();
+    clipboardPreview.value = text || "";
   } catch (error) {
-    reportError(t("clipboard.refresh", "刷新剪贴板"), error);
+    clipboardPreview.value = "";
+    console.log("剪贴板当前为空或不包含文本");
   } finally {
     capturing.value = false;
   }
@@ -360,6 +371,11 @@ async function handleContextSelect(key: string) {
     case "polish":
       await openAiDialog(key as AiActionKind, target);
       break;
+    case "ocr":
+      if (target.kind === ClipKind.Image) {
+        await openAiDialog("custom", target);
+      }
+      break;
     case "share":
       await shareClip(target);
       break;
@@ -390,11 +406,22 @@ async function openAiDialog(action: AiActionKind, item: ClipItem) {
   aiDialog.source = item;
   aiDialog.result = "";
   try {
+    let customPrompt: string | undefined;
+    let input = item.content;
+    
+    // 特殊处理图片OCR
+    if (action === "custom" && item.kind === ClipKind.Image) {
+      const base64Data = item.content;
+      input = `data:image/png;base64,${base64Data}`;
+      customPrompt = `You are VibeClip Pro Vision OCR. Extract all text from the following base64 encoded PNG image and respond in ${settings.preferredLanguage}. Return only the extracted text without any additional commentary.`;
+    }
+    
     const response = await history.runAiAction(
       {
         action,
-        input: item.content,
+        input,
         language: settings.preferredLanguage,
+        customPrompt,
         apiKey: settings.apiKey,
         baseUrl: settings.apiBaseUrl,
         model: settings.model,
@@ -682,31 +709,36 @@ onMounted(async () => {
 
 .history-summary {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 8px;
+  padding-bottom: 4px;
 }
 
 .summary-chip {
-  flex: 1 1 120px;
-  min-width: 120px;
-  padding: 12px;
+  flex: 0 0 auto;
+  min-width: 90px;
+  padding: 8px 10px;
   border-radius: var(--vibe-radius-md);
   background: var(--vibe-panel-surface-strong);
   border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 70%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  align-items: center;
+  text-align: center;
 }
 
 .summary-value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--vibe-text-primary);
 }
 
 .summary-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--vibe-text-muted);
+  white-space: nowrap;
 }
 
 .card {
@@ -732,10 +764,10 @@ onMounted(async () => {
 }
 
 .card-body {
-  max-height: 150px;
+  max-height: 100px;
   overflow-y: auto;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -751,21 +783,24 @@ onMounted(async () => {
 }
 
 .filter-tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  display: flex;
+  overflow-x: auto;
   gap: 6px;
+  padding-bottom: 4px;
 }
 
 .filter-tab {
   border: none;
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   background: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   color: var(--vibe-text-primary);
   transition: background 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .filter-tab:hover {

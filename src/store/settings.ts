@@ -20,6 +20,17 @@ export interface QuickActionConfig {
   allowCustomPrompt?: boolean;
 }
 
+export interface AIProviderConfig {
+  id: string;
+  name: string;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  temperature: number;
+  enabled: boolean;
+  preset?: 'openai' | 'gemini' | 'claude' | 'custom';
+}
+
 export type ThemePreset =
   | "aurora"
   | "sunset"
@@ -62,6 +73,8 @@ interface PersistedSettings {
   ignoredSources: string[];
   logLevel: "info" | "debug";
   quickActions: QuickActionConfig[];
+  aiProviders: AIProviderConfig[];
+  activeProviderId: string;
 }
 
 const THEME_PRESET_ACCENTS: Record<Exclude<ThemePreset, "custom">, string> = {
@@ -96,6 +109,40 @@ const THEME_PRESETS = [
 const THEME_PRESET_CLASSES = THEME_PRESETS
   .filter(preset => preset !== "custom")
   .map(preset => `theme-${preset}`);
+
+export const AI_PROVIDER_PRESETS = {
+  openai: {
+    name: 'OpenAI Compatible',
+    baseUrl: 'https://api.freekey.site',
+    model: 'gemini-2.5-flash',
+    temperature: 0.3,
+  },
+  gemini: {
+    name: 'Google Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    model: 'gemini-2.0-flash-exp',
+    temperature: 0.3,
+  },
+  claude: {
+    name: 'Anthropic Claude',
+    baseUrl: 'https://api.anthropic.com/v1',
+    model: 'claude-3-5-sonnet-20241022',
+    temperature: 0.3,
+  },
+} as const;
+
+const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
+  {
+    id: 'default-openai',
+    name: AI_PROVIDER_PRESETS.openai.name,
+    apiKey: '',
+    baseUrl: AI_PROVIDER_PRESETS.openai.baseUrl,
+    model: AI_PROVIDER_PRESETS.openai.model,
+    temperature: AI_PROVIDER_PRESETS.openai.temperature,
+    enabled: true,
+    preset: 'openai',
+  },
+];
 
 const DEFAULT_QUICK_ACTIONS: QuickActionConfig[] = [
   {
@@ -149,6 +196,10 @@ function cloneDefaultQuickActions(): QuickActionConfig[] {
   return DEFAULT_QUICK_ACTIONS.map(action => ({ ...action }));
 }
 
+function cloneDefaultAIProviders(): AIProviderConfig[] {
+  return DEFAULT_AI_PROVIDERS.map(provider => ({ ...provider }));
+}
+
 const DEFAULT_SETTINGS: PersistedSettings = {
   themeMode: "light",
   themePreset: "nebula",
@@ -172,6 +223,8 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   ignoredSources: [],
   logLevel: "info",
   quickActions: cloneDefaultQuickActions(),
+  aiProviders: cloneDefaultAIProviders(),
+  activeProviderId: 'default-openai',
 };
 
 function blend(color: string, target: string, ratio: number) {
@@ -179,15 +232,15 @@ function blend(color: string, target: string, ratio: number) {
   const targetHex = target.replace("#", "");
   const r = Math.round(
     parseInt(hex.substring(0, 2), 16) * (1 - ratio) +
-      parseInt(targetHex.substring(0, 2), 16) * ratio
+    parseInt(targetHex.substring(0, 2), 16) * ratio
   );
   const g = Math.round(
     parseInt(hex.substring(2, 4), 16) * (1 - ratio) +
-      parseInt(targetHex.substring(2, 4), 16) * ratio
+    parseInt(targetHex.substring(2, 4), 16) * ratio
   );
   const b = Math.round(
     parseInt(hex.substring(4, 6), 16) * (1 - ratio) +
-      parseInt(targetHex.substring(4, 6), 16) * ratio
+    parseInt(targetHex.substring(4, 6), 16) * ratio
   );
   return `#${r.toString(16).padStart(2, "0")}${g
     .toString(16)
@@ -225,7 +278,7 @@ export const useSettingsStore = defineStore("settings", () => {
 
   const themeClass = computed(() =>
     stateRefs.themeMode.value === "dark" ||
-    (stateRefs.themeMode.value === "system" && isDarkPreferred.value)
+      (stateRefs.themeMode.value === "system" && isDarkPreferred.value)
       ? "dark"
       : ""
   );
@@ -369,6 +422,18 @@ export const useSettingsStore = defineStore("settings", () => {
           if (!Array.isArray(state.quickActions) || !state.quickActions.length) {
             state.quickActions = cloneDefaultQuickActions();
           }
+          // Migrate to multi-provider system if not present
+          if (!Array.isArray(state.aiProviders) || !state.aiProviders.length) {
+            state.aiProviders = cloneDefaultAIProviders();
+            // Migrate existing settings to default provider
+            if (state.apiKey || state.apiBaseUrl || state.model) {
+              state.aiProviders[0].apiKey = state.apiKey || '';
+              state.aiProviders[0].baseUrl = state.apiBaseUrl || AI_PROVIDER_PRESETS.openai.baseUrl;
+              state.aiProviders[0].model = state.model || AI_PROVIDER_PRESETS.openai.model;
+              state.aiProviders[0].temperature = state.temperature ?? AI_PROVIDER_PRESETS.openai.temperature;
+            }
+            state.activeProviderId = state.aiProviders[0].id;
+          }
         } else {
           Object.assign(state, { ...DEFAULT_SETTINGS });
         }
@@ -384,6 +449,18 @@ export const useSettingsStore = defineStore("settings", () => {
       Object.assign(state, { ...DEFAULT_SETTINGS, ...payload });
       if (!Array.isArray(state.quickActions) || !state.quickActions.length) {
         state.quickActions = cloneDefaultQuickActions();
+      }
+      // Migrate to multi-provider system if not present
+      if (!Array.isArray(state.aiProviders) || !state.aiProviders.length) {
+        state.aiProviders = cloneDefaultAIProviders();
+        // Migrate existing settings to default provider
+        if (state.apiKey || state.apiBaseUrl || state.model) {
+          state.aiProviders[0].apiKey = state.apiKey || '';
+          state.aiProviders[0].baseUrl = state.apiBaseUrl || AI_PROVIDER_PRESETS.openai.baseUrl;
+          state.aiProviders[0].model = state.model || AI_PROVIDER_PRESETS.openai.model;
+          state.aiProviders[0].temperature = state.temperature ?? AI_PROVIDER_PRESETS.openai.temperature;
+        }
+        state.activeProviderId = state.aiProviders[0].id;
       }
     } catch (error) {
       Object.assign(state, { ...DEFAULT_SETTINGS });
@@ -740,6 +817,94 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   }
 
+  const activeProvider = computed(() => {
+    return stateRefs.aiProviders.value.find(
+      (p) => p.id === stateRefs.activeProviderId.value
+    );
+  });
+
+  function addAIProvider(preset?: 'openai' | 'gemini' | 'claude' | 'custom') {
+    const id = `provider-${Date.now()}`;
+    let config: AIProviderConfig;
+
+    if (preset && preset !== 'custom') {
+      const presetConfig = AI_PROVIDER_PRESETS[preset];
+      config = {
+        id,
+        name: presetConfig.name,
+        apiKey: '',
+        baseUrl: presetConfig.baseUrl,
+        model: presetConfig.model,
+        temperature: presetConfig.temperature,
+        enabled: true,
+        preset,
+      };
+    } else {
+      config = {
+        id,
+        name: '自定义服务商',
+        apiKey: '',
+        baseUrl: '',
+        model: '',
+        temperature: 0.3,
+        enabled: true,
+        preset: 'custom',
+      };
+    }
+
+    stateRefs.aiProviders.value.push(config);
+    if (hydrated.value) {
+      schedulePersist();
+    }
+    return config;
+  }
+
+  function updateAIProvider(id: string, patch: Partial<AIProviderConfig>) {
+    const index = stateRefs.aiProviders.value.findIndex((p) => p.id === id);
+    if (index === -1) return;
+    stateRefs.aiProviders.value[index] = {
+      ...stateRefs.aiProviders.value[index],
+      ...patch,
+    };
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
+  function removeAIProvider(id: string) {
+    const index = stateRefs.aiProviders.value.findIndex((p) => p.id === id);
+    if (index === -1) return;
+    stateRefs.aiProviders.value.splice(index, 1);
+
+    // If removed provider was active, switch to first enabled provider
+    if (stateRefs.activeProviderId.value === id) {
+      const firstEnabled = stateRefs.aiProviders.value.find((p) => p.enabled);
+      if (firstEnabled) {
+        stateRefs.activeProviderId.value = firstEnabled.id;
+      }
+    }
+
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
+  function setActiveProvider(id: string) {
+    const provider = stateRefs.aiProviders.value.find((p) => p.id === id);
+    if (!provider || !provider.enabled) return;
+    stateRefs.activeProviderId.value = id;
+
+    // Update legacy settings for backward compatibility
+    stateRefs.apiBaseUrl.value = provider.baseUrl;
+    stateRefs.apiKey.value = provider.apiKey;
+    stateRefs.model.value = provider.model;
+    stateRefs.temperature.value = provider.temperature;
+
+    if (hydrated.value) {
+      schedulePersist();
+    }
+  }
+
   return {
     ...stateRefs,
     themeMode: stateRefs.themeMode,
@@ -768,5 +933,10 @@ export const useSettingsStore = defineStore("settings", () => {
     remindOnboardingLater,
     completeOnboarding,
     skipOnboarding,
+    activeProvider,
+    addAIProvider,
+    updateAIProvider,
+    removeAIProvider,
+    setActiveProvider,
   };
 });
