@@ -169,6 +169,7 @@
     border: none;
     cursor: pointer;
     transition: all var(--modern-transition-fast);
+    -webkit-user-select: none;
     user-select: none;
 }
 
