@@ -34,6 +34,7 @@ struct HistoryExportPayload {
 
 #[tauri::command]
 async fn insert_clip(
+    app: AppHandle,
     status: State<'_, AppStatus>,
     db: State<'_, DbState>,
     config: State<'_, RuntimeConfigState>,
@@ -54,6 +55,10 @@ async fn insert_clip(
     .await
     .map_err(|err| err.to_string())?
     .map_err(|err| err.to_string())?;
+    
+    // Emit event to all windows to sync state
+    let _ = app.emit("clip-inserted", &result);
+    
     Ok(result)
 }
 
@@ -102,6 +107,7 @@ async fn fetch_clips(
 
 #[tauri::command]
 async fn update_clip_flags(
+    app: AppHandle,
     db: State<'_, DbState>,
     id: i64,
     pinned: Option<bool>,
@@ -132,18 +138,27 @@ async fn update_clip_flags(
 
     if result.is_ok() {
         info!("update_clip_flags completed successfully");
+        // Emit event to all windows to sync state
+        let _ = app.emit("clip-updated", serde_json::json!({ "id": id, "pinned": pinned, "favorite": favorite }));
     }
 
     result
 }
 
 #[tauri::command]
-async fn remove_clip(db: State<'_, DbState>, id: i64) -> Result<(), String> {
+async fn remove_clip(app: AppHandle, db: State<'_, DbState>, id: i64) -> Result<(), String> {
     let db_clone = db.clone_for_thread();
-    tauri::async_runtime::spawn_blocking(move || db_clone.delete(id))
+    let result = tauri::async_runtime::spawn_blocking(move || db_clone.delete(id))
         .await
         .map_err(|err| err.to_string())?
-        .map_err(|err| err.to_string())
+        .map_err(|err| err.to_string());
+    
+    if result.is_ok() {
+        // Emit event to all windows to sync state
+        let _ = app.emit("clip-removed", serde_json::json!({ "id": id }));
+    }
+    
+    result
 }
 
 #[tauri::command]

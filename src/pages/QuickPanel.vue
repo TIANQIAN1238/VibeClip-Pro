@@ -5,6 +5,7 @@ import { readText, readImage } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
+import { useWindowSync } from "@/composables/useWindowSync";
 import { safeInvoke } from "@/libs/tauri";
 import MdiClose from "~icons/mdi/close";
 import MdiCog from "~icons/mdi/cog";
@@ -14,6 +15,9 @@ import MdiContentCopy from "~icons/mdi/content-copy";
 const history = useHistoryStore();
 const settings = useSettingsStore();
 const message = useMessage();
+
+// 启用窗口间同步
+useWindowSync();
 
 const currentWindow = getCurrentWebviewWindow();
 const clipboardText = ref("");

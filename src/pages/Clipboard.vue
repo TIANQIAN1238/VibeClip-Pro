@@ -19,6 +19,7 @@ import {
 } from "@/utils/content-inspector";
 import { useLocale } from "@/composables/useLocale";
 import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
+import { useWindowSync } from "@/composables/useWindowSync";
 import type { Image as TauriImage } from "@tauri-apps/api/image";
 import MdiContentCopy from "~icons/mdi/content-copy";
 import MdiContentSave from "~icons/mdi/content-save";
@@ -47,6 +48,9 @@ const bridge = useBridgeStore();
 const message = useMessage();
 const { t, format } = useLocale();
 const contextMenu = useContextMenu();
+
+// 启用窗口间同步
+useWindowSync();
 
 const snapshot = reactive<ClipboardSnapshot>({
   kind: "empty",
