@@ -8,6 +8,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useWindowSync } from "@/composables/useWindowSync";
 import { safeInvoke } from "@/libs/tauri";
 import MdiClose from "~icons/mdi/close";
+import MdiMinus from "~icons/mdi/minus";
 import MdiCog from "~icons/mdi/cog";
 import MdiHistory from "~icons/mdi/history";
 import MdiContentCopy from "~icons/mdi/content-copy";
@@ -116,9 +117,17 @@ function openSettings() {
   safeInvoke("open_settings_window");
 }
 
+async function minimizePanel() {
+  try {
+    await currentWindow.minimize();
+  } catch (error) {
+    console.error("Failed to minimize panel", error);
+  }
+}
+
 async function closePanel() {
   try {
-    await currentWindow.hide();
+    await currentWindow.close();
   } catch (error) {
     console.error("Failed to close panel", error);
   }
@@ -153,9 +162,14 @@ onBeforeUnmount(() => {
     <!-- 标题栏 -->
     <div class="panel-titlebar" data-tauri-drag-region>
       <span class="panel-title">VibeClip</span>
-      <button class="close-btn" type="button" @click="closePanel" aria-label="关闭">
-        <n-icon :component="MdiClose" size="14" />
-      </button>
+      <div class="titlebar-controls">
+        <button class="titlebar-btn minimize-btn" type="button" @click="minimizePanel" aria-label="最小化">
+          <n-icon :component="MdiMinus" size="14" />
+        </button>
+        <button class="titlebar-btn close-btn" type="button" @click="closePanel" aria-label="关闭">
+          <n-icon :component="MdiClose" size="14" />
+        </button>
+      </div>
     </div>
 
     <!-- 内容区 -->
@@ -266,7 +280,13 @@ onBeforeUnmount(() => {
   letter-spacing: 0.5px;
 }
 
-.close-btn {
+.titlebar-controls {
+  display: flex;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
   width: 20px;
   height: 20px;
   border-radius: 4px;
@@ -276,8 +296,16 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   transition: all 0.15s ease;
-  -webkit-app-region: no-drag;
   color: var(--vibe-text-muted);
+}
+
+.titlebar-btn:hover {
+  color: var(--vibe-text-primary);
+}
+
+.minimize-btn:hover {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007aff;
 }
 
 .close-btn:hover {

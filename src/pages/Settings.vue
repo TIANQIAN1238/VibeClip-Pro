@@ -14,6 +14,7 @@ import { safeInvoke, isTauriRuntime } from "@/libs/tauri";
 import { useLocale } from "@/composables/useLocale";
 import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
 import GlobalContextMenu from "@/components/system/GlobalContextMenu.vue";
+import WindowTitleBar from "@/components/layout/WindowTitleBar.vue";
 import type { AiActionKind } from "@/types/history";
 import MdiContentCopy from "~icons/mdi/content-copy";
 import MdiDeleteOutline from "~icons/mdi/delete-outline";
@@ -481,6 +482,7 @@ onErrorCaptured((err, _instance, info) => {
 
 <template>
   <div class="settings-page">
+    <WindowTitleBar title="设置" />
     <section class="main">
       <n-alert v-if="pageError" type="error" title="页面错误" closable @close="pageError = null">
         {{ pageError }}
