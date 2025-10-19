@@ -227,6 +227,7 @@ body {
   border: none;
   box-shadow: none;
   backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   overflow: hidden;
   z-index: 1;
 }
@@ -257,6 +258,7 @@ body {
   border-color: color-mix(in srgb, var(--vibe-panel-border) 48%, transparent);
   box-shadow: 0 24px 56px rgba(5, 11, 28, 0.38);
   backdrop-filter: blur(26px) saturate(138%);
+  -webkit-backdrop-filter: blur(26px) saturate(138%);
 }
 
 .dark .app-shell::before {
