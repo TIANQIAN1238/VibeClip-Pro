@@ -25,4 +25,9 @@ export const routes: RouteRecordRaw[] = [
     name: "settings",
     component: () => import("../pages/Settings.vue"),
   },
+  {
+    path: "/quick-panel",
+    name: "quick-panel",
+    component: () => import("../pages/QuickPanel.vue"),
+  },
 ];
