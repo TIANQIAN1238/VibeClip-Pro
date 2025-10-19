@@ -801,8 +801,8 @@ onMounted(async () => {
       </div>
     </header>
 
-    <n-scrollbar class="content-scroll thin-scrollbar">
-      <section class="card clipboard-card enhanced-card" style="--card-index: 0">
+    <div class="modern-content-area modern-scrollbar">
+      <section class="modern-card modern-clipboard-card">
         <header class="card-header">
           <div class="header-content">
             <h2>{{ t("clipboard.current", "当前剪贴板") }}</h2>
@@ -992,7 +992,7 @@ onMounted(async () => {
           </TransitionGroup>
         </n-scrollbar>
       </section>
-    </n-scrollbar>
+    </div>
 
     <GlobalContextMenu
       :show="contextMenu.state.show"
@@ -1482,5 +1482,53 @@ onMounted(async () => {
   .fade-list-leave-active {
     transition-duration: 0.01ms !important;
   }
+}
+
+/* 现代化内容区域样式 */
+.modern-content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--modern-space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--modern-space-lg);
+}
+
+/* 现代化卡片样式 */
+.modern-card {
+  background: var(--modern-bg-elevated);
+  border: 1px solid var(--modern-border-color);
+  border-radius: var(--modern-radius-lg);
+  box-shadow: var(--modern-shadow-sm);
+  overflow: hidden;
+  transition: all var(--modern-transition);
+}
+
+.modern-card:hover {
+  box-shadow: var(--modern-shadow-md);
+}
+
+.modern-clipboard-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.modern-card .card-header {
+  padding: var(--modern-space-lg);
+  border-bottom: 1px solid var(--modern-border-light);
+  background: var(--modern-bg-primary);
+}
+
+.modern-card .card-header h2 {
+  font-size: var(--modern-text-lg);
+  font-weight: var(--modern-font-semibold);
+  color: var(--modern-text-primary);
+  margin: 0 0 var(--modern-space-sm) 0;
+}
+
+.modern-card .card-body {
+  padding: var(--modern-space-lg);
+  min-height: 200px;
 }
 </style>
