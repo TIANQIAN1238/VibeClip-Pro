@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import "./index.css";
+import "./styles/modern-theme.css";
 import { routes } from "./router";
 
 // 全局错误处理

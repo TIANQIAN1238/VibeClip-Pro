@@ -1,0 +1,260 @@
+/* Modern Design System for VibeClip Pro v2.7.0 */
+
+:root {
+  /* 现代化配色方案 */
+  --modern-primary: #0066ff;
+  --modern-primary-hover: #0052cc;
+  --modern-primary-light: #e6f0ff;
+  --modern-success: #00c853;
+  --modern-warning: #ff9500;
+  --modern-error: #ff3b30;
+  --modern-info: #5ac8fa;
+
+  /* 中性色 */
+  --modern-gray-50: #fafafa;
+  --modern-gray-100: #f5f5f5;
+  --modern-gray-200: #eeeeee;
+  --modern-gray-300: #e0e0e0;
+  --modern-gray-400: #bdbdbd;
+  --modern-gray-500: #9e9e9e;
+  --modern-gray-600: #757575;
+  --modern-gray-700: #616161;
+  --modern-gray-800: #424242;
+  --modern-gray-900: #212121;
+
+  /* 文本颜色 */
+  --modern-text-primary: #1a1a1a;
+  --modern-text-secondary: #666666;
+  --modern-text-tertiary: #999999;
+  --modern-text-disabled: #cccccc;
+
+  /* 背景色 */
+  --modern-bg-primary: #ffffff;
+  --modern-bg-secondary: #f8f9fa;
+  --modern-bg-tertiary: #f0f2f5;
+  --modern-bg-elevated: #ffffff;
+
+  /* 边框 */
+  --modern-border-color: #e5e7eb;
+  --modern-border-light: #f3f4f6;
+  --modern-border-strong: #d1d5db;
+
+  /* 阴影 */
+  --modern-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --modern-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --modern-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --modern-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --modern-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* 圆角 */
+  --modern-radius-sm: 6px;
+  --modern-radius: 8px;
+  --modern-radius-md: 10px;
+  --modern-radius-lg: 12px;
+  --modern-radius-xl: 16px;
+  --modern-radius-full: 9999px;
+
+  /* 间距 */
+  --modern-space-xs: 4px;
+  --modern-space-sm: 8px;
+  --modern-space: 12px;
+  --modern-space-md: 16px;
+  --modern-space-lg: 20px;
+  --modern-space-xl: 24px;
+  --modern-space-2xl: 32px;
+  --modern-space-3xl: 40px;
+
+  /* 过渡 */
+  --modern-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --modern-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --modern-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 字体 */
+  --modern-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --modern-font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+
+  /* 字体大小 */
+  --modern-text-xs: 11px;
+  --modern-text-sm: 12px;
+  --modern-text-base: 14px;
+  --modern-text-lg: 16px;
+  --modern-text-xl: 18px;
+  --modern-text-2xl: 20px;
+  --modern-text-3xl: 24px;
+
+  /* 字重 */
+  --modern-font-normal: 400;
+  --modern-font-medium: 500;
+  --modern-font-semibold: 600;
+  --modern-font-bold: 700;
+
+  /* Z-index */
+  --modern-z-base: 0;
+  --modern-z-dropdown: 1000;
+  --modern-z-sticky: 1020;
+  --modern-z-fixed: 1030;
+  --modern-z-modal-backdrop: 1040;
+  --modern-z-modal: 1050;
+  --modern-z-popover: 1060;
+  --modern-z-tooltip: 1070;
+}
+
+/* 暗色主题 */
+.dark {
+  --modern-primary: #0a84ff;
+  --modern-primary-hover: #409cff;
+  --modern-primary-light: #1a2332;
+  --modern-success: #32d74b;
+  --modern-warning: #ff9f0a;
+  --modern-error: #ff453a;
+  --modern-info: #64d2ff;
+
+  --modern-gray-50: #1c1c1e;
+  --modern-gray-100: #2c2c2e;
+  --modern-gray-200: #3a3a3c;
+  --modern-gray-300: #48484a;
+  --modern-gray-400: #636366;
+  --modern-gray-500: #8e8e93;
+  --modern-gray-600: #aeaeb2;
+  --modern-gray-700: #c7c7cc;
+  --modern-gray-800: #d1d1d6;
+  --modern-gray-900: #e5e5ea;
+
+  --modern-text-primary: #ffffff;
+  --modern-text-secondary: #ebebf5;
+  --modern-text-tertiary: #aeaeb2;
+  --modern-text-disabled: #636366;
+
+  --modern-bg-primary: #000000;
+  --modern-bg-secondary: #1c1c1e;
+  --modern-bg-tertiary: #2c2c2e;
+  --modern-bg-elevated: #1c1c1e;
+
+  --modern-border-color: #38383a;
+  --modern-border-light: #2c2c2e;
+  --modern-border-strong: #48484a;
+
+  --modern-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --modern-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
+  --modern-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --modern-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --modern-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+/* 现代化卡片样式 */
+.modern-card {
+  background: var(--modern-bg-elevated);
+  border: 1px solid var(--modern-border-color);
+  border-radius: var(--modern-radius-lg);
+  box-shadow: var(--modern-shadow-sm);
+  transition: all var(--modern-transition);
+}
+
+.modern-card:hover {
+  box-shadow: var(--modern-shadow-md);
+  border-color: var(--modern-border-strong);
+}
+
+/* 现代化按钮样式 */
+.modern-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--modern-space-sm);
+  padding: var(--modern-space-sm) var(--modern-space-md);
+  font-size: var(--modern-text-base);
+  font-weight: var(--modern-font-medium);
+  line-height: 1.5;
+  border-radius: var(--modern-radius);
+  border: none;
+  cursor: pointer;
+  transition: all var(--modern-transition-fast);
+  user-select: none;
+}
+
+.modern-btn-primary {
+  background: var(--modern-primary);
+  color: white;
+}
+
+.modern-btn-primary:hover:not(:disabled) {
+  background: var(--modern-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--modern-shadow-md);
+}
+
+.modern-btn-secondary {
+  background: var(--modern-bg-secondary);
+  color: var(--modern-text-primary);
+  border: 1px solid var(--modern-border-color);
+}
+
+.modern-btn-secondary:hover:not(:disabled) {
+  background: var(--modern-bg-tertiary);
+  border-color: var(--modern-border-strong);
+}
+
+.modern-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modern-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* 现代化输入框样式 */
+.modern-input {
+  width: 100%;
+  padding: var(--modern-space-sm) var(--modern-space);
+  font-size: var(--modern-text-base);
+  line-height: 1.5;
+  color: var(--modern-text-primary);
+  background: var(--modern-bg-primary);
+  border: 1px solid var(--modern-border-color);
+  border-radius: var(--modern-radius);
+  transition: all var(--modern-transition-fast);
+}
+
+.modern-input:hover {
+  border-color: var(--modern-border-strong);
+}
+
+.modern-input:focus {
+  outline: none;
+  border-color: var(--modern-primary);
+  box-shadow: 0 0 0 3px var(--modern-primary-light);
+}
+
+/* 滚动条样式 */
+.modern-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modern-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--modern-gray-300);
+  border-radius: var(--modern-radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--modern-gray-400);
+  background-clip: padding-box;
+}
+
+.dark .modern-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--modern-gray-600);
+  background-clip: padding-box;
+}
+
+.dark .modern-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--modern-gray-500);
+  background-clip: padding-box;
+}
+
