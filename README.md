@@ -100,6 +100,7 @@ pnpm tauri dev
 | Rust 端检查 | `cargo check`、`cargo fmt` |
 
 构建产物：
+
 - 前端静态资源输出至 `dist/`，适合 Web 预览或嵌入桌面端。
 - 桌面安装包位于 `src-tauri/target/release/bundle/`，包含 `.exe`、`.msi`、`.dmg`、`.AppImage` 等平台文件（视构建目标而定）。
 
@@ -114,6 +115,7 @@ pnpm tauri build
 ```
 
 将生成以下安装包：
+
 - `src-tauri/target/release/bundle/nsis/*.exe` - NSIS安装程序
 - `src-tauri/target/release/bundle/msi/*.msi` - MSI安装包
 
@@ -124,6 +126,7 @@ VibeClip Pro 支持 Linux 平台，可生成 `.deb` 和 `.rpm` 安装包。
 **在 Linux 环境下构建**：
 
 1. 安装系统依赖（Ubuntu/Debian）：
+
 ```bash
 sudo apt update
 sudo apt install libwebkit2gtk-4.1-dev \
@@ -138,6 +141,7 @@ sudo apt install libwebkit2gtk-4.1-dev \
 ```
 
 2. 构建项目：
+
 ```bash
 pnpm install
 pnpm tauri build
@@ -237,6 +241,7 @@ VibeClip/
 ```
 
 更多资料：
+
 - [PasteMe 对标差异清单](docs/paste-me-gap-analysis.md)：追踪与竞品功能差异。
 - `src-tauri/src/`：后端模块，包括数据库访问、AI 客户端、剪贴板桥接等实现。
 
@@ -247,6 +252,7 @@ VibeClip/
 1. **版本同步**
    - 更新 `package.json`、`tauri.conf.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src/AppInfo.ts` 等版本号。
    - 提交并打上标签：
+
      ```bash
      git checkout -b release/v2.8.1
      git push -u origin release/v2.8.1
@@ -255,10 +261,12 @@ VibeClip/
      ```
 
 2. **构建产物**
+
    ```bash
    pnpm build
    pnpm tauri build
    ```
+
    - `pnpm build`：生成 Web 静态资源到 `dist/`。
    - `pnpm tauri build`：在 `src-tauri/target/release/bundle/` 生成安装包与签名文件。
 

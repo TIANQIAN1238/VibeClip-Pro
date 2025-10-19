@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useRouter } from "vue-router";
 import MdiMinus from "~icons/mdi/minus";
@@ -14,12 +15,22 @@ defineProps<{
 const currentWindow = getCurrentWebviewWindow();
 const router = useRouter();
 
+// 检测是否在主窗口中
+const isMainWindow = computed(() => {
+  return currentWindow.label === "main";
+});
+
 async function minimizeWindow() {
   await currentWindow.minimize();
 }
 
-async function closeWindow() {
-  await currentWindow.close();
+async function handleClose() {
+  // 如果在主窗口中，执行返回操作而不是关闭窗口
+  if (isMainWindow.value) {
+    router.back();
+  } else {
+    await currentWindow.close();
+  }
 }
 
 function goBack() {
@@ -52,8 +63,8 @@ function goBack() {
       </button>
       <button
         class="title-bar-button close"
-        @click="closeWindow"
-        title="关闭"
+        @click="handleClose"
+        :title="isMainWindow ? '返回' : '关闭'"
       >
         <n-icon :component="MdiClose" :size="16" />
       </button>
