@@ -769,6 +769,13 @@ onMounted(async () => {
 
 <template>
   <div class="clipboard-page">
+    <!-- 顶部导航 -->
+    <nav class="page-nav">
+      <router-link to="/clipboard" class="nav-item" active-class="active">剪贴板</router-link>
+      <router-link to="/history" class="nav-item" active-class="active">历史</router-link>
+      <router-link to="/ai" class="nav-item" active-class="active">AI 工具</router-link>
+    </nav>
+    
     <header class="page-header">
       <div class="headline">
         <h1>{{ t("clipboard.title", "剪贴板中心") }}</h1>
@@ -993,9 +1000,42 @@ onMounted(async () => {
 .clipboard-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.page-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--vibe-panel-border);
+  background: var(--vibe-bg-surface);
+  padding: 0 16px;
+}
+
+.nav-item {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vibe-text-secondary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nav-item:hover {
+  color: var(--vibe-text-primary);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.dark .nav-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.nav-item.active {
+  color: var(--vibe-accent);
+  border-bottom-color: var(--vibe-accent);
 }
 
 .page-header {
@@ -1004,6 +1044,8 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 16px;
+  background: var(--vibe-bg-surface);
 }
 
 .headline h1 {
@@ -1047,7 +1089,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-right: 4px;
+  padding: 16px;
+  padding-right: 20px;
 }
 
 .card {

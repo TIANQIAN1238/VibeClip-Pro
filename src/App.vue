@@ -5,7 +5,6 @@ import { darkTheme, dateZhCN, zhCN, enUS, dateEnUS } from "naive-ui";
 import { useSettingsStore } from "./store/settings";
 import AppEventBridge from "@/components/system/AppEventBridge.vue";
 import AppWindowBar from "@/components/layout/AppWindowBar.vue";
-import AppSidebar from "@/components/layout/AppSidebar.vue";
 import AppOnboarding from "@/components/onboarding/AppOnboarding.vue";
 import { scheduleWarmRoutes } from "@/utils/routePrefetch";
 
@@ -61,14 +60,11 @@ const naiveDateLocale = computed(() =>
                 </div>
                 <AppWindowBar />
                 <div class="app-body">
-                  <AppSidebar class="app-sidebar" />
-                  <div class="app-content">
-                    <RouterView v-slot="{ Component }">
-                      <Transition name="page-slide" mode="out-in">
-                        <component :is="Component" class="app-route-view" />
-                      </Transition>
-                    </RouterView>
-                  </div>
+                  <RouterView v-slot="{ Component }">
+                    <Transition name="page-slide" mode="out-in">
+                      <component :is="Component" class="app-route-view" />
+                    </Transition>
+                  </RouterView>
                 </div>
                 <AppOnboarding
                   :visible="settings.onboardingVisible"

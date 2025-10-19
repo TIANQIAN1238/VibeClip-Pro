@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, ref, onBeforeUnmount } from "vue";
 import { useMessage } from "naive-ui";
 import { readText, readImage } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -13,7 +12,6 @@ import MdiCog from "~icons/mdi/cog";
 import MdiHistory from "~icons/mdi/history";
 import MdiContentCopy from "~icons/mdi/content-copy";
 
-const router = useRouter();
 const history = useHistoryStore();
 const settings = useSettingsStore();
 const message = useMessage();
@@ -109,7 +107,7 @@ async function copyHistoryItem(item: typeof history.items[0]) {
 
 function openHistory() {
   safeInvoke("show_main_window");
-  router.push("/history");
+  closePanel();
 }
 
 function openSettings() {
@@ -142,313 +140,389 @@ onMounted(async () => {
   }
   window.addEventListener("keydown", handleKeydown);
 });
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleKeydown);
+});
 </script>
 
 <template>
-  <div class="quick-panel">
-    <header class="panel-header" data-tauri-drag-region>
-      <span class="panel-title">VibeClip Pro</span>
+  <div class="quick-panel-root">
+    <!-- 标题栏 -->
+    <div class="panel-titlebar" data-tauri-drag-region>
+      <span class="panel-title">VibeClip</span>
       <button class="close-btn" type="button" @click="closePanel" aria-label="关闭">
-        <n-icon :component="MdiClose" size="18" />
+        <n-icon :component="MdiClose" size="14" />
       </button>
-    </header>
+    </div>
 
-    <div class="panel-body">
-      <!-- 当前剪贴板 -->
-      <section class="clipboard-preview">
-        <h3>{{ t("quickPanel.current", "当前剪贴板") }}</h3>
+    <!-- 内容区 -->
+    <div class="panel-content">
+      <!-- 当前剪贴板预览 -->
+      <div class="clipboard-preview">
         <div v-if="loading" class="preview-loading">
           <n-spin size="small" />
         </div>
         <div v-else-if="clipboardKind === 'empty'" class="preview-empty">
-          <p>{{ t("quickPanel.empty", "暂无内容") }}</p>
+          <span>暂无内容</span>
         </div>
-        <div v-else class="preview-content">
-          <p class="preview-text">{{ clipboardText.slice(0, 150) }}{{ clipboardText.length > 150 ? '...' : '' }}</p>
+        <div v-else class="preview-text">
+          {{ clipboardText.slice(0, 80) }}{{ clipboardText.length > 80 ? '...' : '' }}
         </div>
-      </section>
+      </div>
 
       <!-- API Key 未配置提示 -->
-      <section v-if="!hasApiKey" class="api-key-prompt">
-        <p>⚠️ {{ t("quickPanel.noApiKey", "未配置 API Key") }}</p>
-        <n-button size="tiny" type="primary" @click="openSettings">
-          {{ t("quickPanel.goSettings", "前往设置") }}
-        </n-button>
-      </section>
+      <div v-if="!hasApiKey" class="api-warning">
+        <span>⚠️ 未配置 API Key</span>
+        <button class="link-btn" @click="openSettings">前往设置</button>
+      </div>
 
-      <!-- 快捷操作 -->
-      <section v-if="hasApiKey && clipboardKind === 'text'" class="quick-actions">
-        <h3>{{ t("quickPanel.quickActions", "快捷操作") }}</h3>
-        <div class="action-buttons">
-          <n-button
-            v-for="(action, index) in quickActions"
-            :key="action.id"
-            size="small"
-            secondary
-            :loading="history.aiBusy"
-            @click="handleQuickAction(action)"
-          >
-            <template #icon>
-              <span class="action-number">{{ index + 1 }}</span>
-            </template>
-            {{ action.label }}
-          </n-button>
-        </div>
-      </section>
+      <!-- 快捷操作按钮 -->
+      <div v-if="hasApiKey && clipboardKind === 'text'" class="quick-actions">
+        <button
+          v-for="(action, index) in quickActions"
+          :key="action.id"
+          class="action-btn"
+          :disabled="history.aiBusy"
+          @click="handleQuickAction(action)"
+        >
+          <span class="action-key">{{ index + 1 }}</span>
+          <span class="action-label">{{ action.label }}</span>
+        </button>
+      </div>
 
       <!-- 最近历史 -->
-      <section v-if="recentItems.length" class="recent-history">
-        <h3>{{ t("quickPanel.recent", "最近") }}</h3>
-        <div class="history-list">
+      <div v-if="recentItems.length" class="recent-section">
+        <div class="section-title">最近</div>
+        <div class="recent-list">
           <button
             v-for="item in recentItems"
             :key="item.id"
-            type="button"
-            class="history-item"
+            class="recent-item"
             @click="copyHistoryItem(item)"
           >
-            <n-icon :component="MdiContentCopy" size="14" />
-            <span class="item-preview">{{ (item.preview || '').slice(0, 40) }}{{ (item.preview || '').length > 40 ? '...' : '' }}</span>
+            <n-icon :component="MdiContentCopy" size="12" />
+            <span>{{ (item.preview || '').slice(0, 30) }}{{ (item.preview || '').length > 30 ? '...' : '' }}</span>
           </button>
         </div>
-      </section>
+      </div>
     </div>
 
-    <footer class="panel-footer">
-      <n-button size="tiny" quaternary @click="openHistory">
-        <template #icon>
-          <n-icon :component="MdiHistory" />
-        </template>
-        {{ t("quickPanel.viewAll", "查看全部") }}
-      </n-button>
-      <n-button size="tiny" quaternary @click="openSettings">
-        <template #icon>
-          <n-icon :component="MdiCog" />
-        </template>
-        {{ t("quickPanel.settings", "设置") }}
-      </n-button>
-    </footer>
+    <!-- 底部操作栏 -->
+    <div class="panel-footer">
+      <button class="footer-btn" @click="openHistory">
+        <n-icon :component="MdiHistory" size="14" />
+        <span>全部</span>
+      </button>
+      <button class="footer-btn" @click="openSettings">
+        <n-icon :component="MdiCog" size="14" />
+        <span>设置</span>
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.quick-panel {
+.quick-panel-root {
   width: 100vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(24px) saturate(150%);
-  border-radius: 16px;
-  box-shadow: 0 24px 64px rgba(18, 37, 68, 0.32), 0 0 0 1px rgba(18, 37, 68, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(32px) saturate(180%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
-.dark .quick-panel {
-  background: rgba(18, 24, 42, 0.95);
-  box-shadow: 0 24px 64px rgba(6, 12, 26, 0.7), 0 0 0 1px rgba(122, 209, 245, 0.12);
+.dark .quick-panel-root {
+  background: rgba(20, 24, 32, 0.98);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.panel-header {
+/* 标题栏 */
+.panel-titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--vibe-panel-border);
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   -webkit-app-region: drag;
   user-select: none;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.dark .panel-titlebar {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--vibe-text-primary);
+  color: var(--vibe-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .close-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   border: none;
   background: transparent;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background 0.2s ease;
+  transition: all 0.15s ease;
   -webkit-app-region: no-drag;
-  color: var(--vibe-text-secondary);
+  color: var(--vibe-text-muted);
 }
 
 .close-btn:hover {
-  background: rgba(255, 112, 112, 0.15);
-  color: #ff7070;
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
 }
 
-.panel-body {
+/* 内容区 */
+.panel-content {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.panel-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.panel-body::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-.clipboard-preview,
-.quick-actions,
-.recent-history,
-.api-key-prompt {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.clipboard-preview h3,
-.quick-actions h3,
-.recent-history h3 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--vibe-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.preview-content,
-.preview-empty,
-.preview-loading {
   padding: 12px;
-  border-radius: 10px;
-  background: var(--vibe-panel-surface);
-  border: 1px solid var(--vibe-panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+
+.dark .panel-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 剪贴板预览 */
+.clipboard-preview {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.dark .clipboard-preview {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
 .preview-text {
-  margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--vibe-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
+  width: 100%;
 }
 
-.preview-empty p {
-  margin: 0;
-  font-size: 12px;
+.preview-empty span {
+  font-size: 11px;
   color: var(--vibe-text-muted);
 }
 
-.api-key-prompt {
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(255, 159, 77, 0.1);
-  border: 1px solid rgba(255, 159, 77, 0.3);
+/* API 警告 */
+.api-warning {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 149, 0, 0.08);
+  border: 1px solid rgba(255, 149, 0, 0.2);
+  display: flex;
   align-items: center;
-  text-align: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
 }
 
-.api-key-prompt p {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  color: var(--vibe-text-primary);
+.api-warning span {
+  color: #ff9500;
+  font-weight: 500;
 }
 
-.action-buttons {
+.link-btn {
+  border: none;
+  background: none;
+  color: #007aff;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.link-btn:hover {
+  opacity: 0.7;
+}
+
+/* 快捷操作 */
+.quick-actions {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.action-buttons :deep(.n-button) {
-  justify-content: flex-start;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vibe-text-primary);
 }
 
-.action-buttons :deep(.n-button:hover:not(:disabled)) {
+.dark .action-btn {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.action-btn:hover:not(:disabled) {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: rgba(0, 122, 255, 0.3);
   transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(81, 97, 255, 0.15);
 }
 
-.action-number {
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: rgba(81, 97, 255, 0.15);
-  font-size: 11px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: rgba(0, 122, 255, 0.12);
+  font-size: 10px;
   font-weight: 600;
-  color: var(--vibe-accent);
+  color: #007aff;
 }
 
-.history-list {
+.action-label {
+  flex: 1;
+  text-align: left;
+}
+
+/* 最近历史 */
+.recent-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vibe-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 2px;
+}
+
+.recent-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.history-item {
-  width: 100%;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 10px;
+.recent-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--vibe-panel-surface);
-  border: 1px solid var(--vibe-panel-border);
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.6);
   cursor: pointer;
-  font-size: 12px;
-  color: var(--vibe-text-primary);
   transition: all 0.15s ease;
+  font-size: 11px;
+  color: var(--vibe-text-primary);
   text-align: left;
 }
 
-.history-item:hover {
-  background: var(--vibe-control-hover);
-  transform: translateX(2px);
-  border-color: var(--vibe-accent);
+.dark .recent-item {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.item-preview {
+.recent-item:hover {
+  background: rgba(0, 122, 255, 0.06);
+  border-color: rgba(0, 122, 255, 0.2);
+  transform: translateX(2px);
+}
+
+.recent-item span {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* 底部操作栏 */
 .panel-footer {
   display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--vibe-panel-border);
+  gap: 1px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.02);
 }
 
-.panel-footer :deep(.n-button) {
+.dark .panel-footer {
+  border-top-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.footer-btn {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vibe-text-secondary);
+}
+
+.footer-btn:hover {
+  background: rgba(0, 122, 255, 0.08);
+  color: #007aff;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .action-buttons :deep(.n-button),
-  .history-item,
+  .action-btn,
+  .recent-item,
+  .footer-btn,
   .close-btn {
     transition-duration: 0.01ms !important;
     transform: none !important;
   }
 }
 </style>
-
