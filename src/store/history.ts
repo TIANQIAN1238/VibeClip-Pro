@@ -17,6 +17,7 @@ import { ClipKind as ClipKindEnum } from "@/types/history";
 import { useSettingsStore } from "./settings";
 import { safeInvoke, isTauriRuntime, TauriUnavailableError, explainTauriFallback } from "@/libs/tauri";
 import { clipMatchesFilter } from "@/utils/content-inspector";
+import { offlineTranslate, getTranslationQuality } from "@/utils/offline-translator";
 
 const HISTORY_LIMIT = 200;
 
@@ -524,9 +525,82 @@ export const useHistoryStore = defineStore("history", () => {
     }
   }
 
+  async function runOfflineTranslation(request: AiActionRequest, options?: { persist?: boolean; copy?: boolean }): Promise<AiActionResponse> {
+    aiBusy.value = true;
+    try {
+      // 确定目标语言
+      let targetLang: 'zh' | 'en' | undefined = undefined;
+      const language = request.language?.toLowerCase();
+      if (language?.includes('zh') || language?.includes('中文')) {
+        targetLang = 'zh';
+      } else if (language?.includes('en') || language?.includes('english')) {
+        targetLang = 'en';
+      }
+
+      // 执行离线翻译
+      const translatedText = offlineTranslate(request.input, targetLang);
+      
+      // 获取翻译质量评估
+      const quality = getTranslationQuality(request.input, translatedText);
+      
+      // 构建响应
+      const response: AiActionResponse = {
+        result: translatedText,
+        used_prompt: `[离线翻译] ${request.input}`,
+        finished_at: new Date().toISOString(),
+      };
+
+      // 处理持久化和复制
+      const persist = options?.persist ?? true;
+      const copy = options?.copy ?? true;
+      let persisted: ClipItem | null = null;
+
+      if (persist) {
+        const resultWithNote = `${translatedText}\n\n---\n💡 ${quality.message}`;
+        persisted = await insertClip({
+          kind: ClipKindEnum.Text,
+          text: resultWithNote,
+          preview: translatedText.slice(0, 96),
+          extra: `离线翻译 (质量: ${quality.quality}, 覆盖率: ${quality.coverage}%)`,
+        });
+      }
+
+      if (copy) {
+        if (isTauriRuntime()) {
+          if (persisted) {
+            await markSelfCapture({
+              hash: persisted.contentHash,
+              kind: persisted.kind,
+              content: persisted.content,
+            });
+          } else {
+            await markSelfCapture({
+              kind: ClipKindEnum.Text,
+              content: translatedText,
+            });
+          }
+          await writeText(translatedText);
+        } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(translatedText);
+        }
+      }
+
+      return response;
+    } catch (error) {
+      raise("离线翻译失败", error);
+    } finally {
+      aiBusy.value = false;
+    }
+  }
+
   async function runAiAction(request: AiActionRequest, options?: { persist?: boolean; copy?: boolean }) {
+    // 离线模式下仅支持翻译功能
     if (settings.offlineMode) {
-      throw new Error("离线模式下无法调用 AI 服务");
+      if (request.action === 'translate') {
+        return await runOfflineTranslation(request, options);
+      } else {
+        throw new Error("离线模式下仅支持翻译功能，其他AI功能需要联网使用");
+      }
     }
     aiBusy.value = true;
 
