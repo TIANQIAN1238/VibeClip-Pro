@@ -3,7 +3,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import MdiMinus from "~icons/mdi/minus";
 import MdiClose from "~icons/mdi/close";
 
-const props = defineProps<{
+defineProps<{
   title: string;
   showMinimize?: boolean;
 }>();
