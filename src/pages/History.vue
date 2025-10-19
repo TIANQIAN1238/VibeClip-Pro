@@ -8,6 +8,7 @@ import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
 import { useLocale } from "@/composables/useLocale";
+import { useWindowSync } from "@/composables/useWindowSync";
 import type { AiActionKind, ClipItem } from "@/types/history";
 import { ClipKind } from "@/types/history";
 import { extractFeaturesFromClip } from "@/utils/content-inspector";
@@ -29,6 +30,9 @@ const settings = useSettingsStore();
 const message = useMessage();
 const dialog = useDialog();
 const { t, format } = useLocale();
+
+// 启用窗口间同步
+useWindowSync();
 
 const clipboardPreview = ref("");
 const capturing = ref(false);
@@ -538,8 +542,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="history-page">
-    <section class="main">
+  <div class="modern-history-page">
+    <!-- 顶部导航 -->
+    <nav class="modern-page-nav">
+      <router-link to="/clipboard" class="modern-nav-item" active-class="active">
+        <span>剪贴板</span>
+      </router-link>
+      <router-link to="/history" class="modern-nav-item" active-class="active">
+        <span>历史</span>
+      </router-link>
+      <router-link to="/ai" class="modern-nav-item" active-class="active">
+        <span>AI 工具</span>
+      </router-link>
+    </nav>
+    
+    <section class="modern-main">
       <header class="page-header">
         <div>
           <h1>{{ t("history.title", "历史记录") }}</h1>
@@ -719,20 +736,54 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.history-page {
+/* 现代化历史页面 */
+.modern-history-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   height: 100%;
   overflow: hidden;
+  background: var(--modern-bg-secondary);
 }
 
-.main {
+/* 现代化导航栏 */
+.modern-page-nav {
+  display: flex;
+  gap: var(--modern-space-xs);
+  padding: var(--modern-space) var(--modern-space-md);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-color);
+  flex-shrink: 0;
+}
+
+.modern-nav-item {
+  padding: var(--modern-space-sm) var(--modern-space-md);
+  font-size: var(--modern-text-sm);
+  font-weight: var(--modern-font-medium);
+  color: var(--modern-text-secondary);
+  text-decoration: none;
+  border-radius: var(--modern-radius);
+  transition: all var(--modern-transition-fast);
+}
+
+.modern-nav-item:hover {
+  color: var(--modern-text-primary);
+  background: var(--modern-bg-secondary);
+}
+
+.modern-nav-item.active {
+  color: var(--modern-primary);
+  background: var(--modern-primary-light);
+  font-weight: var(--modern-font-semibold);
+}
+
+/* 现代化主内容区 */
+.modern-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--modern-space);
   min-height: 0;
+  overflow: hidden;
 }
 
 .page-header {

@@ -129,17 +129,15 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
-  font-family: var(--vibe-font-sans);
-  background: var(--vibe-bg-app);
-  color: var(--vibe-text-primary);
-  transition: background 320ms ease, color var(--vibe-transition);
+  font-family: var(--modern-font-sans);
+  background: var(--modern-bg-primary);
+  color: var(--modern-text-primary);
+  transition: background 200ms ease, color 200ms ease;
+  overflow: hidden;
 }
 
 body {
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  padding: 14px 0;
   box-sizing: border-box;
 }
 
@@ -147,10 +145,57 @@ body {
   height: 100%;
   width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
 }
 
 
+/* 现代化应用容器 */
+.modern-app-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--modern-bg-primary);
+  overflow: hidden;
+}
+
+.modern-titlebar {
+  flex-shrink: 0;
+  z-index: var(--modern-z-sticky);
+}
+
+.modern-app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--modern-bg-secondary);
+}
+
+.modern-route-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 现代化过渡动画 */
+.modern-fade-enter-active,
+.modern-fade-leave-active {
+  transition: opacity var(--modern-transition), transform var(--modern-transition);
+}
+
+.modern-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.modern-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* 旧样式保留用于兼容 */
 .app-stage {
   position: relative;
   height: 100%;
@@ -158,7 +203,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0 18px;
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
   isolation: isolate;
@@ -215,18 +260,19 @@ body {
 .app-shell {
   position: relative;
   height: 100%;
-  width: min(100%, var(--vibe-app-width));
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin: 0 auto;
-  padding: 22px;
+  gap: 0;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
-  border-radius: calc(var(--vibe-radius-xl) + 4px);
-  background: color-mix(in srgb, var(--vibe-bg-surface) 92%, rgba(255, 255, 255, 0.16));
-  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 35%, transparent);
-  box-shadow: 0 20px 48px rgba(26, 42, 94, 0.14);
-  backdrop-filter: blur(24px) saturate(130%);
+  border-radius: 0;
+  background: var(--vibe-bg-surface);
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   overflow: hidden;
   z-index: 1;
 }
@@ -257,6 +303,7 @@ body {
   border-color: color-mix(in srgb, var(--vibe-panel-border) 48%, transparent);
   box-shadow: 0 24px 56px rgba(5, 11, 28, 0.38);
   backdrop-filter: blur(26px) saturate(138%);
+  -webkit-backdrop-filter: blur(26px) saturate(138%);
 }
 
 .dark .app-shell::before {
@@ -267,12 +314,12 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  border-radius: calc(var(--vibe-radius-xl) - 6px);
-  background: color-mix(in srgb, var(--vibe-panel-surface) 88%, rgba(255, 255, 255, 0.1));
+  gap: 0;
+  border-radius: 0;
+  background: transparent;
   border: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  padding: 14px;
+  box-shadow: none;
+  padding: 0;
   overflow: hidden;
   transition: background 280ms ease, border-color 280ms ease;
 }

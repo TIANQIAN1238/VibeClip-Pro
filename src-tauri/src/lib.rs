@@ -16,7 +16,7 @@ use state::AppStatus;
 use chrono::Utc;
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use serde::Serialize;
-use tauri::{AppHandle, Manager, Runtime, State};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_store::StoreExt;
@@ -34,6 +34,7 @@ struct HistoryExportPayload {
 
 #[tauri::command]
 async fn insert_clip(
+    app: AppHandle,
     status: State<'_, AppStatus>,
     db: State<'_, DbState>,
     config: State<'_, RuntimeConfigState>,
@@ -54,6 +55,10 @@ async fn insert_clip(
     .await
     .map_err(|err| err.to_string())?
     .map_err(|err| err.to_string())?;
+
+    // Emit event to all windows to sync state
+    let _ = app.emit("clip-inserted", &result);
+
     Ok(result)
 }
 
@@ -102,6 +107,7 @@ async fn fetch_clips(
 
 #[tauri::command]
 async fn update_clip_flags(
+    app: AppHandle,
     db: State<'_, DbState>,
     id: i64,
     pinned: Option<bool>,
@@ -132,18 +138,30 @@ async fn update_clip_flags(
 
     if result.is_ok() {
         info!("update_clip_flags completed successfully");
+        // Emit event to all windows to sync state
+        let _ = app.emit(
+            "clip-updated",
+            serde_json::json!({ "id": id, "pinned": pinned, "favorite": favorite }),
+        );
     }
 
     result
 }
 
 #[tauri::command]
-async fn remove_clip(db: State<'_, DbState>, id: i64) -> Result<(), String> {
+async fn remove_clip(app: AppHandle, db: State<'_, DbState>, id: i64) -> Result<(), String> {
     let db_clone = db.clone_for_thread();
-    tauri::async_runtime::spawn_blocking(move || db_clone.delete(id))
+    let result = tauri::async_runtime::spawn_blocking(move || db_clone.delete(id))
         .await
         .map_err(|err| err.to_string())?
-        .map_err(|err| err.to_string())
+        .map_err(|err| err.to_string());
+
+    if result.is_ok() {
+        // Emit event to all windows to sync state
+        let _ = app.emit("clip-removed", serde_json::json!({ "id": id }));
+    }
+
+    result
 }
 
 #[tauri::command]
@@ -331,16 +349,155 @@ async fn register_history_shortcut(app: AppHandle, shortcut: Option<String>) -> 
     }
     app.global_shortcut()
         .on_shortcut(parsed, move |app_handle, _event, _shortcut| {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            let app_clone = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = toggle_quick_panel(app_clone).await;
+            });
         })
         .map_err(|err| {
             error!("failed to register shortcut {parsed_shortcut}: {err}");
             err.to_string()
         })?;
     info!("registered history shortcut: {parsed_shortcut}");
+    Ok(())
+}
+
+#[tauri::command]
+async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    use tauri::PhysicalPosition;
+
+    // Try to get existing window first
+    if let Some(window) = app.get_webview_window("quick-panel") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    // Create new window if it doesn't exist
+    let window = tauri::WebviewWindowBuilder::new(
+        &app,
+        "quick-panel",
+        tauri::WebviewUrl::App("/quick-panel".into()),
+    )
+    .title("VibeClip Pro - Quick Panel")
+    .inner_size(380.0, 500.0)
+    .min_inner_size(380.0, 280.0)
+    .max_inner_size(380.0, 600.0)
+    .resizable(false)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .visible(false)
+    .build()
+    .map_err(|err| {
+        error!("failed to create quick panel window: {err}");
+        err.to_string()
+    })?;
+
+    // Position near cursor
+    if let Ok(cursor_pos) = window.cursor_position() {
+        let monitor = window.current_monitor().ok().flatten();
+        if let Some(monitor) = monitor {
+            let size = monitor.size();
+            let position = monitor.position();
+
+            let panel_width = 380;
+            let panel_height = 500;
+
+            let mut x = cursor_pos.x as i32 + 10;
+            let mut y = cursor_pos.y as i32 + 10;
+
+            // Ensure panel doesn't go off screen
+            if x + panel_width > position.x + size.width as i32 {
+                x = x - panel_width - 20;
+            }
+            if y + panel_height > position.y + size.height as i32 {
+                y = y - panel_height - 20;
+            }
+
+            x = std::cmp::max(position.x, x);
+            y = std::cmp::max(position.y, y);
+
+            let _ = window.set_position(PhysicalPosition::new(x, y));
+        }
+    }
+
+    let _ = window.show();
+    let _ = window.set_focus();
+    info!("quick panel shown");
+    Ok(())
+}
+
+#[tauri::command]
+async fn hide_quick_panel(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("quick-panel") {
+        let _ = window.hide();
+        info!("quick panel hidden");
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn toggle_quick_panel(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("quick-panel") {
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    } else {
+        show_quick_panel(app).await?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn show_main_window(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        info!("main window shown");
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn open_settings_window(app: AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+
+    // Try to get existing settings window first
+    if let Some(window) = app.get_webview_window("settings") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    // Create new settings window
+    let window = tauri::WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        tauri::WebviewUrl::App("/settings".into()),
+    )
+    .title("VibeClip Pro - Settings")
+    .inner_size(680.0, 720.0)
+    .min_inner_size(600.0, 600.0)
+    .resizable(true)
+    .decorations(false)
+    .transparent(true)
+    .center()
+    .visible(false)
+    .build()
+    .map_err(|err| {
+        error!("failed to create settings window: {err}");
+        err.to_string()
+    })?;
+
+    let _ = window.show();
+    let _ = window.set_focus();
+    info!("settings window opened");
     Ok(())
 }
 
@@ -465,7 +622,12 @@ pub fn run() {
             vacuum_database,
             update_runtime_preferences,
             ignore_next_clipboard_capture,
-            get_runtime_summary
+            get_runtime_summary,
+            show_quick_panel,
+            hide_quick_panel,
+            toggle_quick_panel,
+            show_main_window,
+            open_settings_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running VibeClip Pro");

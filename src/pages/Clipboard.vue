@@ -19,6 +19,7 @@ import {
 } from "@/utils/content-inspector";
 import { useLocale } from "@/composables/useLocale";
 import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
+import { useWindowSync } from "@/composables/useWindowSync";
 import type { Image as TauriImage } from "@tauri-apps/api/image";
 import MdiContentCopy from "~icons/mdi/content-copy";
 import MdiContentSave from "~icons/mdi/content-save";
@@ -47,6 +48,9 @@ const bridge = useBridgeStore();
 const message = useMessage();
 const { t, format } = useLocale();
 const contextMenu = useContextMenu();
+
+// 启用窗口间同步
+useWindowSync();
 
 const snapshot = reactive<ClipboardSnapshot>({
   kind: "empty",
@@ -768,8 +772,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="clipboard-page">
-    <header class="page-header">
+  <div class="modern-clipboard-page">
+    <!-- 顶部导航 -->
+    <nav class="modern-page-nav">
+      <router-link to="/clipboard" class="modern-nav-item" active-class="active">
+        <span>剪贴板</span>
+      </router-link>
+      <router-link to="/history" class="modern-nav-item" active-class="active">
+        <span>历史</span>
+      </router-link>
+      <router-link to="/ai" class="modern-nav-item" active-class="active">
+        <span>AI 工具</span>
+      </router-link>
+    </nav>
+    
+    <header class="modern-page-header">
       <div class="headline">
         <h1>{{ t("clipboard.title", "剪贴板中心") }}</h1>
         <p>{{ t("clipboard.subtitle", "查看系统剪贴板并快速保存或调用历史记录") }}</p>
@@ -784,8 +801,8 @@ onMounted(async () => {
       </div>
     </header>
 
-    <n-scrollbar class="content-scroll thin-scrollbar">
-      <section class="card clipboard-card enhanced-card" style="--card-index: 0">
+    <div class="modern-content-area modern-scrollbar">
+      <section class="modern-card modern-clipboard-card">
         <header class="card-header">
           <div class="header-content">
             <h2>{{ t("clipboard.current", "当前剪贴板") }}</h2>
@@ -975,7 +992,7 @@ onMounted(async () => {
           </TransitionGroup>
         </n-scrollbar>
       </section>
-    </n-scrollbar>
+    </div>
 
     <GlobalContextMenu
       :show="contextMenu.state.show"
@@ -990,31 +1007,70 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.clipboard-page {
+/* 现代化剪贴板页面 */
+.modern-clipboard-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   height: 100%;
   overflow: hidden;
+  background: var(--modern-bg-secondary);
 }
 
-.page-header {
+/* 现代化导航栏 */
+.modern-page-nav {
   display: flex;
-  align-items: flex-start;
+  gap: var(--modern-space-xs);
+  padding: var(--modern-space) var(--modern-space-md);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-color);
+  flex-shrink: 0;
+}
+
+.modern-nav-item {
+  padding: var(--modern-space-sm) var(--modern-space-md);
+  font-size: var(--modern-text-sm);
+  font-weight: var(--modern-font-medium);
+  color: var(--modern-text-secondary);
+  text-decoration: none;
+  border-radius: var(--modern-radius);
+  transition: all var(--modern-transition-fast);
+  position: relative;
+}
+
+.modern-nav-item:hover {
+  color: var(--modern-text-primary);
+  background: var(--modern-bg-secondary);
+}
+
+.modern-nav-item.active {
+  color: var(--modern-primary);
+  background: var(--modern-primary-light);
+  font-weight: var(--modern-font-semibold);
+}
+
+/* 现代化页面头部 */
+.modern-page-header {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: var(--modern-space-md);
+  padding: var(--modern-space-lg) var(--modern-space-xl);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-light);
+  flex-shrink: 0;
 }
 
 .headline h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--modern-text-2xl);
+  font-weight: var(--modern-font-bold);
+  color: var(--modern-text-primary);
 }
 
 .headline p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--vibe-text-muted);
+  margin: var(--modern-space-xs) 0 0;
+  font-size: var(--modern-text-sm);
+  color: var(--modern-text-tertiary);
 }
 
 .header-actions {
@@ -1047,7 +1103,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-right: 4px;
+  padding: 16px;
+  padding-right: 20px;
 }
 
 .card {
@@ -1425,5 +1482,53 @@ onMounted(async () => {
   .fade-list-leave-active {
     transition-duration: 0.01ms !important;
   }
+}
+
+/* 现代化内容区域样式 */
+.modern-content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--modern-space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--modern-space-lg);
+}
+
+/* 现代化卡片样式 */
+.modern-card {
+  background: var(--modern-bg-elevated);
+  border: 1px solid var(--modern-border-color);
+  border-radius: var(--modern-radius-lg);
+  box-shadow: var(--modern-shadow-sm);
+  overflow: hidden;
+  transition: all var(--modern-transition);
+}
+
+.modern-card:hover {
+  box-shadow: var(--modern-shadow-md);
+}
+
+.modern-clipboard-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.modern-card .card-header {
+  padding: var(--modern-space-lg);
+  border-bottom: 1px solid var(--modern-border-light);
+  background: var(--modern-bg-primary);
+}
+
+.modern-card .card-header h2 {
+  font-size: var(--modern-text-lg);
+  font-weight: var(--modern-font-semibold);
+  color: var(--modern-text-primary);
+  margin: 0 0 var(--modern-space-sm) 0;
+}
+
+.modern-card .card-body {
+  padding: var(--modern-space-lg);
+  min-height: 200px;
 }
 </style>

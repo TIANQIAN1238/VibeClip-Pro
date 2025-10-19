@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { computed } from "vue";
+import { safeInvoke } from "@/libs/tauri";
+import MdiMinus from "~icons/mdi/minus";
+import MdiClose from "~icons/mdi/close";
+import MdiCog from "~icons/mdi/cog";
 
 const current = (() => {
   try {
@@ -23,11 +27,14 @@ async function minimize() {
 
 async function close() {
   try {
-    // Hide instead of destroy to keep tray shortcuts alive
-    await current?.hide();
+    await current?.close();
   } catch (error) {
-    console.error("Failed to hide window", error);
+    console.error("Failed to close window", error);
   }
+}
+
+function openSettings() {
+  safeInvoke("open_settings_window");
 }
 </script>
 
@@ -35,117 +42,106 @@ async function close() {
   <header class="window-bar" data-tauri-drag-region>
     <div class="window-title">{{ title }}</div>
     <div class="window-actions" data-tauri-drag-region="false">
-      <button class="window-button" type="button" @click="minimize" aria-label="最小化">
-        <span />
+      <button 
+        class="window-button settings-btn" 
+        type="button" 
+        @click="openSettings" 
+        aria-label="设置"
+        title="设置"
+      >
+        <n-icon :component="MdiCog" size="16" />
       </button>
-      <button class="window-button close" type="button" @click="close" aria-label="关闭">
-        <span />
+      <button 
+        class="window-button minimize-btn" 
+        type="button" 
+        @click="minimize" 
+        aria-label="最小化"
+        title="最小化"
+      >
+        <n-icon :component="MdiMinus" size="16" />
+      </button>
+      <button 
+        class="window-button close-btn" 
+        type="button" 
+        @click="close" 
+        aria-label="关闭"
+        title="关闭"
+      >
+        <n-icon :component="MdiClose" size="16" />
       </button>
     </div>
   </header>
 </template>
 
 <style scoped>
+/* 现代化窗口标题栏 */
 .window-bar {
   width: 100%;
-  min-height: 44px;
+  height: 48px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 18px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--vibe-text-primary);
+  gap: var(--modern-space-md);
+  padding: 0 var(--modern-space-md);
   -webkit-app-region: drag;
-  background: color-mix(in srgb, var(--vibe-panel-surface-strong) 90%, rgba(255, 255, 255, 0.18));
-  border-radius: calc(var(--vibe-radius-xl) - 4px);
-  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 52%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
-  backdrop-filter: blur(18px) saturate(135%);
-}
-
-.dark .window-bar {
-  background: color-mix(in srgb, var(--vibe-panel-surface) 88%, rgba(16, 23, 47, 0.4));
-  border-color: color-mix(in srgb, var(--vibe-panel-border) 65%, transparent);
-  box-shadow: inset 0 1px 0 rgba(10, 18, 36, 0.6);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-color);
 }
 
 .window-title {
-  font-size: 14px;
+  font-size: var(--modern-text-base);
+  font-weight: var(--modern-font-semibold);
+  color: var(--modern-text-primary);
 }
 
 .window-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--modern-space-sm);
   -webkit-app-region: no-drag;
 }
 
 .window-button {
   width: 32px;
-  height: 24px;
-  border-radius: 8px;
+  height: 32px;
+  border-radius: var(--modern-radius);
   border: none;
-  background: rgba(255, 255, 255, 0.28);
+  background: transparent;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background 0.2s ease;
+  transition: all var(--modern-transition-fast);
   -webkit-app-region: no-drag;
-}
-
-.dark .window-button {
-  background: rgba(18, 27, 48, 0.58);
-}
-
-.window-button span {
-  width: 10px;
-  height: 2px;
-  background: rgba(23, 35, 61, 0.65);
-  border-radius: 999px;
-}
-
-.dark .window-button span {
-  background: rgba(236, 243, 255, 0.8);
+  color: var(--modern-text-secondary);
 }
 
 .window-button:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--modern-bg-secondary);
+  color: var(--modern-text-primary);
 }
 
-.window-button.close:hover {
-  background: rgba(255, 112, 112, 0.68);
+.window-button:active {
+  transform: scale(0.95);
 }
 
-.window-button.close span {
-  position: relative;
-  width: 10px;
-  height: 10px;
+.window-button.settings-btn:hover {
+  background: var(--modern-primary-light);
+  color: var(--modern-primary);
 }
 
-.window-button.close span::before,
-.window-button.close span::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(23, 35, 61, 0.75);
-  width: 10px;
-  height: 2px;
-  border-radius: 999px;
+.window-button.minimize-btn:hover {
+  background: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
 }
 
-.dark .window-button.close span::before,
-.dark .window-button.close span::after {
-  background: rgba(236, 243, 255, 0.85);
+.window-button.close-btn:hover {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
 }
 
-.window-button.close span::before {
-  transform: rotate(45deg);
-}
-
-.window-button.close span::after {
-  transform: rotate(-45deg);
+.dark .window-button.close-btn:hover {
+  background: rgba(255, 69, 58, 0.2);
+  color: #ff453a;
 }
 </style>

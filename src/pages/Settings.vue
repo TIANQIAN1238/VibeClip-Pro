@@ -14,6 +14,7 @@ import { safeInvoke, isTauriRuntime } from "@/libs/tauri";
 import { useLocale } from "@/composables/useLocale";
 import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
 import GlobalContextMenu from "@/components/system/GlobalContextMenu.vue";
+import WindowTitleBar from "@/components/layout/WindowTitleBar.vue";
 import type { AiActionKind } from "@/types/history";
 import MdiContentCopy from "~icons/mdi/content-copy";
 import MdiDeleteOutline from "~icons/mdi/delete-outline";
@@ -481,6 +482,7 @@ onErrorCaptured((err, _instance, info) => {
 
 <template>
   <div class="settings-page">
+    <WindowTitleBar title="设置" />
     <section class="main">
       <n-alert v-if="pageError" type="error" title="页面错误" closable @close="pageError = null">
         {{ pageError }}
@@ -862,6 +864,32 @@ onErrorCaptured((err, _instance, info) => {
                 {{ t("settings.quickActionsReset", "恢复默认") }}
               </n-button>
             </div>
+          </section>
+
+          <section class="card">
+            <h2>{{ t("settings.quickPanelSettings", "快捷面板与 AI") }}</h2>
+            <div class="switch-row">
+              <span>{{ t("settings.quickPanelAutoShow", "复制后自动显示快捷面板") }}</span>
+              <n-switch v-model:value="settings.quickPanelAutoShow" size="small" />
+            </div>
+            <div class="switch-row">
+              <span>{{ t("settings.quickPanelAutoClose", "AI 操作后自动关闭快捷面板") }}</span>
+              <n-switch v-model:value="settings.quickPanelAutoClose" size="small" />
+            </div>
+            <div class="field-row">
+              <label>{{ t("settings.aiResultMode", "AI 结果模式") }}</label>
+              <n-select 
+                v-model:value="settings.aiResultMode" 
+                size="small" 
+                :options="[
+                  { value: 'auto', label: t('settings.aiResultModeAuto', '自动写入剪贴板') },
+                  { value: 'preview', label: t('settings.aiResultModePreview', '预览后确认') }
+                ]" 
+              />
+            </div>
+            <p class="muted" style="margin-top: 8px; font-size: 12px;">
+              {{ t("settings.aiResultModeHint", "自动模式：AI 完成后直接写入剪贴板；预览模式：显示结果供编辑后再复制") }}
+            </p>
           </section>
 
           <section class="card">

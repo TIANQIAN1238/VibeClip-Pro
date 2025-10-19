@@ -346,8 +346,21 @@ onErrorCaptured((err, _instance, info) => {
 </script>
 
 <template>
-  <div class="ai-tools-page">
-    <n-alert v-if="pageError" type="error" title="页面加载失败" closable @close="pageError = null">
+  <div class="modern-ai-tools-page">
+    <!-- 顶部导航 -->
+    <nav class="modern-page-nav">
+      <router-link to="/clipboard" class="modern-nav-item" active-class="active">
+        <span>剪贴板</span>
+      </router-link>
+      <router-link to="/history" class="modern-nav-item" active-class="active">
+        <span>历史</span>
+      </router-link>
+      <router-link to="/ai" class="modern-nav-item" active-class="active">
+        <span>AI 工具</span>
+      </router-link>
+    </nav>
+    
+    <n-alert v-if="pageError" type="error" title="页面加载失败" closable @close="pageError = null" style="margin: 16px;">
       {{ pageError }}
     </n-alert>
 
@@ -496,12 +509,44 @@ onErrorCaptured((err, _instance, info) => {
 </template>
 
 <style scoped>
-.ai-tools-page {
+/* 现代化 AI 工具页面 */
+.modern-ai-tools-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   height: 100%;
   overflow: hidden;
+  background: var(--modern-bg-secondary);
+}
+
+/* 现代化导航栏 */
+.modern-page-nav {
+  display: flex;
+  gap: var(--modern-space-xs);
+  padding: var(--modern-space) var(--modern-space-md);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-color);
+  flex-shrink: 0;
+}
+
+.modern-nav-item {
+  padding: var(--modern-space-sm) var(--modern-space-md);
+  font-size: var(--modern-text-sm);
+  font-weight: var(--modern-font-medium);
+  color: var(--modern-text-secondary);
+  text-decoration: none;
+  border-radius: var(--modern-radius);
+  transition: all var(--modern-transition-fast);
+}
+
+.modern-nav-item:hover {
+  color: var(--modern-text-primary);
+  background: var(--modern-bg-secondary);
+}
+
+.modern-nav-item.active {
+  color: var(--modern-primary);
+  background: var(--modern-primary-light);
+  font-weight: var(--modern-font-semibold);
 }
 
 .ai-tools-layout {

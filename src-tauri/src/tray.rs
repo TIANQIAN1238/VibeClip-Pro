@@ -3,13 +3,15 @@ use tauri::{
     include_image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Runtime,
+    AppHandle, Manager,
 };
 
 use crate::{db::DbState, state::AppStatus};
 
-pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
+    let quick_panel_item = MenuItem::with_id(app, "quick-panel", "快捷面板", true, None::<&str>)?;
     let show_item = MenuItem::with_id(app, "show", "打开主界面", true, None::<&str>)?;
+    let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
     let listening_item = MenuItem::with_id(app, "toggle-listener", "暂停监听", true, None::<&str>)?;
     let offline_item = MenuItem::with_id(app, "toggle-offline", "离线模式", true, None::<&str>)?;
     let clear_history_item =
@@ -20,7 +22,9 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let menu = Menu::with_items(
         app,
         &[
+            &quick_panel_item,
             &show_item,
+            &settings_item,
             &listening_item,
             &offline_item,
             &clear_history_item,
@@ -38,11 +42,23 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .tooltip("VibeClip Pro")
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id().as_ref() {
+            "quick-panel" => {
+                let app_clone = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::toggle_quick_panel(app_clone).await;
+                });
+            }
             "show" => {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
                     let _ = window.set_focus();
                 }
+            }
+            "settings" => {
+                let app_clone = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::open_settings_window(app_clone).await;
+                });
             }
             "hide" => {
                 if let Some(window) = app.get_webview_window("main") {
@@ -87,10 +103,10 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 ..
             } = event
             {
-                if let Some(window) = tray.app_handle().get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                let app_clone = tray.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::toggle_quick_panel(app_clone).await;
+                });
             }
         })
         .build(app)?;

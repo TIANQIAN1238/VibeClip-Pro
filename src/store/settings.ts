@@ -77,6 +77,9 @@ interface PersistedSettings {
   quickActions: QuickActionConfig[];
   aiProviders: AIProviderConfig[];
   activeProviderId: string;
+  aiResultMode: "auto" | "preview";
+  quickPanelAutoClose: boolean;
+  quickPanelAutoShow: boolean;
 }
 
 const THEME_PRESET_ACCENTS: Record<Exclude<ThemePreset, "custom">, string> = {
@@ -244,6 +247,9 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   logLevel: "info",
   quickActions: cloneDefaultQuickActions(),
   aiProviders: cloneDefaultAIProviders(),
+  aiResultMode: "auto",
+  quickPanelAutoClose: true,
+  quickPanelAutoShow: true,
   activeProviderId: 'default-openai',
 };
 
