@@ -121,7 +121,9 @@ function openHistory() {
 }
 
 function openSettings() {
-  safeInvoke("open_settings_window");
+  // 打开主窗口，用户可以手动点击设置按钮
+  safeInvoke("show_main_window");
+  closePanel();
 }
 
 async function minimizePanel() {

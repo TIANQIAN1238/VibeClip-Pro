@@ -23,7 +23,7 @@
 
 VibeClip Pro 聚焦桌面剪贴板效率，提供实时捕获、历史管理、AI 快捷操作与托盘控制等功能。默认提供 Windows 安装包，并可通过源码构建 macOS/Linux 版本。
 
-最新稳定版：**v2.5.1**（2025-10-18）。
+最新稳定版：**v2.8.1**（2025-10-19）。
 
 ## 核心特性
 
@@ -38,7 +38,7 @@ VibeClip Pro 聚焦桌面剪贴板效率，提供实时捕获、历史管理、A
 
 ### 1. 下载与安装
 
-1. 访问 [GitHub Releases](https://github.com/<owner>/VibeClip/releases) 页面下载最新 `VibeClip_2.4.0_x64-setup.exe` 安装包及 `latest.json`。
+1. 访问 [GitHub Releases](https://github.com/<owner>/VibeClip/releases) 页面下载最新 `VibeClip_2.8.1_x64-setup.exe` 安装包及 `latest.json`。
 2. 双击安装包并按照向导完成安装；首次启动会在系统托盘驻留。
 3. macOS / Linux 用户可从源码构建或使用对应的 `.dmg` / `.AppImage`（如有提供）。
 
@@ -103,6 +103,126 @@ pnpm tauri dev
 - 前端静态资源输出至 `dist/`，适合 Web 预览或嵌入桌面端。
 - 桌面安装包位于 `src-tauri/target/release/bundle/`，包含 `.exe`、`.msi`、`.dmg`、`.AppImage` 等平台文件（视构建目标而定）。
 
+## 跨平台构建
+
+### Windows 构建
+
+在 Windows 系统下直接运行：
+
+```bash
+pnpm tauri build
+```
+
+将生成以下安装包：
+- `src-tauri/target/release/bundle/nsis/*.exe` - NSIS安装程序
+- `src-tauri/target/release/bundle/msi/*.msi` - MSI安装包
+
+### Linux 构建
+
+VibeClip Pro 支持 Linux 平台，可生成 `.deb` 和 `.rpm` 安装包。
+
+**在 Linux 环境下构建**：
+
+1. 安装系统依赖（Ubuntu/Debian）：
+```bash
+sudo apt update
+sudo apt install libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libxdo-dev \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+```
+
+2. 构建项目：
+```bash
+pnpm install
+pnpm tauri build
+```
+
+3. 生成的安装包位于：
+   - `src-tauri/target/release/bundle/deb/*.deb` - Debian/Ubuntu安装包
+   - `src-tauri/target/release/bundle/rpm/*.rpm` - RedHat/Fedora安装包
+
+**Windows 用户构建 Linux 版本**：
+
+由于跨平台编译的复杂性，建议 Windows 用户通过以下方式构建 Linux 版本：
+
+1. **使用 WSL2**（推荐）：
+   - 安装 WSL2 和 Ubuntu
+   - 在 WSL2 中按照上述 Linux 构建步骤操作
+   - 访问 [WSL 安装文档](https://docs.microsoft.com/zh-cn/windows/wsl/install)
+
+2. **使用虚拟机**：
+   - 安装 VirtualBox 或 VMware
+   - 创建 Ubuntu 虚拟机
+   - 在虚拟机中进行构建
+
+3. **使用 CI/CD 服务**：
+   - 配置 GitHub Actions 自动化构建（见下文）
+
+### macOS 构建
+
+在 macOS 系统下运行：
+
+```bash
+pnpm tauri build
+```
+
+将生成 `.dmg` 和 `.app` 文件。
+
+### CI/CD 自动化构建
+
+推荐使用 GitHub Actions 实现多平台自动化构建。在 `.github/workflows/` 目录创建工作流文件，示例配置：
+
+```yaml
+name: Build Multi-Platform
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.platform }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev \
+            build-essential curl wget file libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      
+      - name: Install pnpm dependencies
+        run: pnpm install
+      
+      - name: Build Tauri app
+        run: pnpm tauri build
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-build
+          path: src-tauri/target/release/bundle/
+```
+
 ## 项目结构
 
 ```
@@ -122,16 +242,16 @@ VibeClip/
 
 ## 发布流程
 
-以下步骤以 **v2.4.0** 为例：
+以下步骤以 **v2.8.1** 为例：
 
 1. **版本同步**
    - 更新 `package.json`、`tauri.conf.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src/AppInfo.ts` 等版本号。
    - 提交并打上标签：
      ```bash
-     git checkout -b release/v2.4.0
-     git push -u origin release/v2.4.0
-     git tag -a v2.4.0 -m "VibeClip Pro v2.4.0"
-     git push origin v2.4.0
+     git checkout -b release/v2.8.1
+     git push -u origin release/v2.8.1
+     git tag -a v2.8.1 -m "VibeClip Pro v2.8.1"
+     git push origin v2.8.1
      ```
 
 2. **构建产物**
