@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { computed } from "vue";
-import { safeInvoke } from "@/libs/tauri";
+import { useRouter } from "vue-router";
 import MdiMinus from "~icons/mdi/minus";
 import MdiClose from "~icons/mdi/close";
 import MdiCog from "~icons/mdi/cog";
+
+const router = useRouter();
 
 const current = (() => {
   try {
@@ -34,7 +36,7 @@ async function close() {
 }
 
 function openSettings() {
-  safeInvoke("open_settings_window");
+  router.push("/settings");
 }
 </script>
 
