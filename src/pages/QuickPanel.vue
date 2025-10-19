@@ -5,7 +5,6 @@ import { readText, readImage } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
-import { useLocale } from "@/composables/useLocale";
 import { safeInvoke } from "@/libs/tauri";
 import MdiClose from "~icons/mdi/close";
 import MdiCog from "~icons/mdi/cog";
@@ -15,7 +14,6 @@ import MdiContentCopy from "~icons/mdi/content-copy";
 const history = useHistoryStore();
 const settings = useSettingsStore();
 const message = useMessage();
-const { t } = useLocale();
 
 const currentWindow = getCurrentWebviewWindow();
 const clipboardText = ref("");
