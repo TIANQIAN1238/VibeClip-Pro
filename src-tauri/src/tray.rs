@@ -3,12 +3,12 @@ use tauri::{
     include_image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Runtime,
+    AppHandle, Manager,
 };
 
 use crate::{db::DbState, state::AppStatus};
 
-pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
     let quick_panel_item = MenuItem::with_id(app, "quick-panel", "快捷面板", true, None::<&str>)?;
     let show_item = MenuItem::with_id(app, "show", "打开主界面", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;

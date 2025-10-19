@@ -347,7 +347,7 @@ async fn register_history_shortcut(app: AppHandle, shortcut: Option<String>) -> 
 #[tauri::command]
 async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
     use tauri::Manager;
-    use tauri::{PhysicalPosition, PhysicalSize, Size, Position};
+    use tauri::PhysicalPosition;
     
     // Try to get existing window first
     if let Some(window) = app.get_webview_window("quick-panel") {
