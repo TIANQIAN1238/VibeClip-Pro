@@ -2,11 +2,10 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useMessage } from "naive-ui";
-import { readText, writeText, readImage } from "@tauri-apps/plugin-clipboard-manager";
+import { readText, readImage } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
-import { ClipKind, type AiActionKind } from "@/types/history";
 import { useLocale } from "@/composables/useLocale";
 import { safeInvoke } from "@/libs/tauri";
 import MdiClose from "~icons/mdi/close";
@@ -209,7 +208,7 @@ onMounted(async () => {
             @click="copyHistoryItem(item)"
           >
             <n-icon :component="MdiContentCopy" size="14" />
-            <span class="item-preview">{{ item.preview.slice(0, 40) }}{{ item.preview.length > 40 ? '...' : '' }}</span>
+            <span class="item-preview">{{ (item.preview || '').slice(0, 40) }}{{ (item.preview || '').length > 40 ? '...' : '' }}</span>
           </button>
         </div>
       </section>
