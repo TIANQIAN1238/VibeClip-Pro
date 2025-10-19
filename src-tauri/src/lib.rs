@@ -55,10 +55,10 @@ async fn insert_clip(
     .await
     .map_err(|err| err.to_string())?
     .map_err(|err| err.to_string())?;
-    
+
     // Emit event to all windows to sync state
     let _ = app.emit("clip-inserted", &result);
-    
+
     Ok(result)
 }
 
@@ -139,7 +139,10 @@ async fn update_clip_flags(
     if result.is_ok() {
         info!("update_clip_flags completed successfully");
         // Emit event to all windows to sync state
-        let _ = app.emit("clip-updated", serde_json::json!({ "id": id, "pinned": pinned, "favorite": favorite }));
+        let _ = app.emit(
+            "clip-updated",
+            serde_json::json!({ "id": id, "pinned": pinned, "favorite": favorite }),
+        );
     }
 
     result
@@ -152,12 +155,12 @@ async fn remove_clip(app: AppHandle, db: State<'_, DbState>, id: i64) -> Result<
         .await
         .map_err(|err| err.to_string())?
         .map_err(|err| err.to_string());
-    
+
     if result.is_ok() {
         // Emit event to all windows to sync state
         let _ = app.emit("clip-removed", serde_json::json!({ "id": id }));
     }
-    
+
     result
 }
 
@@ -363,14 +366,14 @@ async fn register_history_shortcut(app: AppHandle, shortcut: Option<String>) -> 
 async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
     use tauri::Manager;
     use tauri::PhysicalPosition;
-    
+
     // Try to get existing window first
     if let Some(window) = app.get_webview_window("quick-panel") {
         let _ = window.show();
         let _ = window.set_focus();
         return Ok(());
     }
-    
+
     // Create new window if it doesn't exist
     let window = tauri::WebviewWindowBuilder::new(
         &app,
@@ -392,20 +395,20 @@ async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
         error!("failed to create quick panel window: {err}");
         err.to_string()
     })?;
-    
+
     // Position near cursor
     if let Ok(cursor_pos) = window.cursor_position() {
         let monitor = window.current_monitor().ok().flatten();
         if let Some(monitor) = monitor {
             let size = monitor.size();
             let position = monitor.position();
-            
+
             let panel_width = 380;
             let panel_height = 500;
-            
+
             let mut x = cursor_pos.x as i32 + 10;
             let mut y = cursor_pos.y as i32 + 10;
-            
+
             // Ensure panel doesn't go off screen
             if x + panel_width > position.x + size.width as i32 {
                 x = x - panel_width - 20;
@@ -413,14 +416,14 @@ async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
             if y + panel_height > position.y + size.height as i32 {
                 y = y - panel_height - 20;
             }
-            
+
             x = std::cmp::max(position.x, x);
             y = std::cmp::max(position.y, y);
-            
+
             let _ = window.set_position(PhysicalPosition::new(x, y));
         }
     }
-    
+
     let _ = window.show();
     let _ = window.set_focus();
     info!("quick panel shown");
@@ -464,14 +467,14 @@ async fn show_main_window(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn open_settings_window(app: AppHandle) -> Result<(), String> {
     use tauri::Manager;
-    
+
     // Try to get existing settings window first
     if let Some(window) = app.get_webview_window("settings") {
         let _ = window.show();
         let _ = window.set_focus();
         return Ok(());
     }
-    
+
     // Create new settings window
     let window = tauri::WebviewWindowBuilder::new(
         &app,
@@ -491,7 +494,7 @@ async fn open_settings_window(app: AppHandle) -> Result<(), String> {
         error!("failed to create settings window: {err}");
         err.to_string()
     })?;
-    
+
     let _ = window.show();
     let _ = window.set_focus();
     info!("settings window opened");
