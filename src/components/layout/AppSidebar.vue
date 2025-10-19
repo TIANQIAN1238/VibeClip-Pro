@@ -7,7 +7,6 @@ import { useSettingsStore } from "@/store/settings";
 import AppInfo from "@/AppInfo";
 import { useLocale } from "@/composables/useLocale";
 import { prefetchRoute, type RoutePrefetchKey } from "@/utils/routePrefetch";
-import MdiHistory from "~icons/mdi/history";
 import MdiCogOutline from "~icons/mdi/cog-outline";
 import MdiClipboardTextOutline from "~icons/mdi/clipboard-text-outline";
 import MdiRobotOutline from "~icons/mdi/robot-outline";
@@ -26,13 +25,6 @@ const rawNavItems = [
     fallback: "剪贴板",
     icon: MdiClipboardTextOutline,
     path: "/clipboard",
-  },
-  {
-    key: "history",
-    labelKey: "nav.history",
-    fallback: "历史记录",
-    icon: MdiHistory,
-    path: "/history",
   },
   {
     key: "ai-tools",
@@ -270,7 +262,7 @@ const historyCountLabel = computed(() =>
 
 .nav {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -423,12 +415,6 @@ const historyCountLabel = computed(() =>
 
 .muted {
   color: var(--vibe-text-muted);
-}
-
-@media (min-width: 460px) {
-  .nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 @keyframes nav-activate {

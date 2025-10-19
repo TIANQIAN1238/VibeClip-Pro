@@ -28,7 +28,7 @@ export interface AIProviderConfig {
   model: string;
   temperature: number;
   enabled: boolean;
-  preset?: 'openai' | 'gemini' | 'claude' | 'deepseek' | 'openrouter' | 'local' | 'custom';
+  preset?: 'openai' | 'gemini' | 'claude' | 'deepseek' | 'aliyun' | 'openrouter' | 'local' | 'custom';
   corsMode?: boolean; // 独立的CORS设置
   status?: 'connected' | 'unconfigured' | 'error'; // 连接状态
 }
@@ -138,6 +138,12 @@ export const AI_PROVIDER_PRESETS = {
     name: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com/v1',
     model: 'deepseek-chat',
+    temperature: 0.3,
+  },
+  aliyun: {
+    name: '阿里云百炼',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'deepseek-r1',
     temperature: 0.3,
   },
   openrouter: {
@@ -849,7 +855,7 @@ export const useSettingsStore = defineStore("settings", () => {
     );
   });
 
-  function addAIProvider(preset?: 'openai' | 'gemini' | 'claude' | 'deepseek' | 'openrouter' | 'local' | 'custom') {
+  function addAIProvider(preset?: 'openai' | 'gemini' | 'claude' | 'deepseek' | 'aliyun' | 'openrouter' | 'local' | 'custom') {
     const id = `provider-${Date.now()}`;
     let config: AIProviderConfig;
 

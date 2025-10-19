@@ -159,19 +159,18 @@ function handleRemove() {
 <style scoped>
 .history-item {
   background: var(--vibe-bg-surface);
-  border-radius: var(--vibe-radius-lg);
-  padding: 18px;
+  border-radius: 10px;
+  padding: 12px;
   border: 1px solid var(--vibe-border-soft);
-  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
+  transition: all 140ms ease;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  will-change: transform;
+  gap: 8px;
 }
 
 .history-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--vibe-shadow-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(36, 56, 128, 0.08);
 }
 
 .history-item.pinned {
@@ -186,14 +185,14 @@ function handleRemove() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .item-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 11px;
   color: var(--vibe-text-muted);
 }
 
@@ -203,14 +202,19 @@ function handleRemove() {
   background: rgba(81, 97, 255, 0.12);
   color: rgba(38, 47, 110, 0.8);
   font-weight: 600;
+  font-size: 10px;
+}
+
+.timestamp {
+  font-size: 10px;
 }
 
 .item-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease-in-out;
+  transition: opacity 130ms ease;
 }
 
 .history-item:hover .item-actions,
@@ -220,29 +224,34 @@ function handleRemove() {
 }
 
 .item-actions :deep(.n-button) {
-  transition: transform 0.15s ease-out, background-color 0.15s ease-out;
+  transition: all 120ms ease;
 }
 
 .item-actions :deep(.n-button:hover:not(:disabled)) {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
-.item-actions :deep(.n-button:active:not(:disabled)) {
-  transform: scale(0.95);
+.item-body {
+  min-height: 40px;
 }
 
 .text-preview {
   margin: 0;
   color: var(--vibe-text-primary);
-  line-height: var(--line-height, 1.5);
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+  font-size: 13px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .image-preview {
-  border-radius: var(--vibe-radius-md);
+  border-radius: 8px;
   overflow: hidden;
-  max-height: 200px;
+  max-height: 150px;
   display: flex;
   justify-content: center;
   background: rgba(0, 0, 0, 0.05);
@@ -254,10 +263,18 @@ function handleRemove() {
 }
 
 .item-extra {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--vibe-text-muted);
   background: rgba(81, 97, 255, 0.08);
-  border-radius: var(--vibe-radius-md);
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-item,
+  .item-actions :deep(.n-button) {
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
 }
 </style>

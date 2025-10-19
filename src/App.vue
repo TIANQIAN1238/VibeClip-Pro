@@ -52,7 +52,7 @@ const naiveDateLocale = computed(() =>
               <div class="modern-app-content">
                 <RouterView v-slot="{ Component }">
                   <Transition name="modern-fade" mode="out-in">
-                    <component :is="Component" class="modern-route-view" />
+                    <component :is="Component" />
                   </Transition>
                 </RouterView>
               </div>
@@ -69,3 +69,35 @@ const naiveDateLocale = computed(() =>
     </n-loading-bar-provider>
   </n-config-provider>
 </template>
+
+<style scoped>
+.modern-app-container {
+  height: 100vh;
+  max-height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modern-titlebar {
+  flex-shrink: 0;
+}
+
+.modern-app-content {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.modern-fade-enter-active,
+.modern-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.modern-fade-enter-from,
+.modern-fade-leave-to {
+  opacity: 0;
+}
+</style>

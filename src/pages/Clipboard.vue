@@ -500,7 +500,7 @@ async function handleAiRun(payload: {
   customPrompt?: string;
 }) {
   if (!settings.apiKey) {
-    message.error("请先在设置中配置 OpenAI 兼容接口 Key");
+    message.error("请先在 API 页面配置 API Key");
     return;
   }
   try {
@@ -776,13 +776,13 @@ onMounted(async () => {
     <!-- 顶部导航 -->
     <nav class="modern-page-nav">
       <router-link to="/clipboard" class="modern-nav-item" active-class="active">
-        <span>剪贴板</span>
-      </router-link>
-      <router-link to="/history" class="modern-nav-item" active-class="active">
-        <span>历史</span>
+        <span>剪切板</span>
       </router-link>
       <router-link to="/ai" class="modern-nav-item" active-class="active">
         <span>AI 工具</span>
+      </router-link>
+      <router-link to="/settings" class="modern-nav-item" active-class="active">
+        <span>设置</span>
       </router-link>
     </nav>
     
@@ -1011,7 +1011,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-height: 100%;
   min-height: 0;
+  overflow: hidden;
   background: linear-gradient(160deg, rgba(248, 249, 255, 0.9), rgba(238, 242, 255, 0.88));
 }
 
@@ -1020,42 +1022,64 @@ onMounted(async () => {
 }
 
 .modern-page-nav {
-  display: flex;
-  gap: 12px;
-  padding: 18px 22px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  padding: 0;
   flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(79, 107, 255, 0.1);
+  z-index: 10;
 }
 
 .modern-nav-item {
-  position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 16px;
-  border-radius: 16px;
-  font-size: 13px;
+  padding: 16px 20px;
+  border-radius: 0;
+  font-size: 14px;
   font-weight: 600;
-  color: rgba(13, 26, 61, 0.68);
+  color: rgba(19, 31, 60, 0.68);
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: 0 10px 18px rgba(46, 65, 133, 0.08);
-  transition: transform 180ms ease, box-shadow 220ms ease, color 160ms ease;
+  background: rgba(255, 255, 255, 0.5);
+  border-right: 1px solid rgba(79, 107, 255, 0.08);
+  box-shadow: none;
+  transition: all 160ms ease;
+}
+
+.modern-nav-item:last-child {
+  border-right: none;
 }
 
 .modern-nav-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 30px rgba(46, 65, 133, 0.16);
+  background: rgba(255, 255, 255, 0.8);
+  color: #3a50ff;
 }
 
 .modern-nav-item.active {
-  color: #3555ff;
-  box-shadow: 0 20px 34px rgba(65, 89, 215, 0.25);
-  background: linear-gradient(135deg, rgba(79, 107, 255, 0.18), rgba(122, 209, 245, 0.18));
+  color: #3a50ff;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 -3px 0 0 #3a50ff;
+  font-weight: 700;
 }
 
 .dark .modern-nav-item {
-  background: rgba(33, 45, 68, 0.78);
+  background: rgba(33, 45, 68, 0.5);
   color: rgba(226, 234, 255, 0.7);
+  border-right-color: rgba(122, 209, 245, 0.1);
+}
+
+.dark .modern-nav-item:hover {
+  background: rgba(33, 45, 68, 0.8);
+  color: rgba(122, 209, 245, 0.9);
+}
+
+.dark .modern-nav-item.active {
+  color: #7ad1f5;
+  background: rgba(33, 45, 68, 0.95);
+  box-shadow: inset 0 -3px 0 0 #7ad1f5;
 }
 
 .modern-page-header {

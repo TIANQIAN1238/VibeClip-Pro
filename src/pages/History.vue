@@ -4,7 +4,6 @@ import { useMessage, useDialog } from "naive-ui";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import HistoryItem from "@/components/history/HistoryItem.vue";
-import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
 import { useLocale } from "@/composables/useLocale";
@@ -149,9 +148,10 @@ const resultCountLabel = computed(() =>
   format("history.total", "共 {count} 条记录", { count: history.filteredItems.length })
 );
 
-const clipboardCountLabel = computed(() =>
-  format("history.total", "共 {count} 条记录", { count: history.items.length })
-);
+// Unused variable - kept for future use
+// const clipboardCountLabel = computed(() =>
+//   format("history.total", "共 {count} 条记录", { count: history.items.length })
+// );
 
 const historySummary = computed(() => {
   const stats = {
@@ -212,18 +212,19 @@ async function syncSystemClipboard() {
   }
 }
 
-async function handleSavePreview() {
-  if (!clipboardPreview.value.trim()) {
-    message.info(t("clipboard.empty", "暂无文本内容，可使用 Ctrl+C 复制后刷新查看。"));
-    return;
-  }
-  try {
-    await history.captureText(clipboardPreview.value);
-    message.success(t("clipboard.save", "保存到历史"));
-  } catch (error) {
-    reportError(t("clipboard.save", "保存到历史"), error);
-  }
-}
+// Unused function - kept for future use
+// async function handleSavePreview() {
+//   if (!clipboardPreview.value.trim()) {
+//     message.info(t("clipboard.empty", "暂无文本内容，可使用 Ctrl+C 复制后刷新查看。"));
+//     return;
+//   }
+//   try {
+//     await history.captureText(clipboardPreview.value);
+//     message.success(t("clipboard.save", "保存到历史"));
+//   } catch (error) {
+//     reportError(t("clipboard.save", "保存到历史"), error);
+//   }
+// }
 
 async function handleCopy(item: ClipItem) {
   try {
@@ -267,32 +268,33 @@ function handleRemove(item: ClipItem) {
   });
 }
 
-async function handleAiRun(payload: {
-  action: AiActionKind;
-  input: string;
-  language: string;
-  customPrompt?: string;
-}) {
-  if (!settings.apiKey) {
-    message.error("请先在设置中配置 OpenAI 兼容接口 Key");
-    return;
-  }
-  try {
-    await history.runAiAction({
-      action: payload.action,
-      input: payload.input,
-      language: payload.language,
-      customPrompt: payload.customPrompt,
-      apiKey: settings.apiKey,
-      baseUrl: settings.apiBaseUrl,
-      model: settings.model,
-      temperature: settings.temperature,
-    });
-    message.success("AI 操作已完成并写入剪贴板");
-  } catch (error) {
-    reportError("AI 操作失败", error);
-  }
-}
+// Unused function - kept for future use
+// async function handleAiRun(payload: {
+//   action: AiActionKind;
+//   input: string;
+//   language: string;
+//   customPrompt?: string;
+// }) {
+//   if (!settings.apiKey) {
+//     message.error("请先在 API 页面配置 API Key");
+//     return;
+//   }
+//   try {
+//     await history.runAiAction({
+//       action: payload.action,
+//       input: payload.input,
+//       language: payload.language,
+//       customPrompt: payload.customPrompt,
+//       apiKey: settings.apiKey,
+//       baseUrl: settings.apiBaseUrl,
+//       model: settings.model,
+//       temperature: settings.temperature,
+//     });
+//     message.success("AI 操作已完成并写入剪贴板");
+//   } catch (error) {
+//     reportError("AI 操作失败", error);
+//   }
+// }
 
 function handleFilterChange(value: string) {
   history.filter = value as typeof history.filter;
@@ -401,7 +403,7 @@ async function handleContextSelect(key: string) {
 
 async function openAiDialog(action: AiActionKind, item: ClipItem) {
   if (!settings.apiKey) {
-    message.error("请先在设置中配置 OpenAI 兼容接口 Key");
+    message.error("请先在 API 页面配置 API Key");
     return;
   }
   aiDialog.visible = true;
@@ -505,26 +507,27 @@ async function handleClearHistory() {
   }
 }
 
-function handleSnapshotContextMenu(event: MouseEvent) {
-  if (!clipboardPreview.value) return;
-  
-  contextMenu.item = {
-    id: 0 as any, // 临时ID用于快照
-    kind: ClipKind.Text,
-    content: clipboardPreview.value,
-    preview: clipboardPreview.value.slice(0, 120),
-    contentHash: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    isPinned: false,
-    isFavorite: false,
-  } as ClipItem;
-  
-  contextMenu.x = event.clientX;
-  contextMenu.y = event.clientY;
-  contextMenu.show = true;
-  nextTick(adjustMenuPosition);
-}
+// Unused function - kept for future use
+// function handleSnapshotContextMenu(event: MouseEvent) {
+//   if (!clipboardPreview.value) return;
+//   
+//   contextMenu.item = {
+//     id: 0 as any, // 临时ID用于快照
+//     kind: ClipKind.Text,
+//     content: clipboardPreview.value,
+//     preview: clipboardPreview.value.slice(0, 120),
+//     contentHash: '',
+//     createdAt: new Date().toISOString(),
+//     updatedAt: new Date().toISOString(),
+//     isPinned: false,
+//     isFavorite: false,
+//   } as ClipItem;
+//   
+//   contextMenu.x = event.clientX;
+//   contextMenu.y = event.clientY;
+//   contextMenu.show = true;
+//   nextTick(adjustMenuPosition);
+// }
 
 onMounted(async () => {
   try {
@@ -546,17 +549,17 @@ onMounted(async () => {
     <!-- 顶部导航 -->
     <nav class="modern-page-nav">
       <router-link to="/clipboard" class="modern-nav-item" active-class="active">
-        <span>剪贴板</span>
-      </router-link>
-      <router-link to="/history" class="modern-nav-item" active-class="active">
-        <span>历史</span>
+        <span>剪切板</span>
       </router-link>
       <router-link to="/ai" class="modern-nav-item" active-class="active">
         <span>AI 工具</span>
       </router-link>
+      <router-link to="/settings" class="modern-nav-item" active-class="active">
+        <span>设置</span>
+      </router-link>
     </nav>
     
-    <section class="modern-main">
+    <div class="modern-main">
       <header class="page-header">
         <div>
           <h1>{{ t("history.title", "历史记录") }}</h1>
@@ -582,6 +585,7 @@ onMounted(async () => {
       </header>
 
       <div class="content-scroll thin-scrollbar">
+        <!-- 统计摘要 - 单行显示 -->
         <div class="history-summary">
           <div v-for="stat in historySummary" :key="stat.key" class="summary-chip">
             <span class="summary-value">{{ stat.value }}</span>
@@ -589,37 +593,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <section class="card clipboard-card">
-          <div class="card-header">
-            <div>
-              <h2>{{ t("history.clipboardPreview", "剪贴板快照") }}</h2>
-              <p>{{ clipboardCountLabel }}</p>
-            </div>
-            <n-button size="tiny" secondary :loading="capturing" @click="syncSystemClipboard">
-              {{ t("history.syncClipboard", "同步") }}
-            </n-button>
-          </div>
-          <div class="card-body" @contextmenu.prevent="handleSnapshotContextMenu">
-            <p v-if="clipboardPreview" class="preview-text">{{ clipboardPreview }}</p>
-            <p v-else class="placeholder">
-              {{ t("history.clipboardPlaceholder", "剪贴板暂无文本，可在应用中粘贴图片或文件以自动收集。") }}
-            </p>
-          </div>
-          <footer class="card-footer">
-            <n-button size="tiny" type="primary" :disabled="!clipboardPreview" @click="handleSavePreview">
-              {{ t("clipboard.save", "保存到历史") }}
-            </n-button>
-          </footer>
-        </section>
-
-        <AiQuickActions
-          class="card ai-card"
-          :loading="history.aiBusy"
-          :source-text="history.latest?.content ?? clipboardPreview"
-          :on-run="handleAiRun"
-        />
-
-        <section class="filters card">
+        <!-- 筛选和搜索栏 -->
+        <section class="filters-section">
           <div class="filter-tabs">
             <button
               v-for="option in filterOptions"
@@ -639,7 +614,7 @@ onMounted(async () => {
               clearable
               :placeholder="t('history.searchPlaceholder', '搜索历史...')"
             />
-            <span class="muted">{{ resultCountLabel }}</span>
+            <span class="result-count">{{ resultCountLabel }}</span>
           </div>
         </section>
 
@@ -647,44 +622,43 @@ onMounted(async () => {
           {{ history.lastError }}
         </n-alert>
 
-        <section class="history-list card">
-          <div class="history-scroll">
-            <n-virtual-list
-              v-if="history.filteredItems.length"
-              class="history-virtual-list"
-              :items="history.filteredItems"
-              key-field="id"
-              :item-size="184"
-              :show-scrollbar="false"
-            >
-              <template #default="{ item }">
-                <div class="history-row" @contextmenu.prevent="handleContextMenu(item, $event)">
-                  <HistoryItem
-                    :item="item"
-                    @copy="handleCopy"
-                    @pin="handlePin"
-                    @favorite="handleFavorite"
-                    @remove="handleRemove"
-                  />
-                </div>
-              </template>
-            </n-virtual-list>
-            <n-empty v-else :description="t('history.empty', '还没有保存的剪贴板内容')">
-              <template #extra>
-                <n-button size="tiny" @click="syncSystemClipboard">
-                  {{ t("history.emptyAction", "立即同步") }}
-                </n-button>
-              </template>
-            </n-empty>
-            <div v-if="history.hasMore" class="load-more">
-              <n-button tertiary block size="tiny" :loading="history.isLoading" @click="loadMore">
-                {{ t("history.loadMore", "加载更多") }}
+        <!-- 历史记录列表 -->
+        <section class="history-list">
+          <n-virtual-list
+            v-if="history.filteredItems.length"
+            class="history-virtual-list"
+            :items="history.filteredItems"
+            key-field="id"
+            :item-size="120"
+            :show-scrollbar="false"
+          >
+            <template #default="{ item }">
+              <div class="history-row" @contextmenu.prevent="handleContextMenu(item, $event)">
+                <HistoryItem
+                  :item="item"
+                  @copy="handleCopy"
+                  @pin="handlePin"
+                  @favorite="handleFavorite"
+                  @remove="handleRemove"
+                />
+              </div>
+            </template>
+          </n-virtual-list>
+          <n-empty v-else :description="t('history.empty', '还没有保存的剪贴板内容')">
+            <template #extra>
+              <n-button size="tiny" @click="syncSystemClipboard">
+                {{ t("history.emptyAction", "立即同步") }}
               </n-button>
-            </div>
+            </template>
+          </n-empty>
+          <div v-if="history.hasMore" class="load-more">
+            <n-button tertiary block size="tiny" :loading="history.isLoading" @click="loadMore">
+              {{ t("history.loadMore", "加载更多") }}
+            </n-button>
           </div>
         </section>
       </div>
-    </section>
+    </div>
 
     <Teleport to="body">
       <transition name="menu-fade">
@@ -740,6 +714,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  width: 100%;
   background: linear-gradient(165deg, rgba(247, 249, 255, 0.96), rgba(235, 242, 255, 0.86));
   overflow: hidden;
 }
@@ -749,44 +726,77 @@ onMounted(async () => {
 }
 
 .modern-page-nav {
-  display: flex;
-  gap: 12px;
-  padding: 18px 24px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  padding: 0;
   flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(79, 107, 255, 0.1);
+  z-index: 10;
 }
 
 .modern-nav-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: 16px;
-  font-size: 13px;
+  padding: 16px 20px;
+  border-radius: 0;
+  font-size: 14px;
   font-weight: 600;
   color: rgba(19, 31, 60, 0.68);
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 12px 24px rgba(36, 56, 128, 0.12);
-  transition: transform 160ms ease, box-shadow 200ms ease;
+  background: rgba(255, 255, 255, 0.5);
+  border-right: 1px solid rgba(79, 107, 255, 0.08);
+  box-shadow: none;
+  transition: all 160ms ease;
+}
+
+.modern-nav-item:last-child {
+  border-right: none;
 }
 
 .modern-nav-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 36px rgba(36, 56, 128, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  color: #3a50ff;
 }
 
 .modern-nav-item.active {
   color: #3a50ff;
-  background: linear-gradient(135deg, rgba(79, 107, 255, 0.18), rgba(122, 209, 245, 0.18));
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 -3px 0 0 #3a50ff;
+  font-weight: 700;
+}
+
+.dark .modern-nav-item {
+  background: rgba(33, 45, 68, 0.5);
+  color: rgba(226, 234, 255, 0.7);
+  border-right-color: rgba(122, 209, 245, 0.1);
+}
+
+.dark .modern-nav-item:hover {
+  background: rgba(33, 45, 68, 0.8);
+  color: rgba(122, 209, 245, 0.9);
+}
+
+.dark .modern-nav-item.active {
+  color: #7ad1f5;
+  background: rgba(33, 45, 68, 0.95);
+  box-shadow: inset 0 -3px 0 0 #7ad1f5;
 }
 
 .modern-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 18px 24px 24px;
-  gap: 20px;
+  padding: 20px 24px 24px;
+  gap: 18px;
   min-height: 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  overflow: hidden;
 }
 
 .page-header {
@@ -795,6 +805,7 @@ onMounted(async () => {
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .page-header h1 {
@@ -816,36 +827,42 @@ onMounted(async () => {
 }
 
 .header-actions :deep(.n-button) {
-  border-radius: 12px;
-  box-shadow: 0 16px 28px rgba(79, 107, 255, 0.18);
-  transition: transform 160ms ease, box-shadow 200ms ease;
+  border-radius: 10px;
 }
 
-.header-actions :deep(.n-button:hover) {
-  transform: translateY(-2px);
-  box-shadow: 0 22px 36px rgba(79, 107, 255, 0.24);
+.content-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .history-summary {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x: auto;
-  padding: 4px 0 6px;
+  flex-shrink: 0;
+  padding-bottom: 4px;
 }
 
 .summary-chip {
   flex: 0 0 auto;
-  min-width: 120px;
-  padding: 12px 14px;
-  border-radius: 18px;
+  min-width: 100px;
+  padding: 10px 12px;
+  border-radius: 12px;
   border: 1px solid rgba(79, 107, 255, 0.14);
   background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 16px 30px rgba(36, 56, 128, 0.16);
+  box-shadow: 0 4px 12px rgba(36, 56, 128, 0.1);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .summary-value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--vibe-text-primary);
 }
@@ -855,10 +872,20 @@ onMounted(async () => {
   color: var(--vibe-text-muted);
 }
 
-.filters {
+.filters-section {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  border: 1px solid rgba(79, 107, 255, 0.12);
+  padding: 14px;
+  flex-shrink: 0;
+}
+
+.dark .filters-section {
+  background: rgba(26, 34, 55, 0.86);
+  border-color: rgba(122, 209, 245, 0.16);
 }
 
 .filter-tabs {
@@ -872,156 +899,169 @@ onMounted(async () => {
   flex: 0 0 auto;
   border: none;
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   background: rgba(79, 107, 255, 0.12);
   color: #3245d6;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 160ms ease, box-shadow 200ms ease;
+  transition: all 140ms ease;
 }
 
 .filter-tab.active {
   background: linear-gradient(135deg, rgba(79, 107, 255, 0.22), rgba(122, 209, 245, 0.22));
   color: #1c2f8a;
-  box-shadow: 0 18px 28px rgba(79, 107, 255, 0.2);
 }
 
 .filter-tab:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-.content-scroll {
-  flex: 1;
-  display: grid;
-  gap: 20px;
-  grid-template-columns: 320px 1fr;
-  min-height: 0;
-}
-
-.history-sidebar {
+.filter-search {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card {
-  padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(79, 107, 255, 0.14);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 24px 50px rgba(36, 56, 128, 0.18);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 0;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
 
-.card-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.card-body {
-  max-height: 180px;
-  overflow-y: auto;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--vibe-text-secondary);
-}
-
-.placeholder {
-  margin: 0;
-  font-size: 12px;
+.result-count {
+  font-size: 11px;
   color: var(--vibe-text-muted);
+  white-space: nowrap;
 }
 
-.history-table {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 0;
+.history-alert {
+  margin: 0;
 }
 
 .history-list {
   flex: 1;
   overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid rgba(79, 107, 255, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 26px 54px rgba(36, 56, 128, 0.18);
-}
-
-.history-list :deep(.n-scrollbar) {
-  height: 100%;
-}
-
-.history-list :deep(.n-scrollbar-content) {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-}
-
-.history-list :deep(.history-item) {
-  border-radius: 16px;
-  border: 1px solid rgba(79, 107, 255, 0.12);
-  box-shadow: 0 16px 30px rgba(36, 56, 128, 0.18);
-  transition: transform 180ms ease, box-shadow 220ms ease;
-}
-
-.history-list :deep(.history-item:hover) {
-  transform: translateY(-4px);
-  box-shadow: 0 26px 48px rgba(36, 56, 128, 0.22);
-}
-
-.context-pane {
-  position: relative;
-}
-
-.context-pane :deep(.n-empty) {
-  padding: 28px 0;
-}
-
-.history-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.history-actions :deep(.n-button) {
+  background: rgba(255, 255, 255, 0.92);
   border-radius: 12px;
+  border: 1px solid rgba(79, 107, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(36, 56, 128, 0.1);
+  padding: 12px;
+  min-height: 0;
 }
 
-@media (max-width: 1280px) {
-  .content-scroll {
-    grid-template-columns: 1fr;
-  }
+.dark .history-list {
+  background: rgba(26, 34, 55, 0.86);
+  border-color: rgba(122, 209, 245, 0.16);
+}
+
+.history-virtual-list {
+  flex: 1;
+}
+
+.history-row {
+  padding: 6px 0;
+}
+
+.history-row :deep(.history-item) {
+  border-radius: 10px;
+  border: 1px solid rgba(79, 107, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(36, 56, 128, 0.08);
+  transition: all 140ms ease;
+}
+
+.history-row :deep(.history-item:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(36, 56, 128, 0.12);
+}
+
+.load-more {
+  padding-top: 12px;
+}
+
+.context-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.context-menu {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(79, 107, 255, 0.14);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(36, 56, 128, 0.2);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  pointer-events: auto;
+  min-width: 180px;
+}
+
+.dark .context-menu {
+  background: rgba(26, 34, 55, 0.96);
+  border-color: rgba(122, 209, 245, 0.16);
+}
+
+.context-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vibe-text-muted);
+  border-bottom: 1px solid rgba(79, 107, 255, 0.1);
+}
+
+.context-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+
+.context-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--vibe-text-primary);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.context-item:hover {
+  background: rgba(79, 107, 255, 0.08);
+}
+
+.context-item.danger {
+  color: #ff3b30;
+}
+
+.context-item.danger:hover {
+  background: rgba(255, 59, 48, 0.08);
+}
+
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: opacity 150ms ease;
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
 }
 
 @media (max-width: 768px) {
   .modern-main {
-    padding: 16px 18px 20px;
+    padding: 16px;
   }
 
-  .content-scroll {
-    gap: 16px;
+  .filter-search {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .modern-nav-item,
-  .summary-chip,
   .filter-tab,
-  .card,
-  .history-list :deep(.history-item) {
+  .history-row :deep(.history-item) {
     transition-duration: 0.01ms !important;
     transform: none !important;
   }

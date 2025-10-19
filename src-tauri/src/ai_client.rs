@@ -58,7 +58,12 @@ pub async fn perform(request: AiActionRequest) -> Result<AiActionResponse> {
     });
 
     let client = reqwest::Client::new();
-    let url = format!("{}/v1/chat/completions", base_url);
+    // Handle base URLs that already include /v1 (e.g., Aliyun DashScope)
+    let url = if base_url.ends_with("/v1") {
+        format!("{}/chat/completions", base_url)
+    } else {
+        format!("{}/v1/chat/completions", base_url)
+    };
     let response = client
         .post(url)
         .bearer_auth(api_key)

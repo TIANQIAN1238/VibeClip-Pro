@@ -2,17 +2,15 @@
 import { computed, onMounted, onErrorCaptured, ref, watch } from "vue";
 import { useMessage } from "naive-ui";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
-import AiQuickActions from "@/components/ai/AiQuickActions.vue";
 import GlobalContextMenu from "@/components/system/GlobalContextMenu.vue";
 import { useHistoryStore } from "@/store/history";
 import { useSettingsStore } from "@/store/settings";
 import { useBridgeStore } from "@/store/bridge";
 import type { ClipboardBridgePayload } from "@/store/bridge";
-import { ClipKind, type AiActionKind } from "@/types/history";
+import { ClipKind } from "@/types/history";
 import { useLocale } from "@/composables/useLocale";
 import { useContextMenu, type ContextMenuItem } from "@/composables/useContextMenu";
 import MdiContentCopy from "~icons/mdi/content-copy";
-import MdiContentSave from "~icons/mdi/content-save";
 import MdiDeleteOutline from "~icons/mdi/delete-outline";
 
 const history = useHistoryStore();
@@ -32,10 +30,11 @@ const assistantInput = ref("");
 const assistantLoading = ref(false);
 const clipboardBridge = ref<ClipboardBridgePayload | null>(null);
 
-const resultContextMenuItems = computed<ContextMenuItem[]>(() => [
-  { key: "copy", label: t("ai.copy", "复制结果"), icon: MdiContentCopy },
-  { key: "save", label: t("ai.save", "保存到历史"), icon: MdiContentSave },
-]);
+// Unused - kept for future use
+// const resultContextMenuItems = computed<ContextMenuItem[]>(() => [
+//   { key: "copy", label: t("ai.copy", "复制结果"), icon: MdiContentCopy },
+//   { key: "save", label: t("ai.save", "保存到历史"), icon: MdiContentSave },
+// ]);
 
 const assistantMessageContextMenuItems = computed<ContextMenuItem[]>(() => [
   { key: "copy", label: t("assistant.copy", "复制回答"), icon: MdiContentCopy },
@@ -84,35 +83,36 @@ watch(
   { immediate: true }
 );
 
-function applyBridgeToInput() {
-  const payload = clipboardBridge.value;
-  if (!payload) return;
-  input.value = payload.content;
-  message.success(t("ai.bridgeApplied", "已填充到输入区"));
-}
+// Unused functions - kept for future use
+// function applyBridgeToInput() {
+//   const payload = clipboardBridge.value;
+//   if (!payload) return;
+//   input.value = payload.content;
+//   message.success(t("ai.bridgeApplied", "已填充到输入区"));
+// }
 
-function sendBridgeToAssistant() {
-  const payload = clipboardBridge.value;
-  if (payload) {
-    ensureAssistantIntro();
-    assistantInput.value =
-      payload.kind === ClipKind.Image
-        ? `请描述这张图片：${payload.content}`
-        : payload.content;
-    void sendAssistantMessage();
-    clipboardBridge.value = null;
-    return;
-  }
-  if (input.value.trim()) {
-    ensureAssistantIntro();
-    assistantInput.value = input.value;
-    void sendAssistantMessage();
-  }
-}
+// function sendBridgeToAssistant() {
+//   const payload = clipboardBridge.value;
+//   if (payload) {
+//     ensureAssistantIntro();
+//     assistantInput.value =
+//       payload.kind === ClipKind.Image
+//         ? `请描述这张图片：${payload.content}`
+//         : payload.content;
+//     void sendAssistantMessage();
+//     clipboardBridge.value = null;
+//     return;
+//   }
+//   if (input.value.trim()) {
+//     ensureAssistantIntro();
+//     assistantInput.value = input.value;
+//     void sendAssistantMessage();
+//   }
+// }
 
-function clearBridgeSeed() {
-  clipboardBridge.value = null;
-}
+// function clearBridgeSeed() {
+//   clipboardBridge.value = null;
+// }
 
 function reportError(label: string, error: unknown) {
   console.error(label, error);
@@ -120,40 +120,41 @@ function reportError(label: string, error: unknown) {
   message.error(`${label}${detail ? `：${detail}` : ""}`);
 }
 
-async function handleAiRun(payload: {
-  action: AiActionKind;
-  input: string;
-  language: string;
-  customPrompt?: string;
-}) {
-  if (!payload.input.trim()) {
-    message.warning(t("ai.placeholder", "输入内容"));
-    return;
-  }
-  if (!settings.apiKey) {
-    message.warning("请在设置页配置 OpenAI 兼容接口 Key");
-    return;
-  }
-  try {
-    const response = await history.runAiAction(
-      {
-        action: payload.action,
-        input: payload.input,
-        language: payload.language,
-        customPrompt: payload.customPrompt,
-        apiKey: settings.apiKey,
-        baseUrl: settings.apiBaseUrl,
-        model: settings.model,
-        temperature: settings.temperature,
-      },
-      { persist: false, copy: false }
-    );
-    output.value = response.result;
-    message.success("AI 操作完成");
-  } catch (error) {
-    reportError("AI 操作失败", error);
-  }
-}
+// Unused function - kept for future use
+// async function handleAiRun(payload: {
+//   action: AiActionKind;
+//   input: string;
+//   language: string;
+//   customPrompt?: string;
+// }) {
+//   if (!payload.input.trim()) {
+//     message.warning(t("ai.placeholder", "输入内容"));
+//     return;
+//   }
+//   if (!settings.apiKey) {
+//     message.warning("请在设置页配置 OpenAI 兼容接口 Key");
+//     return;
+//   }
+//   try {
+//     const response = await history.runAiAction(
+//       {
+//         action: payload.action,
+//         input: payload.input,
+//         language: payload.language,
+//         customPrompt: payload.customPrompt,
+//         apiKey: settings.apiKey,
+//         baseUrl: settings.apiBaseUrl,
+//         model: settings.model,
+//         temperature: settings.temperature,
+//       },
+//       { persist: false, copy: false }
+//     );
+//     output.value = response.result;
+//     message.success("AI 操作完成");
+//   } catch (error) {
+//     reportError("AI 操作失败", error);
+//   }
+// }
 
 async function pasteFromClipboard() {
   try {
@@ -171,10 +172,11 @@ async function pasteFromClipboard() {
   }
 }
 
-function clearWorkspace() {
-  input.value = "";
-  output.value = "";
-}
+// Unused function - kept for future use
+// function clearWorkspace() {
+//   input.value = "";
+//   output.value = "";
+// }
 
 async function copyResult() {
   if (!output.value) return;
@@ -206,7 +208,7 @@ async function sendAssistantMessage() {
   const question = assistantInput.value.trim();
   if (!question) return;
   if (!settings.apiKey) {
-    message.warning("请在设置页配置 OpenAI 兼容接口 Key");
+    message.warning("请在 API 页面配置 API Key");
     return;
   }
   ensureAssistantIntro();
@@ -241,6 +243,49 @@ async function sendAssistantMessage() {
   }
 }
 
+async function handleQuickAction(action: 'translate' | 'summarize' | 'polish' | 'custom') {
+  const content = assistantInput.value.trim();
+  if (!content) return;
+  if (!settings.apiKey) {
+    message.warning("请在 API 页面配置 API Key");
+    return;
+  }
+
+  let prompt = content;
+  if (action === 'translate') {
+    prompt = `请将以下内容翻译为${settings.preferredLanguage}：\n\n${content}`;
+  } else if (action === 'summarize') {
+    prompt = `请总结以下内容的要点：\n\n${content}`;
+  } else if (action === 'polish') {
+    prompt = `请润色以下内容，使其更专业流畅：\n\n${content}`;
+  }
+
+  ensureAssistantIntro();
+  assistantMessages.value.push({ role: "user", content: prompt });
+  assistantInput.value = "";
+  assistantLoading.value = true;
+
+  try {
+    const response = await history.runAiAction(
+      {
+        action,
+        input: content,
+        language: settings.preferredLanguage,
+        apiKey: settings.apiKey,
+        baseUrl: settings.apiBaseUrl,
+        model: settings.model,
+        temperature: settings.temperature,
+      },
+      { persist: false, copy: false }
+    );
+    assistantMessages.value.push({ role: "assistant", content: response.result });
+  } catch (error) {
+    reportError("AI 操作失败", error);
+  } finally {
+    assistantLoading.value = false;
+  }
+}
+
 function copyAssistantResponse(entry: { role: "user" | "assistant"; content: string }) {
   if (entry.role !== "assistant") return;
   void (async () => {
@@ -254,14 +299,15 @@ function copyAssistantResponse(entry: { role: "user" | "assistant"; content: str
   })();
 }
 
-function handleResultContextMenu(event: MouseEvent) {
-  if (!output.value) return;
-  contextMenu.showContextMenu(event, resultContextMenuItems.value, {
-    type: "ai-result",
-    data: { content: output.value },
-    position: { x: event.clientX, y: event.clientY },
-  });
-}
+// Unused function - kept for future use
+// function handleResultContextMenu(event: MouseEvent) {
+//   if (!output.value) return;
+//   contextMenu.showContextMenu(event, resultContextMenuItems.value, {
+//     type: "ai-result",
+//     data: { content: output.value },
+//     position: { x: event.clientX, y: event.clientY },
+//   });
+// }
 
 function handleAssistantMessageContextMenu(event: MouseEvent, message: { role: "user" | "assistant"; content: string }, index: number) {
   if (message.role !== "assistant") return;
@@ -350,13 +396,13 @@ onErrorCaptured((err, _instance, info) => {
     <!-- 顶部导航 -->
     <nav class="modern-page-nav">
       <router-link to="/clipboard" class="modern-nav-item" active-class="active">
-        <span>剪贴板</span>
-      </router-link>
-      <router-link to="/history" class="modern-nav-item" active-class="active">
-        <span>历史</span>
+        <span>剪切板</span>
       </router-link>
       <router-link to="/ai" class="modern-nav-item" active-class="active">
         <span>AI 工具</span>
+      </router-link>
+      <router-link to="/settings" class="modern-nav-item" active-class="active">
+        <span>设置</span>
       </router-link>
     </nav>
     
@@ -370,129 +416,93 @@ onErrorCaptured((err, _instance, info) => {
     </div>
 
     <template v-else>
-      <header class="page-header">
-        <div>
-          <h1>{{ t("ai.title", "AI 工具集") }}</h1>
-          <p>{{ t("ai.subtitle", "选择合适的动作处理文本，结果可复制或保存到历史") }}</p>
-        </div>
-        <div class="header-actions">
-          <n-button size="tiny" secondary @click="pasteFromClipboard">
-            {{ t("ai.paste", "粘贴剪贴板") }}
-          </n-button>
-          <n-button size="tiny" quaternary @click="clearWorkspace">
-            {{ t("ai.clear", "清空") }}
-          </n-button>
-        </div>
-      </header>
+      <div class="ai-chat-container">
+        <header class="page-header">
+          <div>
+            <h1>{{ t("ai.title", "AI 工具") }}</h1>
+            <p>{{ t("ai.subtitle", "与 AI 对话，快速处理文本内容") }}</p>
+          </div>
+          <div class="header-actions">
+            <n-button size="small" secondary @click="pasteFromClipboard">
+              {{ t("ai.paste", "粘贴剪贴板") }}
+            </n-button>
+            <n-button size="small" quaternary @click="() => { assistantMessages = []; ensureAssistantIntro(); }">
+              {{ t("ai.clear", "清空对话") }}
+            </n-button>
+          </div>
+        </header>
 
-      <div class="ai-tools-layout">
-        <!-- 中间主工作区 -->
-        <div class="main-workspace">
-          <section v-if="clipboardBridge" class="card bridge-card enhanced-bridge-card">
-            <header class="bridge-header">
-              <div>
-                <h2>{{ clipboardBridge.title ?? t("ai.bridgeTitle", "来自剪贴板") }}</h2>
-                <p>{{ t("ai.bridgeSubtitle", "快速继续处理或发送给 AI 助理") }}</p>
-              </div>
-            </header>
-            <div class="bridge-body">
-              <img
-                v-if="clipboardBridge.kind === ClipKind.Image"
-                :src="clipboardBridge.content"
-                alt="clipboard preview"
-                class="bridge-image"
-              />
-              <p v-else class="bridge-text">{{ clipboardBridge.content }}</p>
+        <!-- 快捷操作栏 -->
+        <div class="quick-actions-bar">
+          <button
+            class="quick-action-btn"
+            :disabled="!assistantInput.trim() || assistantLoading"
+            @click="() => handleQuickAction('translate')"
+          >
+            翻译
+          </button>
+          <button
+            class="quick-action-btn"
+            :disabled="!assistantInput.trim() || assistantLoading"
+            @click="() => handleQuickAction('summarize')"
+          >
+            摘要
+          </button>
+          <button
+            class="quick-action-btn"
+            :disabled="!assistantInput.trim() || assistantLoading"
+            @click="() => handleQuickAction('polish')"
+          >
+            润色
+          </button>
+          <button
+            class="quick-action-btn"
+            :disabled="!assistantInput.trim() || assistantLoading"
+            @click="() => handleQuickAction('custom')"
+          >
+            自定义
+          </button>
+        </div>
+
+        <!-- 对话历史区域 -->
+        <div class="messages-container thin-scrollbar">
+          <div
+            v-for="(message, index) in assistantMessages"
+            :key="index"
+            :class="['message-bubble', message.role]"
+            @dblclick="copyAssistantResponse(message)"
+            @contextmenu="handleAssistantMessageContextMenu($event, message, index)"
+          >
+            <div class="message-content">{{ message.content }}</div>
+          </div>
+          <div v-if="assistantLoading" class="message-bubble assistant loading">
+            <div class="message-content">
+              <span class="loading-dots">正在思考...</span>
             </div>
-            <footer class="bridge-actions">
-              <n-button size="tiny" tertiary @click="applyBridgeToInput">
-                {{ t("ai.bridgeApply", "填充到输入区") }}
-              </n-button>
-              <n-button size="tiny" type="primary" @click="sendBridgeToAssistant">
-                {{ t("ai.bridgeSend", "发送给助手") }}
-              </n-button>
-              <n-button size="tiny" quaternary @click="clearBridgeSeed">
-                {{ t("ai.bridgeClear", "清除") }}
-              </n-button>
-            </footer>
-          </section>
+          </div>
+        </div>
 
-          <section class="card input-card">
-            <h2>{{ t("ai.input", "输入内容") }}</h2>
-            <n-input
-              v-model:value="input"
-              type="textarea"
-              :autosize="{ minRows: 6, maxRows: 10 }"
-              :placeholder="t('ai.placeholder', '在此输入需要处理的文本，或点击上方按钮同步系统剪贴板')"
-            />
-          </section>
-
-          <AiQuickActions
-            class="card ai-card"
-            :loading="history.aiBusy"
-            :source-text="input"
-            :on-run="handleAiRun"
+        <!-- 底部输入区 -->
+        <div class="input-container">
+          <n-input
+            v-model:value="assistantInput"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 6 }"
+            :placeholder="t('ai.assistantPlaceholder', '请帮我生成一段文字')"
+            @keyup.enter.exact.prevent="sendAssistantMessage"
+            :disabled="assistantLoading"
           />
-
-          <section class="card result-card">
-            <div class="result-header">
-              <h2>{{ t("ai.output", "AI 输出") }}</h2>
-              <div class="result-actions">
-                <n-button size="tiny" secondary :disabled="!output" @click="copyResult">
-                  {{ t("ai.copy", "复制结果") }}
-                </n-button>
-                <n-button size="tiny" type="primary" :disabled="!output" @click="saveResult">
-                  {{ t("ai.save", "保存到历史") }}
-                </n-button>
-              </div>
-            </div>
-            <div class="result-body" @contextmenu="handleResultContextMenu">
-              <pre v-if="output">{{ output }}</pre>
-              <p v-else class="placeholder">{{ t("ai.placeholder", "在此输入需要处理的文本，或点击上方按钮同步系统剪贴板") }}</p>
-            </div>
-          </section>
+          <n-button
+            type="primary"
+            :loading="assistantLoading"
+            :disabled="!assistantInput.trim()"
+            @click="sendAssistantMessage"
+            @dblclick="sendAssistantMessage"
+            class="send-btn"
+          >
+            {{ t("ai.assistantSend", "发送") }}
+          </n-button>
         </div>
-
-        <!-- 右侧AI助理 -->
-        <aside class="ai-assistant-sidebar">
-          <section class="card assistant-card">
-            <header class="assistant-header">
-              <div>
-                <h2>{{ t("ai.assistantTitle", "AI 助理") }}</h2>
-                <p>{{ t("ai.assistantSubtitle", "自由提问或让 AI 帮助翻译、摘要与润色") }}</p>
-              </div>
-              <n-button size="tiny" secondary @click="pasteFromClipboard">
-                {{ t("ai.pasteClipboard", "读取剪贴板") }}
-              </n-button>
-            </header>
-            <div class="assistant-messages thin-scrollbar">
-              <template v-if="assistantMessages.length">
-                <div
-                  v-for="(message, index) in assistantMessages"
-                  :key="index"
-                  :class="['assistant-message', message.role]"
-                  @dblclick="copyAssistantResponse(message)"
-                  @contextmenu="handleAssistantMessageContextMenu($event, message, index)"
-                >
-                  <p>{{ message.content }}</p>
-                </div>
-              </template>
-              <p v-else class="placeholder">{{ t("assistant.empty", "还没有对话，开始输入吧。") }}</p>
-            </div>
-            <div class="assistant-input">
-              <n-input
-                v-model:value="assistantInput"
-                type="textarea"
-                :autosize="{ minRows: 2, maxRows: 4 }"
-                :placeholder="t('ai.assistantPlaceholder', '输入想要询问或处理的内容')"
-                @keyup.enter.exact.prevent="sendAssistantMessage"
-              />
-              <n-button type="primary" size="tiny" :loading="assistantLoading" @click="sendAssistantMessage">
-                {{ t("ai.assistantSend", "发送") }}
-              </n-button>
-            </div>
-          </section>
-        </aside>
       </div>
     </template>
 
@@ -509,25 +519,106 @@ onErrorCaptured((err, _instance, info) => {
 </template>
 
 <style scoped>
-.ai-tools-page {
+.modern-ai-tools-page {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  width: 100%;
   background: linear-gradient(155deg, rgba(244, 247, 255, 0.96), rgba(230, 239, 255, 0.9));
   overflow: hidden;
 }
 
-:global(.dark) .ai-tools-page {
+:global(.dark) .modern-ai-tools-page {
   background: linear-gradient(155deg, rgba(16, 22, 34, 0.94), rgba(18, 26, 46, 0.88));
+}
+
+.modern-page-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  padding: 0;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(79, 107, 255, 0.1);
+  z-index: 10;
+}
+
+.modern-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(19, 31, 60, 0.68);
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.5);
+  border-right: 1px solid rgba(79, 107, 255, 0.08);
+  box-shadow: none;
+  transition: all 160ms ease;
+}
+
+.modern-nav-item:last-child {
+  border-right: none;
+}
+
+.modern-nav-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+  color: #3a50ff;
+}
+
+.modern-nav-item.active {
+  color: #3a50ff;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 -3px 0 0 #3a50ff;
+  font-weight: 700;
+}
+
+.dark .modern-nav-item {
+  background: rgba(33, 45, 68, 0.5);
+  color: rgba(226, 234, 255, 0.7);
+  border-right-color: rgba(122, 209, 245, 0.1);
+}
+
+.dark .modern-nav-item:hover {
+  background: rgba(33, 45, 68, 0.8);
+  color: rgba(122, 209, 245, 0.9);
+}
+
+.dark .modern-nav-item.active {
+  color: #7ad1f5;
+  background: rgba(33, 45, 68, 0.95);
+  box-shadow: inset 0 -3px 0 0 #7ad1f5;
+}
+
+.loading-skeleton {
+  padding: 24px;
+}
+
+.ai-chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 24px;
+  gap: 16px;
+  min-height: 0;
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+  overflow: hidden;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 24px 28px 12px;
-  gap: 18px;
+  gap: 16px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .page-header h1 {
@@ -537,199 +628,193 @@ onErrorCaptured((err, _instance, info) => {
 }
 
 .page-header p {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
   color: var(--vibe-text-secondary);
-  max-width: 560px;
 }
 
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .header-actions :deep(.n-button) {
-  border-radius: 14px;
-  box-shadow: 0 16px 30px rgba(79, 107, 255, 0.18);
+  border-radius: 10px;
 }
 
-.header-actions :deep(.n-button:hover) {
-  transform: translateY(-2px);
-  box-shadow: 0 22px 40px rgba(79, 107, 255, 0.24);
-}
-
-.tools-content {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(300px, 360px) 1fr;
-  gap: 22px;
-  padding: 0 28px 24px;
-  min-height: 0;
-}
-
-.tool-panel {
+.quick-actions-bar {
   display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.tool-card {
-  padding: 20px;
-  border-radius: 20px;
-  border: 1px solid rgba(79, 107, 255, 0.14);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 24px 54px rgba(36, 56, 128, 0.18);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.tool-card__title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.tool-card__description {
-  font-size: 13px;
-  color: var(--vibe-text-secondary);
-  margin: 0;
-}
-
-.tool-card :deep(.n-form-item) {
-  margin-bottom: 12px;
-}
-
-.tool-card :deep(.n-input),
-.tool-card :deep(.n-select) {
-  border-radius: 14px;
-}
-
-.tool-card :deep(.n-input textarea) {
-  border-radius: 14px;
-}
-
-.tool-card :deep(.n-button) {
-  border-radius: 12px;
-}
-
-.output-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-height: 0;
-}
-
-.output-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border-radius: 22px;
-  border: 1px solid rgba(79, 107, 255, 0.14);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 28px 60px rgba(36, 56, 128, 0.2);
-  overflow: hidden;
-}
-
-.output-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 18px 22px;
-  border-bottom: 1px solid rgba(79, 107, 255, 0.1);
-}
-
-.output-card__header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.output-card__body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
-
-.output-card__body :deep(.n-scrollbar) {
-  flex: 1;
-}
-
-.output-card__body :deep(.n-scrollbar-content) {
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.output-card__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 0 22px 18px;
-}
-
-.output-card__actions :deep(.n-button) {
-  border-radius: 12px;
-}
-
-.tool-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.tool-pill {
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(79, 107, 255, 0.12);
-  background: rgba(255, 255, 255, 0.88);
-  font-size: 12px;
-  color: var(--vibe-text-secondary);
-}
-
-.history-mini {
-  border-radius: 16px;
-  border: 1px solid rgba(79, 107, 255, 0.12);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 20px 42px rgba(36, 56, 128, 0.18);
-}
-
-.history-mini :deep(.n-scrollbar-content) {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
   gap: 10px;
-}
-
-.history-mini :deep(.history-item) {
-  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
   border: 1px solid rgba(79, 107, 255, 0.12);
-  box-shadow: 0 14px 30px rgba(36, 56, 128, 0.16);
+  flex-shrink: 0;
 }
 
-@media (max-width: 1100px) {
-  .tools-content {
-    grid-template-columns: 1fr;
+.dark .quick-actions-bar {
+  background: rgba(26, 34, 55, 0.86);
+  border-color: rgba(122, 209, 245, 0.16);
+}
+
+.quick-action-btn {
+  flex: 1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(79, 107, 255, 0.14);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--vibe-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.quick-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, rgba(79, 107, 255, 0.12), rgba(122, 209, 245, 0.12));
+  box-shadow: 0 4px 12px rgba(79, 107, 255, 0.15);
+}
+
+.quick-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dark .quick-action-btn {
+  background: rgba(33, 45, 68, 0.6);
+  border-color: rgba(122, 209, 245, 0.2);
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  min-height: 0;
+}
+
+.dark .messages-container {
+  background: rgba(26, 34, 55, 0.5);
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(36, 56, 128, 0.08);
+  animation: fadeIn 200ms ease;
+}
+
+.message-bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(79, 107, 255, 0.18), rgba(122, 209, 245, 0.18));
+  border: 1px solid rgba(79, 107, 255, 0.2);
+  color: var(--vibe-text-primary);
+  border-radius: 16px 16px 4px 16px;
+}
+
+.message-bubble.assistant {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(79, 107, 255, 0.12);
+  color: var(--vibe-text-primary);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.dark .message-bubble.assistant {
+  background: rgba(33, 45, 68, 0.9);
+  border-color: rgba(122, 209, 245, 0.16);
+}
+
+.message-bubble.loading {
+  opacity: 0.7;
+}
+
+.message-content {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.loading-dots {
+  display: inline-block;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.input-container {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  border: 1px solid rgba(79, 107, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.dark .input-container {
+  background: rgba(26, 34, 55, 0.86);
+  border-color: rgba(122, 209, 245, 0.16);
+}
+
+.input-container :deep(.n-input) {
+  flex: 1;
+}
+
+.send-btn {
+  flex-shrink: 0;
+  min-width: 80px;
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    padding: 20px;
+  .ai-chat-container {
+    padding: 16px;
   }
 
-  .tools-content {
-    padding: 0 20px 20px;
+  .quick-actions-bar {
+    flex-wrap: wrap;
+  }
+
+  .quick-action-btn {
+    min-width: calc(50% - 5px);
+  }
+
+  .message-bubble {
+    max-width: 90%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .header-actions :deep(.n-button),
-  .tool-card,
-  .output-card {
+  .modern-nav-item,
+  .quick-action-btn,
+  .message-bubble {
     transition-duration: 0.01ms !important;
     transform: none !important;
+    animation: none !important;
   }
 }
 </style>

@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { useRouter } from "vue-router";
 import MdiMinus from "~icons/mdi/minus";
 import MdiClose from "~icons/mdi/close";
+import MdiArrowLeft from "~icons/mdi/arrow-left";
 
 defineProps<{
   title: string;
   showMinimize?: boolean;
+  showBack?: boolean;
 }>();
 
 const currentWindow = getCurrentWebviewWindow();
+const router = useRouter();
 
 async function minimizeWindow() {
   await currentWindow.minimize();
@@ -17,14 +21,27 @@ async function minimizeWindow() {
 async function closeWindow() {
   await currentWindow.close();
 }
+
+function goBack() {
+  router.back();
+}
 </script>
 
 <template>
   <div class="window-title-bar" data-tauri-drag-region>
     <div class="title-bar-content">
+      <button
+        v-if="showBack !== false"
+        class="title-bar-button back"
+        @click="goBack"
+        title="返回"
+        data-tauri-drag-region="false"
+      >
+        <n-icon :component="MdiArrowLeft" :size="18" />
+      </button>
       <span class="title-text">{{ title }}</span>
     </div>
-    <div class="title-bar-controls">
+    <div class="title-bar-controls" data-tauri-drag-region="false">
       <button
         v-if="showMinimize !== false"
         class="title-bar-button minimize"
@@ -61,7 +78,7 @@ async function closeWindow() {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .title-text {
@@ -98,6 +115,15 @@ async function closeWindow() {
 
 .dark .title-bar-button:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.title-bar-button.back {
+  color: var(--vibe-text-primary);
+}
+
+.title-bar-button.back:hover {
+  background: var(--vibe-accent);
+  color: white;
 }
 
 .title-bar-button.close:hover {

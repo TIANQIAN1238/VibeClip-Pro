@@ -2,11 +2,21 @@
 @import "tailwindcss";
 
 html,
-body,
+body {
+  background-color: transparent !important;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 #app {
   background-color: transparent !important;
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
