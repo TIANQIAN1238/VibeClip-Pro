@@ -129,17 +129,15 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
-  font-family: var(--vibe-font-sans);
-  background: var(--vibe-bg-app);
-  color: var(--vibe-text-primary);
-  transition: background 320ms ease, color var(--vibe-transition);
+  font-family: var(--modern-font-sans);
+  background: var(--modern-bg-primary);
+  color: var(--modern-text-primary);
+  transition: background 200ms ease, color 200ms ease;
+  overflow: hidden;
 }
 
 body {
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  padding: 14px 0;
   box-sizing: border-box;
 }
 
@@ -147,10 +145,57 @@ body {
   height: 100%;
   width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
 }
 
 
+/* 现代化应用容器 */
+.modern-app-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--modern-bg-primary);
+  overflow: hidden;
+}
+
+.modern-titlebar {
+  flex-shrink: 0;
+  z-index: var(--modern-z-sticky);
+}
+
+.modern-app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--modern-bg-secondary);
+}
+
+.modern-route-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 现代化过渡动画 */
+.modern-fade-enter-active,
+.modern-fade-leave-active {
+  transition: opacity var(--modern-transition), transform var(--modern-transition);
+}
+
+.modern-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.modern-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* 旧样式保留用于兼容 */
 .app-stage {
   position: relative;
   height: 100%;

@@ -772,15 +772,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="clipboard-page">
+  <div class="modern-clipboard-page">
     <!-- 顶部导航 -->
-    <nav class="page-nav">
-      <router-link to="/clipboard" class="nav-item" active-class="active">剪贴板</router-link>
-      <router-link to="/history" class="nav-item" active-class="active">历史</router-link>
-      <router-link to="/ai" class="nav-item" active-class="active">AI 工具</router-link>
+    <nav class="modern-page-nav">
+      <router-link to="/clipboard" class="modern-nav-item" active-class="active">
+        <span>剪贴板</span>
+      </router-link>
+      <router-link to="/history" class="modern-nav-item" active-class="active">
+        <span>历史</span>
+      </router-link>
+      <router-link to="/ai" class="modern-nav-item" active-class="active">
+        <span>AI 工具</span>
+      </router-link>
     </nav>
     
-    <header class="page-header">
+    <header class="modern-page-header">
       <div class="headline">
         <h1>{{ t("clipboard.title", "剪贴板中心") }}</h1>
         <p>{{ t("clipboard.subtitle", "查看系统剪贴板并快速保存或调用历史记录") }}</p>
@@ -1001,66 +1007,70 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.clipboard-page {
+/* 现代化剪贴板页面 */
+.modern-clipboard-page {
   display: flex;
   flex-direction: column;
-  gap: 0;
   height: 100%;
   overflow: hidden;
+  background: var(--modern-bg-secondary);
 }
 
-.page-nav {
+/* 现代化导航栏 */
+.modern-page-nav {
   display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--vibe-panel-border);
-  background: var(--vibe-bg-surface);
-  padding: 0 16px;
+  gap: var(--modern-space-xs);
+  padding: var(--modern-space) var(--modern-space-md);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-color);
+  flex-shrink: 0;
 }
 
-.nav-item {
-  padding: 12px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--vibe-text-secondary);
+.modern-nav-item {
+  padding: var(--modern-space-sm) var(--modern-space-md);
+  font-size: var(--modern-text-sm);
+  font-weight: var(--modern-font-medium);
+  color: var(--modern-text-secondary);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
+  border-radius: var(--modern-radius);
+  transition: all var(--modern-transition-fast);
   position: relative;
 }
 
-.nav-item:hover {
-  color: var(--vibe-text-primary);
-  background: rgba(0, 0, 0, 0.02);
+.modern-nav-item:hover {
+  color: var(--modern-text-primary);
+  background: var(--modern-bg-secondary);
 }
 
-.dark .nav-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+.modern-nav-item.active {
+  color: var(--modern-primary);
+  background: var(--modern-primary-light);
+  font-weight: var(--modern-font-semibold);
 }
 
-.nav-item.active {
-  color: var(--vibe-accent);
-  border-bottom-color: var(--vibe-accent);
-}
-
-.page-header {
+/* 现代化页面头部 */
+.modern-page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 16px;
-  background: var(--vibe-bg-surface);
+  gap: var(--modern-space-md);
+  padding: var(--modern-space-lg) var(--modern-space-xl);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-light);
+  flex-shrink: 0;
 }
 
 .headline h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--modern-text-2xl);
+  font-weight: var(--modern-font-bold);
+  color: var(--modern-text-primary);
 }
 
 .headline p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--vibe-text-muted);
+  margin: var(--modern-space-xs) 0 0;
+  font-size: var(--modern-text-sm);
+  color: var(--modern-text-tertiary);
 }
 
 .header-actions {
