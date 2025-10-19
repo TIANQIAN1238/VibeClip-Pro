@@ -16,7 +16,7 @@ use state::AppStatus;
 use chrono::Utc;
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use serde::Serialize;
-use tauri::{AppHandle, Manager, Runtime, State};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_store::StoreExt;
