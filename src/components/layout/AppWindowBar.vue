@@ -27,10 +27,9 @@ async function minimize() {
 
 async function close() {
   try {
-    // Hide instead of destroy to keep tray shortcuts alive
-    await current?.hide();
+    await current?.close();
   } catch (error) {
-    console.error("Failed to hide window", error);
+    console.error("Failed to close window", error);
   }
 }
 
@@ -75,93 +74,74 @@ function openSettings() {
 </template>
 
 <style scoped>
+/* 现代化窗口标题栏 */
 .window-bar {
   width: 100%;
-  min-height: 44px;
+  height: 48px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 18px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--vibe-text-primary);
+  gap: var(--modern-space-md);
+  padding: 0 var(--modern-space-md);
   -webkit-app-region: drag;
-  background: color-mix(in srgb, var(--vibe-panel-surface-strong) 90%, rgba(255, 255, 255, 0.18));
-  border-radius: calc(var(--vibe-radius-xl) - 4px);
-  border: 1px solid color-mix(in srgb, var(--vibe-panel-border) 52%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
-  backdrop-filter: blur(18px) saturate(135%);
-}
-
-.dark .window-bar {
-  background: color-mix(in srgb, var(--vibe-panel-surface) 88%, rgba(16, 23, 47, 0.4));
-  border-color: color-mix(in srgb, var(--vibe-panel-border) 65%, transparent);
-  box-shadow: inset 0 1px 0 rgba(10, 18, 36, 0.6);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-color);
 }
 
 .window-title {
-  font-size: 14px;
+  font-size: var(--modern-text-base);
+  font-weight: var(--modern-font-semibold);
+  color: var(--modern-text-primary);
 }
 
 .window-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--modern-space-sm);
   -webkit-app-region: no-drag;
 }
 
 .window-button {
   width: 32px;
-  height: 28px;
-  border-radius: 8px;
+  height: 32px;
+  border-radius: var(--modern-radius);
   border: none;
-  background: rgba(255, 255, 255, 0.28);
+  background: transparent;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: all 0.2s ease;
+  transition: all var(--modern-transition-fast);
   -webkit-app-region: no-drag;
-  color: rgba(23, 35, 61, 0.75);
-}
-
-.dark .window-button {
-  background: rgba(18, 27, 48, 0.58);
-  color: rgba(236, 243, 255, 0.8);
+  color: var(--modern-text-secondary);
 }
 
 .window-button:hover {
-  background: rgba(255, 255, 255, 0.45);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.dark .window-button:hover {
-  background: rgba(18, 27, 48, 0.75);
+  background: var(--modern-bg-secondary);
+  color: var(--modern-text-primary);
 }
 
 .window-button:active {
-  transform: translateY(0);
-  box-shadow: none;
+  transform: scale(0.95);
 }
 
 .window-button.settings-btn:hover {
-  background: rgba(81, 97, 255, 0.15);
-  color: var(--vibe-accent);
+  background: var(--modern-primary-light);
+  color: var(--modern-primary);
 }
 
 .window-button.minimize-btn:hover {
-  background: rgba(255, 193, 7, 0.15);
+  background: rgba(255, 193, 7, 0.1);
   color: #ffc107;
 }
 
 .window-button.close-btn:hover {
-  background: rgba(255, 112, 112, 0.68);
-  color: #fff;
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
 }
 
 .dark .window-button.close-btn:hover {
-  background: rgba(255, 82, 82, 0.85);
+  background: rgba(255, 69, 58, 0.2);
+  color: #ff453a;
 }
 </style>
