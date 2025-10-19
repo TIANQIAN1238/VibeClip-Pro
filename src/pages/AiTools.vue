@@ -346,12 +346,18 @@ onErrorCaptured((err, _instance, info) => {
 </script>
 
 <template>
-  <div class="ai-tools-page">
+  <div class="modern-ai-tools-page">
     <!-- 顶部导航 -->
-    <nav class="page-nav">
-      <router-link to="/clipboard" class="nav-item" active-class="active">剪贴板</router-link>
-      <router-link to="/history" class="nav-item" active-class="active">历史</router-link>
-      <router-link to="/ai" class="nav-item" active-class="active">AI 工具</router-link>
+    <nav class="modern-page-nav">
+      <router-link to="/clipboard" class="modern-nav-item" active-class="active">
+        <span>剪贴板</span>
+      </router-link>
+      <router-link to="/history" class="modern-nav-item" active-class="active">
+        <span>历史</span>
+      </router-link>
+      <router-link to="/ai" class="modern-nav-item" active-class="active">
+        <span>AI 工具</span>
+      </router-link>
     </nav>
     
     <n-alert v-if="pageError" type="error" title="页面加载失败" closable @close="pageError = null" style="margin: 16px;">
@@ -503,45 +509,44 @@ onErrorCaptured((err, _instance, info) => {
 </template>
 
 <style scoped>
-.ai-tools-page {
+/* 现代化 AI 工具页面 */
+.modern-ai-tools-page {
   display: flex;
   flex-direction: column;
-  gap: 0;
   height: 100%;
   overflow: hidden;
+  background: var(--modern-bg-secondary);
 }
 
-.page-nav {
+/* 现代化导航栏 */
+.modern-page-nav {
   display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--vibe-panel-border);
-  background: var(--vibe-bg-surface);
-  padding: 0 16px;
+  gap: var(--modern-space-xs);
+  padding: var(--modern-space) var(--modern-space-md);
+  background: var(--modern-bg-primary);
+  border-bottom: 1px solid var(--modern-border-color);
+  flex-shrink: 0;
 }
 
-.nav-item {
-  padding: 12px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--vibe-text-secondary);
+.modern-nav-item {
+  padding: var(--modern-space-sm) var(--modern-space-md);
+  font-size: var(--modern-text-sm);
+  font-weight: var(--modern-font-medium);
+  color: var(--modern-text-secondary);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
-  position: relative;
+  border-radius: var(--modern-radius);
+  transition: all var(--modern-transition-fast);
 }
 
-.nav-item:hover {
-  color: var(--vibe-text-primary);
-  background: rgba(0, 0, 0, 0.02);
+.modern-nav-item:hover {
+  color: var(--modern-text-primary);
+  background: var(--modern-bg-secondary);
 }
 
-.dark .nav-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.nav-item.active {
-  color: var(--vibe-accent);
-  border-bottom-color: var(--vibe-accent);
+.modern-nav-item.active {
+  color: var(--modern-primary);
+  background: var(--modern-primary-light);
+  font-weight: var(--modern-font-semibold);
 }
 
 .ai-tools-layout {
