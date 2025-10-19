@@ -515,32 +515,61 @@ onErrorCaptured((err, _instance, info) => {
           </div>
         </header>
 
-        <n-alert v-if="settings.lastError" type="warning" show-icon class="settings-alert">
-          {{ settings.lastError }}
-        </n-alert>
+        <Transition name="alert-fade">
+          <n-alert v-if="settings.lastError" type="warning" show-icon class="settings-alert" closable @close="settings.lastError = null">
+            {{ settings.lastError }}
+          </n-alert>
+        </Transition>
 
         <div class="content-scroll thin-scrollbar">
-          <section class="card">
-            <h2>{{ t("settings.theme", "主题与显示") }}</h2>
-            <n-radio-group v-model:value="settings.themeMode" name="theme">
-              <div class="radio-grid">
-                <n-radio value="light">{{ t("settings.themeOptions.light", "浅色") }}</n-radio>
-                <n-radio value="dark">{{ t("settings.themeOptions.dark", "深色") }}</n-radio>
-                <n-radio value="system">{{ t("settings.themeOptions.system", "跟随系统") }}</n-radio>
+          <section class="card card--theme">
+            <div class="card__header">
+              <div>
+                <h2>{{ t("settings.theme", "主题与显示") }}</h2>
+                <p class="card__desc">选择外观模式和主题配色方案</p>
               </div>
-            </n-radio-group>
-            <div class="preset-grid">
-              <button
-                v-for="option in themePresetOptions"
-                :key="option.value"
-                type="button"
-                class="preset-chip"
-                :class="{ active: themePresetValue === option.value }"
-                @click="themePresetValue = option.value"
-              >
-                <span class="preset-swatch" :style="{ background: option.preview }" />
-                <span>{{ option.label }}</span>
-              </button>
+            </div>
+            
+            <!-- 主题模式选择 -->
+            <div class="theme-mode-section">
+              <label class="section-label">外观模式</label>
+              <n-radio-group v-model:value="settings.themeMode" name="theme">
+                <div class="radio-grid">
+                  <n-radio value="light">
+                    <template #default>
+                      <span class="radio-label">☀️ {{ t("settings.themeOptions.light", "浅色") }}</span>
+                    </template>
+                  </n-radio>
+                  <n-radio value="dark">
+                    <template #default>
+                      <span class="radio-label">🌙 {{ t("settings.themeOptions.dark", "深色") }}</span>
+                    </template>
+                  </n-radio>
+                  <n-radio value="system">
+                    <template #default>
+                      <span class="radio-label">💻 {{ t("settings.themeOptions.system", "跟随系统") }}</span>
+                    </template>
+                  </n-radio>
+                </div>
+              </n-radio-group>
+            </div>
+            
+            <!-- 主题预设选择 -->
+            <div class="theme-preset-section">
+              <label class="section-label">主题配色</label>
+              <div class="preset-grid">
+                <button
+                  v-for="option in themePresetOptions"
+                  :key="option.value"
+                  type="button"
+                  class="preset-chip"
+                  :class="{ active: themePresetValue === option.value }"
+                  @click="themePresetValue = option.value"
+                >
+                  <span class="preset-swatch" :style="{ background: option.preview }" />
+                  <span class="preset-label">{{ option.label }}</span>
+                </button>
+              </div>
             </div>
             <div v-if="themePresetValue === 'custom'" class="custom-theme-grid">
               <div class="field-column">
@@ -1037,35 +1066,74 @@ onErrorCaptured((err, _instance, info) => {
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* 卡片样式 - 参考手机设置界面 */
+/* 卡片样式 - Clash Verge风格 */
 .card {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  border: 1px solid rgba(79, 107, 255, 0.08);
-  padding: 28px 32px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
+  background: var(--vibe-panel-surface);
+  border-radius: var(--vibe-radius-lg);
+  border: 1px solid var(--vibe-panel-border);
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  box-shadow: var(--vibe-shadow-soft);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-:global(.dark) .card {
-  background: rgba(30, 34, 42, 0.95);
-  border-color: rgba(122, 209, 245, 0.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 50%);
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--vibe-shadow-medium);
+  border-color: var(--vibe-border-strong);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card__header {
+  margin-bottom: 24px;
 }
 
 .card h2 {
-  margin: 0 0 24px;
-  font-size: 18px;
-  font-weight: 600;
+  margin: 0 0 8px 0;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--vibe-text-primary);
+  letter-spacing: -0.3px;
+}
+
+.card__desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vibe-text-secondary);
+  line-height: 1.6;
 }
 
 .card p.muted {
   margin: -12px 0 20px;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--vibe-text-secondary);
   line-height: 1.6;
+}
+
+.section-label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vibe-text-primary);
+  letter-spacing: -0.2px;
 }
 
 /* 分组头部 */
@@ -1175,57 +1243,115 @@ onErrorCaptured((err, _instance, info) => {
   padding: 12px 0;
 }
 
-/* 主题预设网格 */
+/* 主题预设网格 - Clash Verge风格 */
+.theme-mode-section,
+.theme-preset-section {
+  margin-bottom: 24px;
+}
+
+.theme-mode-section:last-child,
+.theme-preset-section:last-child {
+  margin-bottom: 0;
+}
+
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px;
-  padding: 12px 0;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 12px;
 }
 
 .preset-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 2px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.6);
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--vibe-radius-md);
+  border: 2px solid var(--vibe-border-soft);
+  background: var(--vibe-control-bg);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--vibe-text-primary);
+  position: relative;
+  overflow: hidden;
 }
 
-:global(.dark) .preset-chip {
-  background: rgba(40, 44, 52, 0.6);
-  border-color: rgba(255, 255, 255, 0.1);
+.preset-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 60%);
+  opacity: 0;
+  transition: opacity 200ms ease;
 }
 
 .preset-chip:hover {
   border-color: var(--vibe-accent);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--vibe-shadow-soft);
+  background: var(--vibe-control-hover);
+}
+
+.preset-chip:hover::before {
+  opacity: 1;
 }
 
 .preset-chip.active {
   border-color: var(--vibe-accent);
-  background: rgba(79, 107, 255, 0.08);
-  box-shadow: 0 0 0 3px rgba(79, 107, 255, 0.1);
+  border-width: 2px;
+  background: var(--vibe-accent-light, rgba(79, 107, 255, 0.1));
+  box-shadow: 0 0 0 3px var(--vibe-accent-light, rgba(79, 107, 255, 0.15)),
+              var(--vibe-shadow-medium);
+  transform: translateY(-1px) scale(1.02);
 }
 
-:global(.dark) .preset-chip.active {
-  background: rgba(122, 209, 245, 0.12);
-  box-shadow: 0 0 0 3px rgba(122, 209, 245, 0.15);
+.preset-chip.active::after {
+  content: "✓";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--vibe-accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
 }
 
 .preset-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 200ms ease;
+}
+
+.preset-chip:hover .preset-swatch {
+  transform: scale(1.1);
+}
+
+.preset-chip.active .preset-swatch {
+  border-color: var(--vibe-accent);
+  box-shadow: 0 0 0 2px var(--vibe-accent-light, rgba(79, 107, 255, 0.25));
+}
+
+.preset-label {
+  flex: 1;
+  letter-spacing: -0.1px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* 自定义主题网格 */
@@ -1458,7 +1584,23 @@ onErrorCaptured((err, _instance, info) => {
 
 /* 警告提示 */
 .settings-alert {
-  margin-bottom: 20px;
+  margin: 0 32px 20px 32px;
+}
+
+/* 警告淡入淡出动画 */
+.alert-fade-enter-active,
+.alert-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.alert-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.alert-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 /* 运行时信息列表 */

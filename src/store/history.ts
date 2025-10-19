@@ -84,7 +84,7 @@ function normalizeClip(raw: any): ClipItem {
     isFavorite: Boolean(raw.is_favorite ?? raw.isFavorite),
     createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
     updatedAt: raw.updated_at ?? raw.updatedAt ?? new Date().toISOString(),
-};
+  };
 
 }
 function buildAiPrompts(request: AiActionRequest): { system: string; user: string } {
@@ -368,11 +368,11 @@ export const useHistoryStore = defineStore("history", () => {
         items.value = items.value.map(item =>
           item.id === id
             ? {
-                ...item,
-                isPinned: data.pinned ?? item.isPinned,
-                isFavorite: data.favorite ?? item.isFavorite,
-                updatedAt: new Date().toISOString(),
-              }
+              ...item,
+              isPinned: data.pinned ?? item.isPinned,
+              isFavorite: data.favorite ?? item.isFavorite,
+              updatedAt: new Date().toISOString(),
+            }
             : item,
         );
         return;
@@ -389,10 +389,10 @@ export const useHistoryStore = defineStore("history", () => {
       items.value = items.value.map(item =>
         item.id === id
           ? {
-              ...item,
-              isPinned: data.pinned ?? item.isPinned,
-              isFavorite: data.favorite ?? item.isFavorite,
-            }
+            ...item,
+            isPinned: data.pinned ?? item.isPinned,
+            isFavorite: data.favorite ?? item.isFavorite,
+          }
           : item
       );
 
@@ -529,10 +529,19 @@ export const useHistoryStore = defineStore("history", () => {
       throw new Error("离线模式下无法调用 AI 服务");
     }
     aiBusy.value = true;
+
+    // 设置30秒超时保护
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("AI 请求超时(30秒),请检查网络或稍后重试")), 30000);
+    });
+
     try {
       let response: AiActionResponse;
       if (isTauriRuntime()) {
-        response = await safeInvoke<AiActionResponse>("perform_ai_action", { request });
+        response = await Promise.race([
+          safeInvoke<AiActionResponse>("perform_ai_action", { request }),
+          timeoutPromise
+        ]);
       } else {
         const apiKey = request.apiKey.trim();
         if (!apiKey) {
@@ -552,14 +561,17 @@ export const useHistoryStore = defineStore("history", () => {
           ],
           temperature: request.temperature ?? 0.3,
         };
-        const previewResponse = await fetch(`${baseUrl}/v1/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(payload),
-        });
+        const previewResponse = await Promise.race([
+          fetch(`${baseUrl}/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(payload),
+          }),
+          timeoutPromise
+        ]);
         if (!previewResponse.ok) {
           const text = await previewResponse.text();
           throw new Error(`AI 接口返回 ${previewResponse.status}: ${text}`);

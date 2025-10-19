@@ -411,6 +411,16 @@ async function openAiDialog(action: AiActionKind, item: ClipItem) {
   aiDialog.action = action;
   aiDialog.source = item;
   aiDialog.result = "";
+  
+  // 设置30秒超时保护
+  const timeoutId = setTimeout(() => {
+    if (aiDialog.loading) {
+      aiDialog.loading = false;
+      aiDialog.result = "请求超时，请重试";
+      message.error("AI 操作超时");
+    }
+  }, 30000);
+  
   try {
     let customPrompt: string | undefined;
     let input = item.content;
@@ -437,9 +447,10 @@ async function openAiDialog(action: AiActionKind, item: ClipItem) {
     );
     aiDialog.result = response.result;
   } catch (error) {
-    aiDialog.visible = false;
     reportError("AI 操作失败", error);
+    aiDialog.result = "操作失败，请检查网络和API配置";
   } finally {
+    clearTimeout(timeoutId);
     aiDialog.loading = false;
   }
 }
@@ -456,12 +467,13 @@ async function shareClip(item: ClipItem) {
 }
 
 function handleAiDialogToggle(value: boolean) {
-  if (aiDialog.loading) {
-    aiDialog.visible = true;
-    return;
-  }
+  // 允许用户随时关闭对话框
   aiDialog.visible = value;
   if (!value) {
+    // 如果还在加载中,停止加载
+    if (aiDialog.loading) {
+      aiDialog.loading = false;
+    }
     aiDialog.result = "";
     aiDialog.action = null;
     aiDialog.source = null;
@@ -685,8 +697,9 @@ onMounted(async () => {
       v-model:show="aiDialog.visible"
       preset="card"
       :title="aiDialogTitle"
-      :mask-closable="!aiDialog.loading"
-      :close-on-esc="!aiDialog.loading"
+      :mask-closable="true"
+      :close-on-esc="true"
+      :closable="true"
       @update:show="handleAiDialogToggle"
     >
       <n-spin :show="aiDialog.loading">
@@ -850,15 +863,24 @@ onMounted(async () => {
 .summary-chip {
   flex: 0 0 auto;
   min-width: 100px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(79, 107, 255, 0.14);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 4px 12px rgba(36, 56, 128, 0.1);
+  padding: 12px 14px;
+  border-radius: var(--vibe-radius-md);
+  border: 1px solid var(--vibe-panel-border);
+  background: var(--vibe-panel-surface);
+  box-shadow: var(--vibe-shadow-soft);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.summary-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--vibe-shadow-medium);
+  border-color: var(--vibe-accent);
 }
 
 .summary-value {
@@ -875,17 +897,21 @@ onMounted(async () => {
 .filters-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-  border: 1px solid rgba(79, 107, 255, 0.12);
-  padding: 14px;
+  gap: 14px;
+  background: var(--vibe-panel-surface);
+  border-radius: var(--vibe-radius-lg);
+  border: 1px solid var(--vibe-panel-border);
+  padding: 16px 18px;
   flex-shrink: 0;
+  box-shadow: var(--vibe-shadow-soft);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  transition: all 200ms ease;
 }
 
-.dark .filters-section {
-  background: rgba(26, 34, 55, 0.86);
-  border-color: rgba(122, 209, 245, 0.16);
+.filters-section:hover {
+  border-color: var(--vibe-border-strong);
+  box-shadow: var(--vibe-shadow-medium);
 }
 
 .filter-tabs {
@@ -899,22 +925,28 @@ onMounted(async () => {
   flex: 0 0 auto;
   border: none;
   border-radius: 999px;
-  padding: 6px 12px;
-  background: rgba(79, 107, 255, 0.12);
-  color: #3245d6;
-  font-size: 11px;
+  padding: 8px 14px;
+  background: var(--vibe-control-bg);
+  color: var(--vibe-text-secondary);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 140ms ease;
-}
-
-.filter-tab.active {
-  background: linear-gradient(135deg, rgba(79, 107, 255, 0.22), rgba(122, 209, 245, 0.22));
-  color: #1c2f8a;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
 }
 
 .filter-tab:hover {
+  background: var(--vibe-control-hover);
+  color: var(--vibe-text-primary);
   transform: translateY(-1px);
+}
+
+.filter-tab.active {
+  background: var(--vibe-accent);
+  color: white;
+  border-color: var(--vibe-accent);
+  box-shadow: 0 2px 8px var(--vibe-accent-light, rgba(79, 107, 255, 0.3));
+  transform: translateY(0);
 }
 
 .filter-search {

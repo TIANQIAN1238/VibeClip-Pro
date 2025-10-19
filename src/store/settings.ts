@@ -299,12 +299,24 @@ export const useSettingsStore = defineStore("settings", () => {
       if (shouldNotify) {
         notifyError(fallbackMessage);
       }
+      // 5秒后自动清除错误
+      setTimeout(() => {
+        if (lastError.value === fallbackMessage) {
+          lastError.value = null;
+        }
+      }, 5000);
       return reason;
     }
     lastError.value = `${message}: ${reason.message}`;
     if (shouldNotify) {
       notifyError(`${message}：${reason.message}`);
     }
+    // 5秒后自动清除错误
+    setTimeout(() => {
+      if (lastError.value === `${message}: ${reason.message}`) {
+        lastError.value = null;
+      }
+    }, 5000);
     return reason;
   }
 
@@ -340,6 +352,8 @@ export const useSettingsStore = defineStore("settings", () => {
     const accent = activeAccent.value || DEFAULT_SETTINGS.accentColor;
     const hover = blend(accent, "#ffffff", 0.2);
     const pressed = blend(accent, "#000000", 0.18);
+    const isDark = themeClass.value === "dark";
+
     return {
       common: {
         primaryColor: accent,
@@ -347,25 +361,43 @@ export const useSettingsStore = defineStore("settings", () => {
         primaryColorPressed: pressed,
         borderRadius: "14px",
         fontFamily: "var(--vibe-font-sans)",
+        // 深色模式下增强文本对比度
+        textColorBase: isDark ? "#f4f9ff" : "#131f3c",
+        textColor1: isDark ? "#f4f9ff" : "#131f3c",
+        textColor2: isDark ? "rgba(244, 249, 255, 0.85)" : "rgba(19, 31, 60, 0.72)",
+        textColor3: isDark ? "rgba(244, 249, 255, 0.55)" : "rgba(19, 31, 60, 0.38)",
       },
       Button: {
         borderRadius: "var(--vibe-radius-md)",
         colorHover: hover,
         colorPressed: pressed,
+        textColor: isDark ? "#f4f9ff" : "#131f3c",
       },
       Card: {
         borderRadius: "var(--vibe-radius-lg)",
         paddingSmall: "18px",
         boxShadow: "var(--vibe-shadow-soft)",
+        color: isDark ? "rgba(28, 32, 48, 0.95)" : "rgba(255, 255, 255, 0.95)",
+        textColor: isDark ? "#f4f9ff" : "#131f3c",
       },
       Input: {
         borderRadius: "var(--vibe-radius-md)",
+        textColor: isDark ? "#f4f9ff" : "#131f3c",
+        color: isDark ? "rgba(40, 48, 72, 0.85)" : "rgba(255, 255, 255, 0.72)",
       },
       Select: {
         borderRadius: "var(--vibe-radius-md)",
       },
       Switch: {
         railBorderRadius: "999px",
+      },
+      Dialog: {
+        textColor: isDark ? "#f4f9ff" : "#131f3c",
+        color: isDark ? "rgba(28, 32, 48, 0.95)" : "rgba(255, 255, 255, 0.95)",
+      },
+      Modal: {
+        textColor: isDark ? "#f4f9ff" : "#131f3c",
+        color: isDark ? "rgba(28, 32, 48, 0.95)" : "rgba(255, 255, 255, 0.95)",
       },
     };
   });
@@ -375,21 +407,45 @@ export const useSettingsStore = defineStore("settings", () => {
       return;
     }
     const root = document.documentElement;
+
+    // 应用深色/浅色模式
     root.classList.toggle("dark", themeClass.value === "dark");
+
+    // 移除所有预设主题类
     root.classList.remove(...THEME_PRESET_CLASSES);
+
+    // 应用当前主题预设类
     const preset = stateRefs.themePreset.value;
     const presetClass = preset !== "custom" ? themePresetClass.value : "";
     if (presetClass) {
       root.classList.add(presetClass);
     }
+
+    // 设置data属性用于CSS选择器
     if (typeof document.body !== "undefined") {
       document.body.dataset.themePreset = stateRefs.themePreset.value;
     }
+
+    // 立即应用主题色变量
     const accent = activeAccent.value || DEFAULT_SETTINGS.accentColor;
     const accentStrong = blend(accent, "#000000", 0.2);
+    const accentLight = blend(accent, "#ffffff", 0.3);
+    const accentSuper = blend(accent, "#000000", 0.4);
+
     root.style.setProperty("--vibe-accent", accent);
     root.style.setProperty("--vibe-accent-strong", accentStrong);
+    root.style.setProperty("--vibe-accent-light", accentLight);
+    root.style.setProperty("--vibe-accent-super", accentSuper);
+
+    // 应用自定义主题变量
     applyCustomThemeVariables();
+
+    // 强制浏览器立即应用样式变化
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(() => {
+        root.style.setProperty("--vibe-theme-transition", "all 300ms cubic-bezier(0.4, 0, 0.2, 1)");
+      });
+    }
   }
 
   function applyCustomThemeVariables() {
