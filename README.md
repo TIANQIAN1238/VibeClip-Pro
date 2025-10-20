@@ -38,7 +38,7 @@ VibeClip Pro 聚焦桌面剪贴板效率，提供实时捕获、历史管理、A
 
 ### 1. 下载与安装
 
-1. 访问 [GitHub Releases](https://github.com/<owner>/VibeClip/releases) 页面下载最新 `VibeClip_2.8.1_x64-setup.exe` 安装包及 `latest.json`。
+1. 访问 [GitHub Releases](https://github.com/<owner>/VibeClip/releases) 页面下载最新 `VibeClip_2.9.3_x64-setup.exe` 安装包及 `latest.json`。
 2. 双击安装包并按照向导完成安装；首次启动会在系统托盘驻留。
 3. macOS / Linux 用户可从源码构建或使用对应的 `.dmg` / `.AppImage`（如有提供）。
 
@@ -75,8 +75,8 @@ VibeClip Pro 聚焦桌面剪贴板效率，提供实时捕获、历史管理、A
 
 ```bash
 # 克隆仓库
-git clone https://github.com/<owner>/VibeClip.git
-cd VibeClip
+git clone https://github.com/<owner>/VibeClip-Pro.git
+cd VibeClip-Pro
 
 # 安装依赖
 pnpm install
