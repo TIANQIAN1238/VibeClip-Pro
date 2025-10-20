@@ -24,7 +24,10 @@ const state = reactive({
 });
 
 const settingsReady = computed(() => settings.hydrated);
-const needsSetup = computed(() => !settings.apiKey);
+const needsSetup = computed(() => {
+  const provider = settings.activeProvider;
+  return !provider || !provider.apiKey;
+});
 
 const activeActionId = ref<string>("");
 const lastClipboardSeed = ref<string>("");

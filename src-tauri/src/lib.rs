@@ -371,6 +371,9 @@ async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("quick-panel") {
         let _ = window.show();
         let _ = window.set_focus();
+        // 发送事件通知前端刷新剪贴板
+        let _ = window.emit("refresh-clipboard", ());
+        info!("existing quick panel shown and refresh event sent");
         return Ok(());
     }
 
@@ -381,9 +384,9 @@ async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
         tauri::WebviewUrl::App("/quick-panel".into()),
     )
     .title("VibeClip Pro - Quick Panel")
-    .inner_size(380.0, 500.0)
-    .min_inner_size(380.0, 280.0)
-    .max_inner_size(380.0, 600.0)
+    .inner_size(420.0, 560.0)
+    .min_inner_size(420.0, 400.0)
+    .max_inner_size(420.0, 700.0)
     .resizable(false)
     .decorations(false)
     .transparent(true)
@@ -403,8 +406,8 @@ async fn show_quick_panel(app: AppHandle) -> Result<(), String> {
             let size = monitor.size();
             let position = monitor.position();
 
-            let panel_width = 380;
-            let panel_height = 500;
+            let panel_width = 420;
+            let panel_height = 560;
 
             let mut x = cursor_pos.x as i32 + 10;
             let mut y = cursor_pos.y as i32 + 10;
@@ -442,13 +445,25 @@ async fn hide_quick_panel(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn toggle_quick_panel(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("quick-panel") {
-        if window.is_visible().unwrap_or(false) {
+        // 使用 is_visible 检查窗口是否可见
+        let is_visible = window.is_visible().unwrap_or(false);
+        info!("quick panel visible state: {}", is_visible);
+
+        if is_visible {
+            // 如果可见，则隐藏
             let _ = window.hide();
+            info!("quick panel hidden");
         } else {
+            // 如果不可见，则显示并刷新内容
             let _ = window.show();
             let _ = window.set_focus();
+            // 发送事件通知前端刷新剪贴板
+            let _ = window.emit("refresh-clipboard", ());
+            info!("quick panel shown and refresh event sent");
         }
     } else {
+        // 窗口不存在，创建新窗口
+        info!("quick panel window does not exist, creating new one");
         show_quick_panel(app).await?;
     }
     Ok(())
@@ -457,6 +472,8 @@ async fn toggle_quick_panel(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn show_main_window(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
+        // 确保窗口无装饰（隐藏Windows原生标题栏）
+        let _ = window.set_decorations(false);
         let _ = window.show();
         let _ = window.set_focus();
         info!("main window shown");
@@ -572,7 +589,9 @@ pub fn run() {
 
             #[cfg(debug_assertions)]
             if let Some(window) = handle.get_webview_window("main") {
-                let _ = window.set_decorations(true);
+                // 在开发模式下也保持无边框设计
+                // 明确设置为无装饰，确保Windows不显示原生标题栏
+                let _ = window.set_decorations(false);
                 let _ = window.open_devtools();
             }
 
@@ -580,6 +599,8 @@ pub fn run() {
             if !args.contains(&"--autostart".to_string()) && !args.contains(&"--silent".to_string())
             {
                 if let Some(window) = handle.get_webview_window("main") {
+                    // 确保窗口无装饰（隐藏Windows原生标题栏）
+                    let _ = window.set_decorations(false);
                     let _ = window.show();
                 }
             }
