@@ -57,28 +57,39 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install
 
-      - name: get info about the last release
-        id: relinfo
-        uses: rubemlrm/gh-check-last-release@0.0.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: '${{ steps.relinfo.outputs.release }}'
+          tagName: v__VERSION__
+          releaseName: 'VibeClip Pro v__VERSION__'
           releaseBody: |
-            # ${{ steps.relinfo.outputs.release }}
+            ## v2.9.3 更新内容
             
-            ------
+            ### 🔧 核心修复
+            - 修复快捷面板无法读取最新剪贴板内容
+            - 移除定时器轮询，改为事件驱动模式
+            - 修复快捷键Toggle行为
+            - 窗口显示响应速度提升1500ms
             
-            ${{ steps.relinfo.outputs.body }}
+            ### 🎨 UI优化
+            - 快捷面板尺寸优化（420×560）
+            - 历史记录显示增至5条
+            - 移除自动刷新加载动画
+            
+            ### 🚀 性能提升
+            - CPU使用率显著降低
+            - 剪贴板读取立即响应
+            - 架构改进为事件驱动
+            
+            ### 🌍 跨平台支持
+            - 支持Windows (MSI/EXE)
+            - 支持macOS (Apple Silicon & Intel)
+            - 支持Linux (DEB/RPM)
+            
+            详见完整 [CHANGELOG](https://github.com/TIANQIAN1238/VibeClip-Pro/blob/main/CHANGELOG.md)
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
