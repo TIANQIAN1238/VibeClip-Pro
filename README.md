@@ -5,7 +5,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Built with Tauri](https://img.shields.io/badge/Desktop-Tauri%202-blue.svg)](https://tauri.app)
 [![Vue 3](https://img.shields.io/badge/Web-Vue%203-42b983.svg)](https://vuejs.org)
-[![Latest Release](https://img.shields.io/github/v/release/yourusername/VibeClip-Pro)](https://github.com/yourusername/VibeClip-Pro/releases)
+[![Latest Release](https://img.shields.io/github/v/release/TIANQIAN1238/VibeClip-Pro)](https://github.com/TIANQIAN1238/VibeClip-Pro/releases)
 
 ## 📑 目录
 
@@ -95,7 +95,7 @@ VibeClip Pro 是一款专注于提升剪贴板效率的桌面应用，提供实�
 
 ### Windows 用户
 
-1. 访问 [GitHub Releases](https://github.com/yourusername/VibeClip-Pro/releases/latest) 页面
+1. 访问 [GitHub Releases](https://github.com/TIANQIAN1238/VibeClip-Pro/releases/latest) 页面
 2. 下载 `VibeClip_2.9.3_x64-setup.exe`（NSIS 安装程序，推荐）或 `VibeClip_2.9.3_x64_en-US.msi`
 3. 双击安装包，按照向导完成安装
 4. 首次启动会在系统托盘显示图标，按 `Ctrl+Shift+V` 呼出快捷面板
@@ -117,7 +117,7 @@ VibeClip Pro 是一款专注于提升剪贴板效率的桌面应用，提供实�
 
 ```bash
 # 下载并安装
-wget https://github.com/yourusername/VibeClip-Pro/releases/download/v2.9.3/vibeclip-pro_2.9.3_amd64.deb
+wget https://github.com/TIANQIAN1238/VibeClip-Pro/releases/download/v2.9.3/vibeclip-pro_2.9.3_amd64.deb
 sudo dpkg -i vibeclip-pro_2.9.3_amd64.deb
 
 # 修复依赖（如果需要）
@@ -128,7 +128,7 @@ sudo apt-get install -f
 
 ```bash
 # 下载并安装
-wget https://github.com/yourusername/VibeClip-Pro/releases/download/v2.9.3/vibeclip-pro-2.9.3-1.x86_64.rpm
+wget https://github.com/TIANQIAN1238/VibeClip-Pro/releases/download/v2.9.3/vibeclip-pro-2.9.3-1.x86_64.rpm
 sudo rpm -i vibeclip-pro-2.9.3-1.x86_64.rpm
 ```
 
@@ -136,7 +136,7 @@ sudo rpm -i vibeclip-pro-2.9.3-1.x86_64.rpm
 
 ```bash
 # 下载并运行
-wget https://github.com/yourusername/VibeClip-Pro/releases/download/v2.9.3/vibeclip-pro_2.9.3_amd64.AppImage
+wget https://github.com/TIANQIAN1238/VibeClip-Pro/releases/download/v2.9.3/vibeclip-pro_2.9.3_amd64.AppImage
 chmod +x vibeclip-pro_2.9.3_amd64.AppImage
 ./vibeclip-pro_2.9.3_amd64.AppImage
 ```
@@ -211,7 +211,7 @@ VibeClip Pro 默认配置了 FreeKey API（`https://api.freekey.site`），开�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/VibeClip-Pro.git
+git clone https://github.com/TIANQIAN1238/VibeClip-Pro.git
 cd VibeClip-Pro
 
 # 安装依赖
@@ -225,6 +225,7 @@ pnpm tauri dev
 ```
 
 开发模式下：
+
 - 前端：`http://localhost:1420`（支持热重载）
 - 后端：自动编译 Rust 代码并重启
 - DevTools：开发环境自动打开浏览器开发者工具
@@ -259,6 +260,7 @@ pnpm tauri build
 ```
 
 生成的文件位于 `src-tauri/target/release/bundle/`：
+
 - `nsis/*.exe` - NSIS 安装程序（推荐）
 - `msi/*.msi` - Windows Installer 包
 
@@ -271,10 +273,12 @@ pnpm tauri build
 ```
 
 生成的文件：
+
 - `dmg/*.dmg` - 磁盘映像（推荐分发格式）
 - `macos/*.app` - 应用程序包
 
 **代码签名**（可选）：
+
 ```bash
 # 需要 Apple Developer 证书
 export APPLE_CERTIFICATE="..."
@@ -306,6 +310,7 @@ pnpm tauri build
 ```
 
 生成的文件：
+
 - `deb/*.deb` - Debian/Ubuntu 包
 - `rpm/*.rpm` - Fedora/RHEL 包
 - `appimage/*.AppImage` - 通用可执行文件
@@ -405,14 +410,16 @@ A: 这是因为应用未购买代码签名证书。点击"更多信息"→"仍�
 **Q: macOS 提示"无法打开，因为它来自身份不明的开发者"？**
 
 A: 右键点击应用 → 选择"打开" → 确认。或在终端运行：
-```bash
+
+     ```bash
 xattr -cr /Applications/VibeClip\ Pro.app
-```
+     ```
 
 **Q: Linux 缺少依赖库怎么办？**
 
 A: 安装必要的系统库：
-```bash
+
+   ```bash
 # Debian/Ubuntu
 sudo apt-get install libwebkit2gtk-4.1-0 libayatana-appindicator3-1
 
@@ -424,21 +431,24 @@ sudo dnf install webkit2gtk4.1 libappindicator-gtk3
 
 **Q: 快捷键 `Ctrl+Shift+V` 不生效？**
 
-A: 
+A:
+
 1. 检查是否与其他软件冲突（如 IDE、输入法）
 2. 在设置中自定义快捷键
 3. macOS 需在「系统设置 → 隐私与安全性 → 辅助功能」授权
 
 **Q: 剪贴板没有自动捕获内容？**
 
-A: 
+A:
+
 1. 确认「连续监听剪贴板」已开启（托盘菜单或设置页）
 2. 检查是否触发了黑名单关键词过滤
 3. macOS 需授予剪贴板访问权限
 
 **Q: AI 功能无法使用？**
 
-A: 
+A:
+
 1. 检查网络连接是否正常
 2. 确认 API Key 和 Base URL 配置正确
 3. 点击「测试连接」验证配置
@@ -447,6 +457,7 @@ A:
 **Q: 历史记录过多导致性能下降？**
 
 A: 在设置中：
+
 1. 减少「历史记录上限」（默认 500，可降至 200）
 2. 设置「自动清理天数」
 3. 手动执行「清空历史」或「数据库压缩」
@@ -455,7 +466,8 @@ A: 在设置中：
 
 **Q: VibeClip Pro 是否上传我的剪贴板数据？**
 
-A: 
+A:
+
 - **本地优先**：所有剪贴板数据仅存储在本地 SQLite 数据库
 - **AI 调用**：仅在用户手动触发 AI 操作时，才将当前内容发送到配置的 API 端点
 - **无遥测**：不收集任何用户行为数据或分析信息
@@ -464,6 +476,7 @@ A:
 **Q: API Key 如何存储？**
 
 A: 使用 Tauri Store 插件加密存储在本地，位置：
+
 - Windows: `%APPDATA%\app.vibeclip.pro\store.bin`
 - macOS: `~/Library/Application Support/app.vibeclip.pro/store.bin`
 - Linux: `~/.config/app.vibeclip.pro/store.bin`
@@ -473,17 +486,20 @@ A: 使用 Tauri Store 插件加密存储在本地，位置：
 ### v2.9.3（2025-10-20）🎉 当前版本
 
 **核心修复**：
+
 - ✅ 修复快捷面板无法读取最新剪贴板内容的问题
 - ✅ 改为事件驱动模式，响应速度提升 1500ms
 - ✅ 修复快捷键 Toggle 行为不一致问题
 - ✅ 彻底隐藏 Windows 原生标题栏
 
 **AI 配置系统统一**：
+
 - ✅ 统一所有 AI 功能使用 `activeProvider` 配置
 - ✅ AI 对话历史持久化到 localStorage
 - ✅ 修复多个页面的 AI 配置引用问题
 
 **UI 优化**：
+
 - ✅ 快捷面板窗口尺寸优化（420×560）
 - ✅ 历史记录显示增至 5 条
 - ✅ 卡片布局更舒适
@@ -531,6 +547,7 @@ A: 使用 Tauri Store 插件加密存储在本地，位置：
 5. 开启 Pull Request
 
 代码规范：
+
 - 前端：使用 ESLint + Prettier
 - 后端：使用 `cargo fmt` 和 `cargo clippy`
 - 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/)
@@ -562,16 +579,16 @@ A: 使用 Tauri Store 插件加密存储在本地，位置：
 
 ## 社区与支持
 
-- 📧 Email: support@vibeclip.app
-- 🐛 Issue: [GitHub Issues](https://github.com/yourusername/VibeClip-Pro/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/VibeClip-Pro/discussions)
-- 📖 文档: [Wiki](https://github.com/yourusername/VibeClip-Pro/wiki)
+- 📧 Email: <support@vibeclip.app>
+- 🐛 Issue: [GitHub Issues](https://github.com/TIANQIAN1238/VibeClip-Pro/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/TIANQIAN1238/VibeClip-Pro/discussions)
+- 📖 文档: [Wiki](https://github.com/TIANQIAN1238/VibeClip-Pro/wiki)
 
 ### Star History
 
 如果觉得这个项目对你有帮助，请给个 ⭐ Star 支持一下！
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/VibeClip-Pro&type=Date)](https://star-history.com/#yourusername/VibeClip-Pro&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=TIANQIAN1238/VibeClip-Pro&type=Date)](https://star-history.com/#TIANQIAN1238/VibeClip-Pro&Date)
 
 ---
 
@@ -579,6 +596,6 @@ A: 使用 Tauri Store 插件加密存储在本地，位置：
 
 **用 ❤️ 构建，为效率而生**
 
-[立即下载](https://github.com/yourusername/VibeClip-Pro/releases/latest) · [查看文档](https://github.com/yourusername/VibeClip-Pro/wiki) · [反馈问题](https://github.com/yourusername/VibeClip-Pro/issues)
+[立即下载](https://github.com/TIANQIAN1238/VibeClip-Pro/releases/latest) · [查看文档](https://github.com/TIANQIAN1238/VibeClip-Pro/wiki) · [反馈问题](https://github.com/TIANQIAN1238/VibeClip-Pro/issues)
 
 </div>
