@@ -8,7 +8,6 @@ import { useSettingsStore } from "@/store/settings";
 import { useWindowSync } from "@/composables/useWindowSync";
 import { safeInvoke } from "@/libs/tauri";
 import MdiClose from "~icons/mdi/close";
-import MdiMinus from "~icons/mdi/minus";
 import MdiCog from "~icons/mdi/cog";
 import MdiHistory from "~icons/mdi/history";
 import MdiContentCopy from "~icons/mdi/content-copy";
@@ -39,11 +38,6 @@ const hasApiKey = computed(() => {
   return Boolean(provider && provider.apiKey);
 });
 
-const keyboardShortcuts = [
-  { key: "1-3", label: "触发对应快捷操作" },
-  { key: "Esc", label: "快速关闭面板" },
-  { key: "Ctrl+Shift+V", label: "再次呼出快捷面板" },
-];
 
 async function refreshClipboard(retryCount = 0, silent = false) {
   // silent 模式下不显示加载动画
@@ -168,25 +162,6 @@ function openSettings() {
   // 打开主窗口，用户可以手动点击设置按钮
   safeInvoke("show_main_window");
   closePanel();
-}
-
-async function minimizePanel() {
-  const windowInstance = currentWindow.value;
-  try {
-    if (windowInstance) {
-      await windowInstance.minimize();
-    } else {
-      await safeInvoke("hide_quick_panel");
-    }
-  } catch (error) {
-    console.error("Failed to minimize panel", error);
-    try {
-      await windowInstance?.hide();
-    } catch (hideError) {
-      console.error("Failed to hide panel", hideError);
-    }
-    await safeInvoke("hide_quick_panel");
-  }
 }
 
 async function closePanel() {
