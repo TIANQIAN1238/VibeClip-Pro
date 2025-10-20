@@ -207,10 +207,18 @@ async function saveResult() {
 async function sendAssistantMessage() {
   const question = assistantInput.value.trim();
   if (!question) return;
-  if (!settings.apiKey) {
-    message.warning("请在 API 页面配置 API Key");
+  
+  // 使用活跃的AI服务商配置
+  const activeProvider = settings.activeProvider;
+  if (!activeProvider) {
+    message.warning("请在 API 配置页面添加并配置 AI 服务商");
     return;
   }
+  if (!activeProvider.apiKey) {
+    message.warning("请在 API 配置页面填写 API Key");
+    return;
+  }
+  
   ensureAssistantIntro();
   assistantMessages.value.push({ role: "user", content: question });
   assistantInput.value = "";
@@ -228,10 +236,10 @@ async function sendAssistantMessage() {
         language: settings.preferredLanguage,
         customPrompt:
           "You are VibeClip Pro, an expert productivity assistant. Reply concisely and keep markdown formatting when appropriate.",
-        apiKey: settings.apiKey,
-        baseUrl: settings.apiBaseUrl,
-        model: settings.model,
-        temperature: settings.temperature,
+        apiKey: activeProvider.apiKey,
+        baseUrl: activeProvider.baseUrl,
+        model: activeProvider.model,
+        temperature: activeProvider.temperature,
       },
       { persist: false, copy: false }
     );
@@ -246,8 +254,15 @@ async function sendAssistantMessage() {
 async function handleQuickAction(action: 'translate' | 'summarize' | 'polish' | 'custom') {
   const content = assistantInput.value.trim();
   if (!content) return;
-  if (!settings.apiKey) {
-    message.warning("请在 API 页面配置 API Key");
+  
+  // 使用活跃的AI服务商配置
+  const activeProvider = settings.activeProvider;
+  if (!activeProvider) {
+    message.warning("请在 API 配置页面添加并配置 AI 服务商");
+    return;
+  }
+  if (!activeProvider.apiKey) {
+    message.warning("请在 API 配置页面填写 API Key");
     return;
   }
 
@@ -271,10 +286,10 @@ async function handleQuickAction(action: 'translate' | 'summarize' | 'polish' | 
         action,
         input: content,
         language: settings.preferredLanguage,
-        apiKey: settings.apiKey,
-        baseUrl: settings.apiBaseUrl,
-        model: settings.model,
-        temperature: settings.temperature,
+        apiKey: activeProvider.apiKey,
+        baseUrl: activeProvider.baseUrl,
+        model: activeProvider.model,
+        temperature: activeProvider.temperature,
       },
       { persist: false, copy: false }
     );
@@ -356,7 +371,6 @@ async function handleContextMenuSelect(key: string) {
 
 onMounted(async () => {
   isLoading.value = true;
-  ensureAssistantIntro();
   try {
     await new Promise<void>(resolve => {
       if (settings.hydrated) {
@@ -377,12 +391,46 @@ onMounted(async () => {
         }, 3000);
       }
     });
+    
+    // 加载保存的对话历史
+    const savedMessages = localStorage.getItem('ai-tools-chat-history');
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          assistantMessages.value = parsed;
+        } else {
+          ensureAssistantIntro();
+        }
+      } catch (e) {
+        console.error('Failed to load chat history:', e);
+        ensureAssistantIntro();
+      }
+    } else {
+      ensureAssistantIntro();
+    }
   } catch (error) {
     pageError.value = error instanceof Error ? error.message : "页面初始化失败";
+    ensureAssistantIntro();
   } finally {
     isLoading.value = false;
   }
 });
+
+// 监听对话变化并自动保存
+watch(
+  () => assistantMessages.value,
+  (messages) => {
+    if (messages.length > 0) {
+      try {
+        localStorage.setItem('ai-tools-chat-history', JSON.stringify(messages));
+      } catch (e) {
+        console.error('Failed to save chat history:', e);
+      }
+    }
+  },
+  { deep: true }
+);
 
 onErrorCaptured((err, _instance, info) => {
   console.error("[AiTools] Error captured:", err, info);

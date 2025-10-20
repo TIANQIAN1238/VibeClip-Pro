@@ -499,8 +499,14 @@ async function handleAiRun(payload: {
   language: string;
   customPrompt?: string;
 }) {
-  if (!settings.apiKey) {
-    message.error("请先在 API 页面配置 API Key");
+  // 使用活跃的AI服务商配置
+  const activeProvider = settings.activeProvider;
+  if (!activeProvider) {
+    message.error("请在 API 配置页面添加并配置 AI 服务商");
+    return;
+  }
+  if (!activeProvider.apiKey) {
+    message.error("请在 API 配置页面填写 API Key");
     return;
   }
   try {
@@ -509,10 +515,10 @@ async function handleAiRun(payload: {
       input: payload.input,
       language: payload.language,
       customPrompt: payload.customPrompt,
-      apiKey: settings.apiKey,
-      baseUrl: settings.apiBaseUrl,
-      model: settings.model,
-      temperature: settings.temperature,
+      apiKey: activeProvider.apiKey,
+      baseUrl: activeProvider.baseUrl,
+      model: activeProvider.model,
+      temperature: activeProvider.temperature,
     });
     message.success("AI 操作已完成并写入剪贴板");
   } catch (error) {

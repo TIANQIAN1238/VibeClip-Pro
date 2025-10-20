@@ -432,16 +432,25 @@ async function openAiDialog(action: AiActionKind, item: ClipItem) {
       customPrompt = `You are VibeClip Pro Vision OCR. Extract all text from the following base64 encoded PNG image and respond in ${settings.preferredLanguage}. Return only the extracted text without any additional commentary.`;
     }
     
+    // 使用活跃的AI服务商配置
+    const activeProvider = settings.activeProvider;
+    if (!activeProvider) {
+      throw new Error("请在 API 配置页面添加并配置 AI 服务商");
+    }
+    if (!activeProvider.apiKey) {
+      throw new Error("请在 API 配置页面填写 API Key");
+    }
+    
     const response = await history.runAiAction(
       {
         action,
         input,
         language: settings.preferredLanguage,
         customPrompt,
-        apiKey: settings.apiKey,
-        baseUrl: settings.apiBaseUrl,
-        model: settings.model,
-        temperature: settings.temperature,
+        apiKey: activeProvider.apiKey,
+        baseUrl: activeProvider.baseUrl,
+        model: activeProvider.model,
+        temperature: activeProvider.temperature,
       },
       { persist: false, copy: false }
     );

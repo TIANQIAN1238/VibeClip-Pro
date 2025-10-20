@@ -26,7 +26,7 @@ const clipboardText = ref("");
 const clipboardKind = ref<"text" | "image" | "empty">("empty");
 const loading = ref(false);
 
-const recentItems = computed(() => history.items.slice(0, 3));
+const recentItems = computed(() => history.items.slice(0, 5));
 
 const quickActions = computed(() => {
   return settings.quickActions
@@ -34,7 +34,10 @@ const quickActions = computed(() => {
     .slice(0, 3);
 });
 
-const hasApiKey = computed(() => Boolean(settings.apiKey));
+const hasApiKey = computed(() => {
+  const provider = settings.activeProvider;
+  return Boolean(provider && provider.apiKey);
+});
 
 const keyboardShortcuts = [
   { key: "1-3", label: "触发对应快捷操作" },
@@ -42,8 +45,11 @@ const keyboardShortcuts = [
   { key: "Ctrl+Shift+V", label: "再次呼出快捷面板" },
 ];
 
-async function refreshClipboard(retryCount = 0) {
-  loading.value = true;
+async function refreshClipboard(retryCount = 0, silent = false) {
+  // silent 模式下不显示加载动画
+  if (!silent) {
+    loading.value = true;
+  }
   try {
     // 尝试读取文本
     const text = await readText().catch((err) => {
@@ -55,7 +61,8 @@ async function refreshClipboard(retryCount = 0) {
     if (normalized) {
       clipboardText.value = normalized;
       clipboardKind.value = "text";
-      loading.value = false;
+      if (!silent) loading.value = false;
+      console.log("Clipboard text loaded:", normalized.slice(0, 50));
       return;
     }
     
@@ -73,22 +80,23 @@ async function refreshClipboard(retryCount = 0) {
       if (retryCount < 2) {
         console.log(`重试读取剪贴板 (${retryCount + 1}/2)...`);
         await new Promise(resolve => setTimeout(resolve, 200));
-        return refreshClipboard(retryCount + 1);
+        return refreshClipboard(retryCount + 1, silent);
       }
       clipboardKind.value = "empty";
       clipboardText.value = "";
+      console.log("Clipboard is empty");
     }
   } catch (error) {
     console.error("读取剪贴板时发生错误:", error);
     // 重试机制
     if (retryCount < 2) {
       await new Promise(resolve => setTimeout(resolve, 300));
-      return refreshClipboard(retryCount + 1);
+      return refreshClipboard(retryCount + 1, silent);
     }
     clipboardKind.value = "empty";
     clipboardText.value = "";
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
   }
 }
 
@@ -104,16 +112,27 @@ async function handleQuickAction(action: typeof quickActions.value[0]) {
     return;
   }
 
+  // 使用活跃的AI服务商配置
+  const activeProvider = settings.activeProvider;
+  if (!activeProvider) {
+    message.error("请在 API 配置页面添加并配置 AI 服务商");
+    return;
+  }
+  if (!activeProvider.apiKey) {
+    message.error("请在 API 配置页面填写 API Key");
+    return;
+  }
+  
   try {
     await history.runAiAction({
       action: action.kind,
       input: clipboardText.value,
       language: action.language || settings.preferredLanguage,
       customPrompt: action.promptTemplate || undefined,
-      apiKey: settings.apiKey,
-      baseUrl: settings.apiBaseUrl,
-      model: settings.model,
-      temperature: settings.temperature,
+      apiKey: activeProvider.apiKey,
+      baseUrl: activeProvider.baseUrl,
+      model: activeProvider.model,
+      temperature: activeProvider.temperature,
     });
 
     if (settings.aiResultMode === "auto") {
@@ -200,22 +219,53 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
+// 事件监听器
+let unlistenRefresh: (() => void) | null = null;
+
 onMounted(async () => {
   try {
     currentWindow.value = getCurrentWebviewWindow();
+    
+    // 监听来自后端的刷新事件
+    if (currentWindow.value) {
+      const unlisten = await currentWindow.value.listen("refresh-clipboard", () => {
+        console.log("Received refresh-clipboard event from backend");
+        // 静默刷新，不显示加载动画
+        refreshClipboard(0, true);
+      });
+      unlistenRefresh = unlisten;
+    }
   } catch (error) {
     console.warn("Tauri window API unavailable in quick panel", error);
     currentWindow.value = null;
   }
-  await refreshClipboard();
+  
+  // 初始加载历史记录
   if (!history.items.length) {
     await history.refresh();
   }
+  
+  // 初始刷新剪贴板（静默模式）
+  setTimeout(() => {
+    refreshClipboard(0, true);
+  }, 100);
+  
   window.addEventListener("keydown", handleKeydown);
+  
+  // 监听窗口获得焦点时刷新（静默模式）
+  window.addEventListener("focus", () => {
+    if (!loading.value) {
+      refreshClipboard(0, true);
+    }
+  });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleKeydown);
+  if (unlistenRefresh) {
+    unlistenRefresh();
+    unlistenRefresh = null;
+  }
 });
 </script>
 
@@ -231,14 +281,11 @@ onBeforeUnmount(() => {
         <span class="brand-text">VIBECLIP 快捷面板</span>
       </div>
       <div class="titlebar__controls">
-        <button class="control-btn" type="button" @click="() => refreshClipboard()" aria-label="刷新" title="刷新剪贴板">
+        <button class="control-btn" type="button" @click="() => refreshClipboard()" aria-label="刷新" title="手动刷新剪贴板">
           <n-icon :component="MdiRefresh" :size="15" />
         </button>
-        <button class="control-btn" type="button" @click="minimizePanel" aria-label="最小化" title="最小化">
-          <n-icon :component="MdiMinus" :size="15" />
-        </button>
-        <button class="control-btn close" type="button" @click="closePanel" aria-label="关闭" title="关闭">
-          <n-icon :component="MdiClose" :size="15" />
+        <button class="control-btn close" type="button" @click="closePanel" aria-label="关闭" title="关闭面板 (Esc)">
+          <n-icon :component="MdiClose" :size="16" />
         </button>
       </div>
     </header>
@@ -248,40 +295,34 @@ onBeforeUnmount(() => {
       <section class="panel-card panel-card--clipboard">
         <header class="panel-card__header">
           <div class="header-content">
-            <h2>当前剪贴板</h2>
-            <p>自动同步最新内容，可直接触发 AI 操作或保存历史</p>
+            <h2>📋 当前剪贴板</h2>
           </div>
           <span class="badge" :class="`badge--${clipboardKind}`">
-            {{ clipboardKind === 'empty' ? '无内容' : clipboardKind === 'text' ? '文本' : '图片' }}
+            {{ clipboardKind === 'empty' ? '空' : clipboardKind === 'text' ? '文本' : '图片' }}
           </span>
         </header>
         <div class="panel-card__content clipboard-preview" @dblclick="() => refreshClipboard()">
           <!-- 加载状态 -->
           <div v-if="loading" class="preview-loading">
             <n-spin size="small" />
-            <span>读取剪贴板中…</span>
+            <span>读取中…</span>
           </div>
           <!-- 空状态 -->
           <div v-else-if="clipboardKind === 'empty'" class="preview-empty">
             <div class="empty-icon">📋</div>
-            <p>暂无可用内容</p>
-            <span>复制文本或图片后自动刷新</span>
+            <p>剪贴板为空</p>
+            <span>复制内容后按快捷键即可显示</span>
           </div>
           <!-- 内容预览 -->
           <div v-else class="preview-text">
-            {{ clipboardText.slice(0, 180) }}{{ clipboardText.length > 180 ? '…' : '' }}
+            {{ clipboardText.slice(0, 200) }}{{ clipboardText.length > 200 ? '…' : '' }}
           </div>
         </div>
         <footer class="panel-card__footer">
           <div class="footer-meta">
             <span class="meta-item">
-              <span class="meta-icon">📊</span>
-              {{ history.items.length ? `已同步 ${history.items.length} 条历史` : '正在加载历史' }}
+              📊 {{ history.items.length }} 条历史记录
             </span>
-            <button class="text-link" type="button" @click="() => refreshClipboard()">
-              <n-icon :component="MdiRefresh" :size="13" />
-              手动刷新
-            </button>
           </div>
         </footer>
       </section>
@@ -290,19 +331,18 @@ onBeforeUnmount(() => {
       <section class="panel-card panel-card--actions">
         <header class="panel-card__header">
           <div class="header-content">
-            <h2>AI 快捷操作</h2>
-            <p>选择常用动作，立即对剪贴板文本进行处理</p>
+            <h2>✨ AI 快捷操作</h2>
           </div>
-          <span v-if="history.aiBusy" class="badge badge--processing">处理中...</span>
+          <span v-if="history.aiBusy" class="badge badge--processing">处理中</span>
         </header>
 
         <!-- 未配置API Key提示 -->
         <div v-if="!hasApiKey" class="status-banner status-banner--warning" role="alert">
           <div class="banner-content">
             <span class="banner-icon">⚠️</span>
-            <span>未检测到 AI 密钥</span>
+            <span>需要配置 AI 服务</span>
           </div>
-          <button type="button" class="banner-action" @click="openSettings">前往设置</button>
+          <button type="button" class="banner-action" @click="openSettings">前往配置</button>
         </div>
 
         <!-- AI操作按钮网格 -->
@@ -319,16 +359,14 @@ onBeforeUnmount(() => {
             <span class="tile-badge">{{ index + 1 }}</span>
             <div class="tile-content">
               <span class="tile-label">{{ action.label }}</span>
-              <span class="tile-hint">{{ action.description || '按 ' + (index + 1) + ' 键快速执行' }}</span>
             </div>
             <div class="tile-arrow">→</div>
           </button>
         </div>
 
         <!-- 空状态提示 -->
-        <div v-else class="empty-state">
-          <div class="empty-icon">✨</div>
-          <p>复制文本内容以解锁快捷操作</p>
+        <div v-else class="empty-state-mini">
+          <p>💡 复制文本后即可使用 AI 功能</p>
         </div>
       </section>
 
@@ -336,8 +374,7 @@ onBeforeUnmount(() => {
       <section v-if="recentItems.length" class="panel-card panel-card--history">
         <header class="panel-card__header">
           <div class="header-content">
-            <h2>最近历史</h2>
-            <p>单击即可复制，保持窗口内闭环处理</p>
+            <h2>🕐 最近历史</h2>
           </div>
         </header>
         <div class="history-list">
@@ -347,32 +384,14 @@ onBeforeUnmount(() => {
             class="history-item"
             type="button"
             @click="copyHistoryItem(item)"
+            :title="item.preview || ''"
           >
-            <span class="history-icon">
-              <n-icon :component="MdiContentCopy" :size="14" />
-            </span>
-            <span class="history-text">{{ (item.preview || '').slice(0, 50) }}{{ (item.preview || '').length > 50 ? '…' : '' }}</span>
+            <span class="history-text">{{ (item.preview || '').slice(0, 40) }}{{ (item.preview || '').length > 40 ? '…' : '' }}</span>
             <span class="history-action">
               <n-icon :component="MdiContentCopy" :size="12" />
             </span>
           </button>
         </div>
-      </section>
-
-      <!-- 快捷键提示 -->
-      <section class="panel-card panel-card--shortcuts">
-        <header class="panel-card__header">
-          <div class="header-content">
-            <h2>快捷键提示</h2>
-            <p>用指尖完成常用操作，减少鼠标切换</p>
-          </div>
-        </header>
-        <ul class="shortcut-list">
-          <li v-for="item in keyboardShortcuts" :key="item.key" class="shortcut-item">
-            <kbd class="shortcut-key">{{ item.key }}</kbd>
-            <span class="shortcut-label">{{ item.label }}</span>
-          </li>
-        </ul>
       </section>
     </main>
 
@@ -561,8 +580,8 @@ onBeforeUnmount(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 16px;
+  padding: 18px;
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 1;
@@ -588,7 +607,7 @@ onBeforeUnmount(() => {
 /* 卡片容器 - Clash Verge风格 */
 .panel-card {
   position: relative;
-  padding: 18px 20px;
+  padding: 16px 18px;
   border-radius: var(--vibe-radius-lg);
   background: var(--vibe-panel-surface);
   border: 1px solid var(--vibe-panel-border);
@@ -597,7 +616,7 @@ onBeforeUnmount(() => {
   -webkit-backdrop-filter: blur(20px) saturate(130%);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
@@ -642,11 +661,14 @@ onBeforeUnmount(() => {
 }
 
 .panel-card__header h2 {
-  margin: 0 0 6px 0;
-  font-size: 15px;
-  font-weight: 700;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--vibe-text-primary);
   letter-spacing: -0.2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .panel-card__header p {
@@ -700,16 +722,17 @@ onBeforeUnmount(() => {
 /* 卡片内容区 */
 .panel-card__content {
   position: relative;
-  min-height: 100px;
+  min-height: 90px;
+  max-height: 140px;
   border-radius: var(--vibe-radius-md);
   background: var(--vibe-control-bg);
   border: 1px solid var(--vibe-border-soft);
-  padding: 16px;
+  padding: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  overflow: hidden;
+  overflow: auto;
   cursor: text;
   transition: all 200ms ease;
 }
@@ -734,8 +757,8 @@ onBeforeUnmount(() => {
 
 .preview-text {
   width: 100%;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--vibe-text-primary);
   word-break: break-word;
   white-space: pre-wrap;
@@ -872,7 +895,7 @@ onBeforeUnmount(() => {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: var(--vibe-radius-md);
   border: 1px solid var(--vibe-border-soft);
   background: var(--vibe-control-bg);
@@ -940,7 +963,7 @@ onBeforeUnmount(() => {
 }
 
 .tile-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--vibe-text-primary);
 }
@@ -986,6 +1009,19 @@ onBeforeUnmount(() => {
   color: var(--vibe-text-muted);
 }
 
+/* 紧凑空状态 */
+.empty-state-mini {
+  padding: 12px;
+  text-align: center;
+}
+
+.empty-state-mini p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--vibe-text-muted);
+  line-height: 1.5;
+}
+
 /* 历史记录列表 */
 .history-list {
   display: flex;
@@ -995,10 +1031,10 @@ onBeforeUnmount(() => {
 
 .history-item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 11px 13px;
   border-radius: var(--vibe-radius-md);
   background: var(--vibe-control-bg);
   border: 1px solid var(--vibe-border-soft);
@@ -1017,17 +1053,6 @@ onBeforeUnmount(() => {
   transform: scale(0.98);
 }
 
-.history-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--vibe-accent);
-  display: grid;
-  place-items: center;
-  color: white;
-  flex-shrink: 0;
-}
-
 .history-text {
   font-size: 12px;
   color: var(--vibe-text-primary);
@@ -1035,6 +1060,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.5;
+  text-align: left;
 }
 
 .history-action {
