@@ -8,11 +8,12 @@ export const routes: RouteRecordRaw[] = [
   {
     path: "/clipboard",
     name: "clipboard",
-    component: () => import("../pages/History.vue"),
+    component: () => import("../pages/Clipboard.vue"),
   },
   {
     path: "/history",
-    redirect: "/clipboard",
+    name: "history",
+    component: () => import("../pages/History.vue"),
   },
   {
     path: "/ai",
