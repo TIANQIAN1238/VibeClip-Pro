@@ -11,11 +11,12 @@ const props = defineProps<{
 const emit = defineEmits(['click']);
 
 function handleClick(event: MouseEvent) {
-    if (event.target instanceof HTMLAnchorElement) {
+    const anchor = (event.target as HTMLElement | null)?.closest('a');
+    if (anchor) {
         props.noPrevent || event.preventDefault();
-        emit('click', event.target.href, event);
+        emit('click', anchor.href, event);
         if (props.asExternalLink) {
-            openUrl(event.target.href);
+            openUrl(anchor.href);
         }
     }
 }
